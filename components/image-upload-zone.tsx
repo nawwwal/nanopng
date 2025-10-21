@@ -5,19 +5,20 @@ import { useDropzone } from "react-dropzone"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CompressionResultCard } from "@/components/compression-result-card"
-import { createZip } from "@/app/actions/create-zip"
 import { compressImageAdvanced } from "@/lib/advanced-image-processor"
 import type { CompressedImage } from "@/types/image"
+import JSZip from "jszip"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-const MAX_FILES = 20
-const CONCURRENT_UPLOADS = 3 // Process 3 images at a time
+const MAX_FILES = 100 // Increased from 20
+const CONCURRENT_UPLOADS = 5 // Increased from 3 for faster processing
 const MAX_RETRIES = 3
 
 const ACCEPTED_FORMATS = {
   "image/png": [".png"],
   "image/jpeg": [".jpg", ".jpeg"],
   "image/webp": [".webp"],
+  "image/avif": [".avif"], // Added AVIF support
 }
 
 export function ImageUploadZone() {
@@ -37,36 +38,13 @@ export function ImageUploadZone() {
         prev.map((img) => (img.id === placeholderId ? { ...img, status: "processing" as const, progress: 25 } : img)),
       )
 
+      const originalBlobUrl = URL.createObjectURL(file)
+
       const { compressedBlob, compressedSize, format } = await compressImageAdvanced(file)
 
       console.log(`[v0] Compressed ${file.name}: ${originalSize} → ${compressedSize} bytes`)
 
-      // Update status to uploading
-      setImages((prev) =>
-        prev.map((img) => (img.id === placeholderId ? { ...img, status: "processing" as const, progress: 60 } : img)),
-      )
-
-      const fileExtension = format === "jpeg" ? "jpg" : format
-      const baseFilename = file.name.replace(/\.[^/.]+$/, "")
-      const newFilename = `compressed-${Date.now()}-${baseFilename}.${fileExtension}`
-
-      const uploadFormData = new FormData()
-      uploadFormData.append("file", compressedBlob, newFilename)
-      uploadFormData.append("originalSize", originalSize.toString())
-      uploadFormData.append("compressedSize", compressedSize.toString())
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: uploadFormData,
-      })
-
-      if (!response.ok) {
-        throw new Error("Upload failed")
-      }
-
-      const data = await response.json()
-
-      console.log(`[v0] Uploaded ${file.name} to ${data.url}`)
+      const blobUrl = URL.createObjectURL(compressedBlob)
 
       const savings = ((originalSize - compressedSize) / originalSize) * 100
 
@@ -75,7 +53,9 @@ export function ImageUploadZone() {
         originalName: file.name,
         originalSize,
         compressedSize,
-        compressedUrl: data.url,
+        compressedBlob,
+        blobUrl,
+        originalBlobUrl, // Added original blob URL
         savings,
         format: format as "png" | "jpeg" | "webp" | "avif",
         originalFormat,
@@ -133,12 +113,6 @@ export function ImageUploadZone() {
       return
     }
 
-    const oversizedFiles = acceptedFiles.filter((file) => file.size > MAX_FILE_SIZE)
-    if (oversizedFiles.length > 0) {
-      alert(`Some files exceed the 5MB limit`)
-      return
-    }
-
     setIsProcessing(true)
 
     // Create placeholder cards
@@ -147,11 +121,13 @@ export function ImageUploadZone() {
       originalName: file.name,
       originalSize: file.size,
       compressedSize: 0,
-      compressedUrl: "",
+      compressedBlob: new Blob(),
+      blobUrl: "",
+      originalBlobUrl: "", // Added empty original blob URL for placeholder
       savings: 0,
       format: file.type.split("/")[1] as "png" | "jpeg" | "webp" | "avif",
       originalFormat: file.type.split("/")[1],
-      status: "uploading",
+      status: "queued",
       progress: 0,
     }))
 
@@ -167,10 +143,17 @@ export function ImageUploadZone() {
     onDrop,
     accept: ACCEPTED_FORMATS,
     maxFiles: MAX_FILES,
-    maxSize: MAX_FILE_SIZE,
   })
 
   const handleClearAll = () => {
+    images.forEach((img) => {
+      if (img.blobUrl) {
+        URL.revokeObjectURL(img.blobUrl)
+      }
+      if (img.originalBlobUrl) {
+        URL.revokeObjectURL(img.originalBlobUrl)
+      }
+    })
     setImages([])
   }
 
@@ -185,20 +168,23 @@ export function ImageUploadZone() {
     setIsCreatingZip(true)
 
     try {
-      const imageData = successfulImages.map((img) => ({
-        url: img.compressedUrl,
-        filename: `compressed-${img.originalName}`,
-      }))
+      const zip = new JSZip()
 
-      const zipBlob = await createZip(imageData)
+      successfulImages.forEach((img) => {
+        const fileExtension = img.format === "jpeg" ? "jpg" : img.format
+        const filename = `compressed-${img.originalName.replace(/\.[^/.]+$/, "")}.${fileExtension}`
+        zip.file(filename, img.compressedBlob)
+      })
 
-      const url = window.URL.createObjectURL(zipBlob)
+      const zipBlob = await zip.generateAsync({ type: "blob" })
+
+      const url = URL.createObjectURL(zipBlob)
       const a = document.createElement("a")
       a.href = url
       a.download = `compressed-images-${Date.now()}.zip`
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(url)
+      URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
       console.error("[v0] Failed to create ZIP:", error)
@@ -243,7 +229,7 @@ export function ImageUploadZone() {
             <>
               <p className="text-lg font-medium mb-2">Drop your images here or click to browse</p>
               <p className="text-sm text-muted-foreground mb-4">
-                PNG, JPEG, and WebP formats • Max 5MB per file • Up to 20 images
+                PNG, JPEG, WebP, and AVIF formats • No file size limit • Up to {MAX_FILES} images
               </p>
               <Button variant="outline" className="mt-2 bg-transparent">
                 Select Images

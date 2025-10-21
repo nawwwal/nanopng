@@ -24,17 +24,12 @@ export default function Home() {
           <div className="text-center p-8 rounded-lg bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
             <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-foreground">Smart Compression</h3>
+            <h3 className="text-xl font-semibold mb-3 text-foreground">Unlimited Compression</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Reduces file size by 30-70% while keeping images sharp and clear
+              No file size limits. No session limits. Compress as many images as you need
             </p>
           </div>
 
@@ -45,13 +40,13 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={1.5}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-foreground">Batch Processing</h3>
+            <h3 className="text-xl font-semibold mb-3 text-foreground">Advanced Formats</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Compress up to 20 images at once with automatic queue management
+              Support for PNG, JPEG, WebP, and AVIF with automatic format conversion
             </p>
           </div>
 
@@ -62,16 +57,17 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={1.5}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-foreground">Privacy First</h3>
+            <h3 className="text-xl font-semibold mb-3 text-foreground">Detailed Analytics</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              All processing happens in your browser. Files auto-delete after 1 hour
+              View compression metrics, quality scores, and format recommendations
             </p>
           </div>
         </div>
+        {/* </CHANGE> */}
       </div>
     </main>
   )

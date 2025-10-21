@@ -3,10 +3,12 @@ export interface CompressedImage {
   originalName: string
   originalSize: number
   compressedSize: number
-  compressedUrl: string
+  compressedBlob: Blob
+  blobUrl: string
+  originalBlobUrl: string
   savings: number
   format: "png" | "jpeg" | "webp" | "avif"
-  status: "success" | "error" | "processing" | "uploading"
+  status: "success" | "error" | "processing" | "queued"
   error?: string
   progress?: number
   originalFormat?: string

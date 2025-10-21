@@ -25,6 +25,7 @@ export function ImageUploadZone() {
   const [images, setImages] = useState<CompressedImage[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [isCreatingZip, setIsCreatingZip] = useState(false)
+  const [isHovering, setIsHovering] = useState(false) // Added hover state for enhanced interactivity
 
   const processImage = async (file: File, placeholderId: string, retryCount = 0): Promise<CompressedImage | null> => {
     const originalSize = file.size
@@ -204,17 +205,34 @@ export function ImageUploadZone() {
   const successfulCount = images.filter((img) => img.status === "success").length
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-5xl mx-auto">
       <Card
         {...getRootProps()}
-        className={`border-2 border-dashed transition-all cursor-pointer ${
-          isDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-primary/5"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+        className={`rounded-2xl transition-all duration-300 cursor-pointer border-2 ${
+          isDragActive
+            ? "border-primary bg-primary/5 shadow-[0_8px_24px_rgba(0,0,0,0.12)] scale-[1.01]"
+            : isHovering
+              ? "border-primary/30 bg-primary/[0.02] shadow-[0_8px_24px_rgba(0,0,0,0.08)] scale-[1.01]"
+              : "border-border bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] scale-100"
         }`}
       >
         <input {...getInputProps()} />
-        <div className="p-12 text-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="p-16 text-center">
+          <div
+            className={`w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-all duration-300 ${
+              isHovering || isDragActive ? "scale-110 bg-primary/15" : "scale-100"
+            }`}
+          >
+            <svg
+              className={`w-8 h-8 text-primary transition-transform duration-300 ${
+                isHovering || isDragActive ? "-translate-y-1" : "translate-y-0"
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -227,11 +245,16 @@ export function ImageUploadZone() {
             <p className="text-lg font-medium text-primary">Drop your images here...</p>
           ) : (
             <>
-              <p className="text-lg font-medium mb-2">Drop your images here or click to browse</p>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-lg font-semibold mb-2 text-foreground">Drop your images here or click to browse</p>
+              <p className="text-sm text-muted-foreground mb-6">
                 PNG, JPEG, WebP, and AVIF formats • No file size limit • Up to {MAX_FILES} images
               </p>
-              <Button variant="outline" className="mt-2 bg-transparent">
+              <Button
+                variant="outline"
+                className={`mt-2 rounded-xl shadow-sm bg-transparent transition-all duration-300 ${
+                  isHovering ? "border-primary/50 text-primary" : ""
+                }`}
+              >
                 Select Images
               </Button>
             </>
@@ -249,8 +272,8 @@ export function ImageUploadZone() {
       )}
 
       {images.length > 0 && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+        <div className="mt-12">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div>
               <h2 className="text-xl font-semibold">
                 Compressed Images ({successfulCount}/{images.length})
@@ -263,9 +286,9 @@ export function ImageUploadZone() {
                 </p>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               {successfulCount > 0 && (
-                <Button onClick={handleDownloadAll} disabled={isCreatingZip} className="gap-2">
+                <Button onClick={handleDownloadAll} disabled={isCreatingZip} className="gap-2 rounded-xl shadow-sm">
                   {isCreatingZip ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -286,13 +309,13 @@ export function ImageUploadZone() {
                   )}
                 </Button>
               )}
-              <Button variant="outline" onClick={handleClearAll}>
+              <Button variant="outline" onClick={handleClearAll} className="rounded-xl shadow-sm bg-transparent">
                 Clear All
               </Button>
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {images.map((image) => (
               <CompressionResultCard key={image.id} image={image} />
             ))}

@@ -3,39 +3,39 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
-      <div className="container mx-auto px-4 py-16">
-        <div className="flex justify-end mb-8">
+    <main className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-12 max-w-7xl">
+        <div className="flex justify-end mb-12">
           <ThemeToggle />
         </div>
 
-        <div className="text-center mb-16">
-          <h1 className="text-6xl font-bold text-balance mb-6 text-foreground tracking-tight">Image Compression</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed">
-            Professional image optimization with intelligent compression algorithms.
-            <span className="block mt-2">Reduce file sizes while preserving visual excellence.</span>
+        <div className="text-center mb-20">
+          <h1 className="text-5xl md:text-6xl font-bold text-balance mb-4 text-foreground tracking-tight">
+            Image Compression
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed">
+            Professional image optimization with intelligent compression algorithms
           </p>
         </div>
 
-        {/* Upload Zone */}
         <ImageUploadZone />
 
-        <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <div className="text-center p-8 rounded-lg bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="text-center p-8 rounded-2xl bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-5">
+              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-foreground">Unlimited Compression</h3>
+            <h3 className="text-lg font-semibold mb-2 text-foreground">Unlimited Compression</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
               No file size limits. No session limits. Compress as many images as you need
             </p>
           </div>
 
-          <div className="text-center p-8 rounded-lg bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center p-8 rounded-2xl bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-5">
+              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -44,15 +44,15 @@ export default function Home() {
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-foreground">Advanced Formats</h3>
+            <h3 className="text-lg font-semibold mb-2 text-foreground">Advanced Formats</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Support for PNG, JPEG, WebP, and AVIF with automatic format conversion
             </p>
           </div>
 
-          <div className="text-center p-8 rounded-lg bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center p-8 rounded-2xl bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-5">
+              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -61,13 +61,12 @@ export default function Home() {
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-foreground">Detailed Analytics</h3>
+            <h3 className="text-lg font-semibold mb-2 text-foreground">Detailed Analytics</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
               View compression metrics, quality scores, and format recommendations
             </p>
           </div>
         </div>
-        {/* </CHANGE> */}
       </div>
     </main>
   )

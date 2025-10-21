@@ -4,36 +4,42 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated to make amber/gold primary and forest green accent */
-  --background: oklch(0.98 0.005 65); /* Warm cream */
-  --foreground: oklch(0.22 0.01 30); /* Deep charcoal */
+  /* Updated to softer, more neutral colors for Airbnb-like aesthetic */
+  --background: oklch(0.99 0.002 65); /* Almost white, very subtle warmth */
+  --foreground: oklch(0.2 0.01 30); /* Deep charcoal for text */
   --card: oklch(1 0 0); /* Pure white for cards */
-  --card-foreground: oklch(0.22 0.01 30);
+  --card-foreground: oklch(0.2 0.01 30);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.01 30);
-  --primary: oklch(0.65 0.16 70); /* Amber/gold as primary */
-  --primary-foreground: oklch(0.15 0.01 30); /* Dark text on gold */
-  --secondary: oklch(0.95 0.01 65); /* Warm gray */
-  --secondary-foreground: oklch(0.22 0.01 30);
-  --muted: oklch(0.95 0.01 65);
-  --muted-foreground: oklch(0.45 0.01 30); /* Darker for better contrast */
+  --popover-foreground: oklch(0.2 0.01 30);
+  /* Changed primary from amber/gold to black/charcoal for CTA buttons */
+  --primary: oklch(0.2 0.01 30); /* Deep charcoal/black for CTAs */
+  --primary-foreground: oklch(0.99 0.002 65); /* White text on dark buttons */
+  /* </CHANGE> */
+  --secondary: oklch(0.97 0.002 65); /* Very light gray */
+  --secondary-foreground: oklch(0.2 0.01 30);
+  --muted: oklch(0.96 0.002 65); /* Soft gray for muted elements */
+  --muted-foreground: oklch(0.5 0.01 30); /* Medium gray for muted text */
   --accent: oklch(0.48 0.14 150); /* Forest green as accent */
-  --accent-foreground: oklch(0.98 0.005 65); /* Light text on green */
+  --accent-foreground: oklch(0.98 0.005 65);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0.005 65);
-  --border: oklch(0.88 0.01 65);
-  --input: oklch(0.88 0.01 65);
-  --ring: oklch(0.65 0.16 70); /* Gold ring */
-  --chart-1: oklch(0.65 0.16 70); /* Amber/gold */
-  --chart-2: oklch(0.48 0.14 150); /* Forest green */
-  --chart-3: oklch(0.48 0.15 35); /* Copper */
-  --chart-4: oklch(0.42 0.1 320); /* Burgundy */
-  --chart-5: oklch(0.55 0.18 45); /* Warm orange */
-  --radius: 0.5rem;
+  --border: oklch(0.92 0.002 65); /* Very light border, almost invisible */
+  --input: oklch(0.92 0.002 65);
+  /* Changed ring color to match new primary */
+  --ring: oklch(0.2 0.01 30);
+  /* </CHANGE> */
+  --chart-1: oklch(0.65 0.16 70);
+  --chart-2: oklch(0.48 0.14 150);
+  --chart-3: oklch(0.48 0.15 35);
+  --chart-4: oklch(0.42 0.1 320);
+  --chart-5: oklch(0.55 0.18 45);
+  --radius: 0.75rem; /* Increased border radius for softer look */
   --sidebar: oklch(0.98 0.005 65);
   --sidebar-foreground: oklch(0.22 0.01 30);
-  --sidebar-primary: oklch(0.65 0.16 70);
-  --sidebar-primary-foreground: oklch(0.15 0.01 30);
+  /* Updated sidebar primary to match new primary color */
+  --sidebar-primary: oklch(0.2 0.01 30);
+  --sidebar-primary-foreground: oklch(0.99 0.002 65);
+  /* </CHANGE> */
   --sidebar-accent: oklch(0.95 0.01 65);
   --sidebar-accent-foreground: oklch(0.22 0.01 30);
   --sidebar-border: oklch(0.88 0.01 65);
@@ -48,8 +54,10 @@
   --card-foreground: oklch(0.96 0.005 65);
   --popover: oklch(0.17 0.01 30);
   --popover-foreground: oklch(0.96 0.005 65);
-  --primary: oklch(0.7 0.16 70); /* Brighter gold for dark mode (70% vs 12% = 5.8:1) */
-  --primary-foreground: oklch(0.12 0.01 30); /* Dark text on gold */
+  /* Changed dark mode primary to light grey for contrast */
+  --primary: oklch(0.96 0.005 65); /* Light grey/white for dark mode CTAs */
+  --primary-foreground: oklch(0.12 0.01 30); /* Dark text on light buttons */
+  /* </CHANGE> */
   --secondary: oklch(0.22 0.01 30); /* Darker secondary */
   --secondary-foreground: oklch(0.96 0.005 65);
   --muted: oklch(0.22 0.01 30);
@@ -60,7 +68,9 @@
   --destructive-foreground: oklch(0.96 0.005 65);
   --border: oklch(0.35 0.01 30); /* Lightened to 35% for 2.9:1 contrast (acceptable for borders) */
   --input: oklch(0.35 0.01 30);
-  --ring: oklch(0.7 0.16 70); /* Gold ring */
+  /* Changed ring color to match new primary */
+  --ring: oklch(0.96 0.005 65);
+  /* </CHANGE> */
   --chart-1: oklch(0.7 0.16 70); /* Brighter amber/gold */
   --chart-2: oklch(0.55 0.14 150); /* Brighter forest green */
   --chart-3: oklch(0.55 0.15 35); /* Brighter copper */
@@ -68,8 +78,10 @@
   --chart-5: oklch(0.65 0.18 45); /* Brighter warm orange */
   --sidebar: oklch(0.17 0.01 30);
   --sidebar-foreground: oklch(0.96 0.005 65);
-  --sidebar-primary: oklch(0.7 0.16 70);
+  /* Updated sidebar primary to match new primary color */
+  --sidebar-primary: oklch(0.96 0.005 65);
   --sidebar-primary-foreground: oklch(0.12 0.01 30);
+  /* </CHANGE> */
   --sidebar-accent: oklch(0.22 0.01 30);
   --sidebar-accent-foreground: oklch(0.96 0.005 65);
   --sidebar-border: oklch(0.35 0.01 30);

@@ -35,11 +35,11 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
 
   if (image.status === "queued") {
     return (
-      <Card className="p-4 border-accent/30 bg-accent/5">
+      <Card className="p-5 border-0 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-accent/20 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -49,7 +49,7 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
               </svg>
             </div>
             <div>
-              <p className="font-medium">{image.originalName}</p>
+              <p className="font-medium text-foreground">{image.originalName}</p>
               <p className="text-sm text-accent">Queued for compression...</p>
             </div>
           </div>
@@ -78,7 +78,7 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
 
   if (image.status === "processing") {
     return (
-      <Card className="p-4 border-accent/30 bg-accent/5">
+      <Card className="p-5 border-0 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1">
             <div className="w-10 h-10 bg-accent/20 rounded-lg flex items-center justify-center">
@@ -96,7 +96,7 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
 
   if (image.status === "error") {
     return (
-      <Card className="p-4 border-destructive/50 bg-destructive/5">
+      <Card className="p-5 border-0 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-destructive/10 rounded-lg flex items-center justify-center">
@@ -117,13 +117,12 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
   const wasConverted = image.originalFormat && image.originalFormat !== image.format
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow">
-      <div className="p-4">
+    <Card className="overflow-hidden border-0 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-300 rounded-2xl">
+      <div className="p-5">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            {/* Icon */}
-            <div className="w-10 h-10 bg-accent/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -132,13 +131,13 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
                 />
               </svg>
             </div>
+            {/* </CHANGE> */}
 
-            {/* File Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <p className="font-medium truncate">{image.originalName}</p>
+                <p className="font-medium truncate text-foreground">{image.originalName}</p>
                 {wasConverted && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs rounded-lg">
                     {image.originalFormat?.toUpperCase()} → {image.format.toUpperCase()}
                   </Badge>
                 )}
@@ -150,16 +149,16 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
               </div>
             </div>
 
-            {/* Savings Badge */}
             <div className="flex-shrink-0">
-              <div className="bg-[var(--chart-2)]/20 text-[var(--chart-2)] px-3 py-1 rounded-full text-sm font-semibold">
+              <div className="bg-[var(--chart-2)]/15 text-[var(--chart-2)] px-4 py-1.5 rounded-full text-sm font-semibold">
                 -{image.savings.toFixed(1)}%
               </div>
             </div>
+            {/* </CHANGE> */}
           </div>
 
           <div className="flex gap-2 flex-shrink-0">
-            <Button onClick={() => setShowAnalyzer(!showAnalyzer)} size="sm" variant="outline">
+            <Button onClick={() => setShowAnalyzer(!showAnalyzer)} size="sm" variant="outline" className="rounded-xl">
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -170,7 +169,7 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
               </svg>
               {showAnalyzer ? "Hide" : "Analyze"}
             </Button>
-            <Button onClick={handleDownload} size="sm">
+            <Button onClick={handleDownload} size="sm" className="rounded-xl">
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -187,11 +186,10 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
       </div>
 
       {showAnalyzer && (
-        <div className="border-t bg-muted/30 p-4">
+        <div className="border-t border-border/50 bg-muted/20 p-5">
           <ImageAnalyzer image={image} />
         </div>
       )}
-      {/* </CHANGE> */}
     </Card>
   )
 }

@@ -3,7 +3,7 @@
  * Based on TinyPNG's approach for intelligent palette reduction
  */
 
-interface Color {
+export interface Color {
   r: number
   g: number
   b: number
@@ -95,37 +95,6 @@ function getBoxVolume(box: ColorBox): number {
  */
 function getBoxPopulation(box: ColorBox): number {
   return box.colors.reduce((sum, color) => sum + color.count, 0)
-}
-
-/**
- * Calculate variance of colors in a box
- */
-function getBoxVariance(box: ColorBox): number {
-  const population = getBoxPopulation(box)
-  if (population === 0) return 0
-
-  let rSum = 0,
-    gSum = 0,
-    bSum = 0
-  for (const color of box.colors) {
-    rSum += color.r * color.count
-    gSum += color.g * color.count
-    bSum += color.b * color.count
-  }
-
-  const rMean = rSum / population
-  const gMean = gSum / population
-  const bMean = bSum / population
-
-  let variance = 0
-  for (const color of box.colors) {
-    const rDiff = color.r - rMean
-    const gDiff = color.g - gMean
-    const bDiff = color.b - bMean
-    variance += (rDiff * rDiff + gDiff * gDiff + bDiff * bDiff) * color.count
-  }
-
-  return variance / population
 }
 
 /**
@@ -357,3 +326,4 @@ export function findNearestColor(color: Color, palette: Color[]): number {
 
   return nearestIndex
 }
+

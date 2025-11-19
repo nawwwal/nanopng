@@ -3,13 +3,7 @@
  * Applied selectively to smooth regions only
  */
 
-interface Color {
-  r: number
-  g: number
-  b: number
-  a: number
-  count: number
-}
+import { Color } from "./color-quantization"
 
 /**
  * Detect if a region is smooth (suitable for dithering)
@@ -151,3 +145,4 @@ export function applySelectiveDithering(
 
   return output
 }
+

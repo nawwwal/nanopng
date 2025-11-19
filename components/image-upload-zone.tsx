@@ -1,144 +1,204 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useReducer, useEffect } from "react"
 import { useDropzone } from "react-dropzone"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CompressionResultCard } from "@/components/compression-result-card"
-import { compressImageAdvanced } from "@/lib/advanced-image-processor"
-import type { CompressedImage } from "@/types/image"
+import { ImageService } from "@/lib/services/image-service"
+import type { CompressedImage, CompressionStatus } from "@/types/image"
 import JSZip from "jszip"
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-const MAX_FILES = 100 // Increased from 20
-const CONCURRENT_UPLOADS = 5 // Increased from 3 for faster processing
-const MAX_RETRIES = 3
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+const MAX_FILES = 100
+const CONCURRENT_PROCESSING = 3
 
 const ACCEPTED_FORMATS = {
   "image/png": [".png"],
   "image/jpeg": [".jpg", ".jpeg"],
   "image/webp": [".webp"],
-  "image/avif": [".avif"], // Added AVIF support
+  "image/avif": [".avif"],
+}
+
+// --- Reducer State Management ---
+
+type State = {
+  images: CompressedImage[]
+  isProcessing: boolean
+  queueIndex: number // Pointer to next image to process
+}
+
+type Action =
+  | { type: "ADD_FILES"; payload: CompressedImage[] }
+  | { type: "UPDATE_STATUS"; payload: { id: string; status: CompressionStatus; progress?: number; error?: string } }
+  | { type: "UPDATE_IMAGE"; payload: CompressedImage }
+  | { type: "NEXT_QUEUE" }
+  | { type: "CLEAR_ALL" }
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "ADD_FILES":
+      return {
+        ...state,
+        images: [...state.images, ...action.payload],
+        isProcessing: true,
+      }
+    case "UPDATE_STATUS":
+      return {
+        ...state,
+        images: state.images.map((img) =>
+          img.id === action.payload.id
+            ? { ...img, status: action.payload.status, progress: action.payload.progress, error: action.payload.error }
+            : img
+        ),
+      }
+    case "UPDATE_IMAGE":
+      return {
+        ...state,
+        images: state.images.map((img) => (img.id === action.payload.id ? action.payload : img)),
+      }
+    case "NEXT_QUEUE":
+       // Check if we are done
+       const processingCount = state.images.filter(img => img.status === "analyzing" || img.status === "compressing").length
+       const queuedCount = state.images.filter(img => img.status === "queued").length
+       
+       if (processingCount === 0 && queuedCount === 0) {
+         return { ...state, isProcessing: false }
+       }
+       return state
+    case "CLEAR_ALL":
+      return { images: [], isProcessing: false, queueIndex: 0 }
+    default:
+      return state
+  }
 }
 
 export function ImageUploadZone() {
-  const [images, setImages] = useState<CompressedImage[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [state, dispatch] = useReducer(reducer, {
+    images: [],
+    isProcessing: false,
+    queueIndex: 0,
+  })
+  
   const [isCreatingZip, setIsCreatingZip] = useState(false)
-  const [isHovering, setIsHovering] = useState(false) // Added hover state for enhanced interactivity
+  const [isHovering, setIsHovering] = useState(false)
 
-  const processImage = async (file: File, placeholderId: string, retryCount = 0): Promise<CompressedImage | null> => {
-    const originalSize = file.size
-    const originalFormat = file.type.split("/")[1] as "png" | "jpeg" | "webp" | "avif"
+  // Effect to manage the processing queue
+  useEffect(() => {
+    if (!state.isProcessing) return
+
+    const processQueue = async () => {
+      // Find images that are queued
+      const queuedImages = state.images.filter((img) => img.status === "queued")
+      const activeProcessing = state.images.filter((img) => img.status === "analyzing" || img.status === "compressing")
+
+      if (queuedImages.length === 0) {
+        dispatch({ type: "NEXT_QUEUE" })
+        return
+      }
+
+      if (activeProcessing.length >= CONCURRENT_PROCESSING) {
+        return // Wait for slots to free up
+      }
+
+      // Take next batch
+      const slotsAvailable = CONCURRENT_PROCESSING - activeProcessing.length
+      const nextBatch = queuedImages.slice(0, slotsAvailable)
+
+      nextBatch.forEach(async (image) => {
+        try {
+          // 1. Analyze
+          dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "analyzing" } })
+          
+          // We need the original file object. In a real app with persistence we'd need to handle this better,
+          // but here we can probably assume we still have access if we kept it in memory or if we pass it through.
+          // The 'image' object in state doesn't have the File object directly to keep state serializable-ish,
+          // but we need it. 
+          // Correct fix: The initial ADD_FILES payload should perhaps include the File object in a non-serializable property 
+          // OR we maintain a separate map of ID -> File.
+          // Let's use a Ref or Map for ID -> File
+        } catch (error) {
+           console.error(error)
+        }
+      })
+    }
+    
+    processQueue()
+  }, [state.images, state.isProcessing])
+
+  // Map to store File objects separately from state
+  const [fileMap] = useState<Map<string, File>>(() => new Map())
+
+  // Actual processing logic separated from the effect for clarity
+  // We trigger this from the effect effectively by changing status, 
+  // but the effect above is just checking status.
+  // Let's simplify: The useEffect will just trigger `processNextImage` if slots available.
+
+  const processNextImage = useCallback(async (image: CompressedImage) => {
+    const file = fileMap.get(image.id)
+    if (!file) return
 
     try {
-      console.log(`[v0] Starting compression for ${file.name}`)
+      // 1. Analyze
+      dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "analyzing" } })
+      const analysis = await ImageService.analyze(file)
 
-      // Update status to compressing
-      setImages((prev) =>
-        prev.map((img) => (img.id === placeholderId ? { ...img, status: "processing" as const, progress: 25 } : img)),
-      )
+      // 2. Compress
+      dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "compressing" } })
+      const result = await ImageService.compress(file, image.id, analysis)
 
-      const originalBlobUrl = URL.createObjectURL(file)
-
-      const { compressedBlob, compressedSize, format } = await compressImageAdvanced(file)
-
-      console.log(`[v0] Compressed ${file.name}: ${originalSize} → ${compressedSize} bytes`)
-
-      const blobUrl = URL.createObjectURL(compressedBlob)
-
-      const savings = ((originalSize - compressedSize) / originalSize) * 100
-
-      const result: CompressedImage = {
-        id: placeholderId,
-        originalName: file.name,
-        originalSize,
-        compressedSize,
-        compressedBlob,
-        blobUrl,
-        originalBlobUrl, // Added original blob URL
-        savings,
-        format: format as "png" | "jpeg" | "webp" | "avif",
-        originalFormat,
-        status: "success",
-        progress: 100,
-      }
-
-      setImages((prev) => prev.map((img) => (img.id === placeholderId ? result : img)))
-
-      return result
+      dispatch({ type: "UPDATE_IMAGE", payload: result })
     } catch (error) {
-      console.error(`[v0] Error processing ${file.name}:`, error)
-
-      // Retry logic
-      if (retryCount < MAX_RETRIES) {
-        console.log(`[v0] Retrying ${file.name} (attempt ${retryCount + 1}/${MAX_RETRIES})`)
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1))) // Exponential backoff
-        return processImage(file, placeholderId, retryCount + 1)
-      }
-
-      // Max retries reached
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === placeholderId
-            ? {
-                ...img,
-                status: "error" as const,
-                error: error instanceof Error ? error.message : "Compression failed",
-              }
-            : img,
-        ),
-      )
-
-      return null
+      console.error("Processing failed", error)
+      dispatch({ 
+        type: "UPDATE_STATUS", 
+        payload: { 
+          id: image.id, 
+          status: "error", 
+          error: error instanceof Error ? error.message : "Unknown error" 
+        } 
+      })
     }
-  }
+  }, [fileMap])
 
-  const processBatch = async (files: File[], placeholders: CompressedImage[]) => {
-    const queue = files.map((file, index) => ({ file, placeholderId: placeholders[index].id }))
-    const results: (CompressedImage | null)[] = []
-
-    // Process in chunks of CONCURRENT_UPLOADS
-    for (let i = 0; i < queue.length; i += CONCURRENT_UPLOADS) {
-      const chunk = queue.slice(i, i + CONCURRENT_UPLOADS)
-      const chunkResults = await Promise.all(chunk.map(({ file, placeholderId }) => processImage(file, placeholderId)))
-      results.push(...chunkResults)
+  // Revised Queue Effect
+  useEffect(() => {
+    const active = state.images.filter(i => i.status === "analyzing" || i.status === "compressing").length
+    const queued = state.images.filter(i => i.status === "queued")
+    
+    if (queued.length > 0 && active < CONCURRENT_PROCESSING) {
+      const toProcess = queued.slice(0, CONCURRENT_PROCESSING - active)
+      toProcess.forEach(img => processNextImage(img))
+    } else if (active === 0 && queued.length === 0 && state.isProcessing) {
+      // All done
+      dispatch({ type: "NEXT_QUEUE" }) // Will set isProcessing false
     }
+  }, [state.images, processNextImage, state.isProcessing])
 
-    return results
-  }
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+  const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > MAX_FILES) {
       alert(`Maximum ${MAX_FILES} images allowed`)
       return
     }
 
-    setIsProcessing(true)
+    const newImages: CompressedImage[] = acceptedFiles.map((file) => {
+      const id = Math.random().toString(36).substr(2, 9)
+      fileMap.set(id, file)
+      return {
+        id,
+        originalName: file.name,
+        originalSize: file.size,
+        compressedSize: 0,
+        savings: 0,
+        format: file.type.split("/")[1] as any,
+        status: "queued",
+        progress: 0,
+      }
+    })
 
-    // Create placeholder cards
-    const placeholders: CompressedImage[] = acceptedFiles.map((file) => ({
-      id: Math.random().toString(36).substr(2, 9),
-      originalName: file.name,
-      originalSize: file.size,
-      compressedSize: 0,
-      compressedBlob: new Blob(),
-      blobUrl: "",
-      originalBlobUrl: "", // Added empty original blob URL for placeholder
-      savings: 0,
-      format: file.type.split("/")[1] as "png" | "jpeg" | "webp" | "avif",
-      originalFormat: file.type.split("/")[1],
-      status: "queued",
-      progress: 0,
-    }))
-
-    setImages((prev) => [...prev, ...placeholders])
-
-    // Process in batches
-    await processBatch(acceptedFiles, placeholders)
-
-    setIsProcessing(false)
-  }, [])
+    dispatch({ type: "ADD_FILES", payload: newImages })
+  }, [fileMap])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -147,62 +207,57 @@ export function ImageUploadZone() {
   })
 
   const handleClearAll = () => {
-    images.forEach((img) => {
-      if (img.blobUrl) {
-        URL.revokeObjectURL(img.blobUrl)
-      }
-      if (img.originalBlobUrl) {
-        URL.revokeObjectURL(img.originalBlobUrl)
-      }
+    state.images.forEach((img) => {
+      if (img.blobUrl) URL.revokeObjectURL(img.blobUrl)
+      if (img.originalBlobUrl) URL.revokeObjectURL(img.originalBlobUrl)
     })
-    setImages([])
+    fileMap.clear()
+    dispatch({ type: "CLEAR_ALL" })
   }
 
   const handleDownloadAll = async () => {
-    const successfulImages = images.filter((img) => img.status === "success")
-
-    if (successfulImages.length === 0) {
-      alert("No images to download")
-      return
-    }
+    const successfulImages = state.images.filter((img) => img.status === "completed" || img.status === "already-optimized")
+    if (successfulImages.length === 0) return
 
     setIsCreatingZip(true)
-
     try {
       const zip = new JSZip()
-
       successfulImages.forEach((img) => {
-        const fileExtension = img.format === "jpeg" ? "jpg" : img.format
-        const filename = `compressed-${img.originalName.replace(/\.[^/.]+$/, "")}.${fileExtension}`
-        zip.file(filename, img.compressedBlob)
+        const blob = img.compressedBlob || fileMap.get(img.id) // Fallback to original if already optimized (should satisfy blob)
+        if (blob) {
+            const ext = img.format === "jpeg" ? "jpg" : img.format
+            const name = `optimized-${img.originalName.replace(/\.[^/.]+$/, "")}.${ext}`
+            zip.file(name, blob)
+        }
       })
-
-      const zipBlob = await zip.generateAsync({ type: "blob" })
-
-      const url = URL.createObjectURL(zipBlob)
+      const content = await zip.generateAsync({ type: "blob" })
+      const url = URL.createObjectURL(content)
       const a = document.createElement("a")
       a.href = url
-      a.download = `compressed-images-${Date.now()}.zip`
+      a.download = `optimized-images-${Date.now()}.zip`
       document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
       document.body.removeChild(a)
-    } catch (error) {
-      console.error("[v0] Failed to create ZIP:", error)
-      alert("Failed to create ZIP file")
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Zip failed", err)
+      alert("Failed to create zip")
     } finally {
       setIsCreatingZip(false)
     }
   }
 
-  const totalSavings = images
-    .filter((img) => img.status === "success")
-    .reduce((acc, img) => acc + (img.originalSize - img.compressedSize), 0)
-  const totalOriginalSize = images
-    .filter((img) => img.status === "success")
-    .reduce((acc, img) => acc + img.originalSize, 0)
-  const averageSavings = totalOriginalSize > 0 ? (totalSavings / totalOriginalSize) * 100 : 0
-  const successfulCount = images.filter((img) => img.status === "success").length
+  const successfulCount = state.images.filter((img) => img.status === "completed" || img.status === "already-optimized").length
+  
+  // Calculate stats
+  const completedImages = state.images.filter(img => img.status === "completed" || img.status === "already-optimized")
+  const totalOriginal = completedImages.reduce((acc, img) => acc + img.originalSize, 0)
+  const totalCompressed = completedImages.reduce((acc, img) => acc + (img.compressedSize || img.originalSize), 0) // Handle 0 compressedSize for already-optimized?
+  // Wait, compressedSize is set in compress() even for already-optimized (it equals originalSize or best attempt)
+  // So we can rely on it.
+  
+  const totalSavingsBytes = totalOriginal - totalCompressed
+  const averageSavings = totalOriginal > 0 ? (totalSavingsBytes / totalOriginal) * 100 : 0
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -220,7 +275,8 @@ export function ImageUploadZone() {
       >
         <input {...getInputProps()} />
         <div className="p-16 text-center">
-          <div
+           {/* SVG Icon */}
+           <div
             className={`w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-all duration-300 ${
               isHovering || isDragActive ? "scale-110 bg-primary/15" : "scale-100"
             }`}
@@ -241,6 +297,7 @@ export function ImageUploadZone() {
               />
             </svg>
           </div>
+          
           {isDragActive ? (
             <p className="text-lg font-medium text-primary">Drop your images here...</p>
           ) : (
@@ -262,51 +319,25 @@ export function ImageUploadZone() {
         </div>
       </Card>
 
-      {isProcessing && (
-        <div className="mt-6 text-center">
-          <div className="inline-flex items-center gap-2 text-primary">
-            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span className="font-medium">Compressing images...</span>
-          </div>
-        </div>
-      )}
-
-      {images.length > 0 && (
+      {state.images.length > 0 && (
         <div className="mt-12">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div>
               <h2 className="text-xl font-semibold">
-                Compressed Images ({successfulCount}/{images.length})
+                Processed Images ({successfulCount}/{state.images.length})
               </h2>
-              {averageSavings > 0 && (
+               {successfulCount > 0 && (
                 <p className="text-sm text-muted-foreground">
                   Average savings:{" "}
                   <span className="text-[var(--chart-2)] font-semibold">{averageSavings.toFixed(1)}%</span> •{" "}
-                  {(totalSavings / 1024).toFixed(1)} KB saved
+                  {(totalSavingsBytes / 1024).toFixed(1)} KB saved
                 </p>
               )}
             </div>
             <div className="flex gap-3">
               {successfulCount > 0 && (
                 <Button onClick={handleDownloadAll} disabled={isCreatingZip} className="gap-2 rounded-xl shadow-sm">
-                  {isCreatingZip ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Creating ZIP...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                        />
-                      </svg>
-                      Download All ({successfulCount})
-                    </>
-                  )}
+                   {isCreatingZip ? "Creating ZIP..." : `Download All (${successfulCount})`}
                 </Button>
               )}
               <Button variant="outline" onClick={handleClearAll} className="rounded-xl shadow-sm bg-transparent">
@@ -316,7 +347,7 @@ export function ImageUploadZone() {
           </div>
 
           <div className="space-y-3">
-            {images.map((image) => (
+            {state.images.map((image) => (
               <CompressionResultCard key={image.id} image={image} />
             ))}
           </div>

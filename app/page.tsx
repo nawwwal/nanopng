@@ -1,6 +1,7 @@
 import { ImageUploadZone } from "@/components/image-upload-zone"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export default function Home() {
   return (
@@ -8,14 +9,14 @@ export default function Home() {
       {/* Navbar */}
       <nav className="border-b border-border/40 sticky top-0 bg-background/80 backdrop-blur-md z-50">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between max-w-6xl">
-          <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
+          <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight hover:opacity-90 transition-opacity">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
                </svg>
             </div>
             NanoPNG
-          </div>
+          </Link>
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <Button variant="outline" size="sm" className="rounded-full px-4 hidden sm:flex">

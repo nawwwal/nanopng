@@ -4,94 +4,109 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated to softer, more neutral colors for Airbnb-like aesthetic */
-  --background: oklch(0.99 0.002 65); /* Almost white, very subtle warmth */
-  --foreground: oklch(0.2 0.01 30); /* Deep charcoal for text */
-  --card: oklch(1 0 0); /* Pure white for cards */
-  --card-foreground: oklch(0.2 0.01 30);
+  /* Airbnb-inspired Modern Palette */
+  --background: oklch(0.99 0.002 65); /* Warm white */
+  --foreground: oklch(0.14 0.02 255); /* Deep charcoal/black */
+  
+  --card: oklch(1 0 0); /* Pure white */
+  --card-foreground: oklch(0.14 0.02 255);
+  
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.01 30);
-  /* Changed primary from amber/gold to black/charcoal for CTA buttons */
-  --primary: oklch(0.2 0.01 30); /* Deep charcoal/black for CTAs */
-  --primary-foreground: oklch(0.99 0.002 65); /* White text on dark buttons */
-  /* </CHANGE> */
-  --secondary: oklch(0.97 0.002 65); /* Very light gray */
-  --secondary-foreground: oklch(0.2 0.01 30);
-  --muted: oklch(0.96 0.002 65); /* Soft gray for muted elements */
-  --muted-foreground: oklch(0.5 0.01 30); /* Medium gray for muted text */
-  --accent: oklch(0.48 0.14 150); /* Forest green as accent */
-  --accent-foreground: oklch(0.98 0.005 65);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.98 0.005 65);
-  --border: oklch(0.92 0.002 65); /* Very light border, almost invisible */
-  --input: oklch(0.92 0.002 65);
-  /* Changed ring color to match new primary */
-  --ring: oklch(0.2 0.01 30);
-  /* </CHANGE> */
+  --popover-foreground: oklch(0.14 0.02 255);
+  
+  /* Rausch-like Brand Color or Modern Black */
+  /* Let's go with a sophisticated Modern Black/Dark Grey as primary, with accents */
+  --primary: oklch(0.14 0.02 255); /* Almost black */
+  --primary-foreground: oklch(1 0 0); /* White */
+  
+  --secondary: oklch(0.96 0 0); /* Light gray */
+  --secondary-foreground: oklch(0.14 0.02 255);
+  
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0); /* Medium gray */
+  
+  /* Airbnb-like Red/Rose for Accents/Highlights if needed, or Green for success */
+  --accent: oklch(0.96 0 0);
+  --accent-foreground: oklch(0.14 0.02 255);
+  
+  --destructive: oklch(0.6 0.2 25); /* Red */
+  --destructive-foreground: oklch(1 0 0);
+
+  /* Subtle Borders */
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.14 0.02 255);
+
+  /* Charts */
   --chart-1: oklch(0.65 0.16 70);
-  --chart-2: oklch(0.48 0.14 150);
+  --chart-2: oklch(0.48 0.14 150); /* Green */
   --chart-3: oklch(0.48 0.15 35);
   --chart-4: oklch(0.42 0.1 320);
   --chart-5: oklch(0.55 0.18 45);
-  --radius: 0.75rem; /* Increased border radius for softer look */
-  --sidebar: oklch(0.98 0.005 65);
-  --sidebar-foreground: oklch(0.22 0.01 30);
-  /* Updated sidebar primary to match new primary color */
-  --sidebar-primary: oklch(0.2 0.01 30);
-  --sidebar-primary-foreground: oklch(0.99 0.002 65);
-  /* </CHANGE> */
-  --sidebar-accent: oklch(0.95 0.01 65);
-  --sidebar-accent-foreground: oklch(0.22 0.01 30);
-  --sidebar-border: oklch(0.88 0.01 65);
-  --sidebar-ring: oklch(0.7 0.01 30);
+
+  /* Radius */
+  --radius: 1rem; /* 16px standard, 24px/32px for large containers */
+  
+  /* Sidebar */
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.14 0.02 255);
+  --sidebar-primary: oklch(0.14 0.02 255);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.96 0 0);
+  --sidebar-accent-foreground: oklch(0.14 0.02 255);
+  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-ring: oklch(0.14 0.02 255);
 }
 
 .dark {
-  /* Improved contrast ratios for WCAG AA compliance */
-  --background: oklch(0.12 0.01 30); /* Darker background for better contrast */
-  --foreground: oklch(0.96 0.005 65); /* Lighter foreground (96% vs 12% = 8:1 ratio) */
-  --card: oklch(0.17 0.01 30); /* Slightly lighter than background */
-  --card-foreground: oklch(0.96 0.005 65);
-  --popover: oklch(0.17 0.01 30);
-  --popover-foreground: oklch(0.96 0.005 65);
-  /* Changed dark mode primary to light grey for contrast */
-  --primary: oklch(0.96 0.005 65); /* Light grey/white for dark mode CTAs */
-  --primary-foreground: oklch(0.12 0.01 30); /* Dark text on light buttons */
-  /* </CHANGE> */
-  --secondary: oklch(0.22 0.01 30); /* Darker secondary */
-  --secondary-foreground: oklch(0.96 0.005 65);
-  --muted: oklch(0.22 0.01 30);
-  --muted-foreground: oklch(0.72 0.01 30); /* Lightened to 72% for 6:1 contrast ratio */
-  --accent: oklch(0.55 0.14 150); /* Brighter forest green (55% vs 12% = 4.6:1) */
-  --accent-foreground: oklch(0.96 0.005 65); /* Light text on green */
-  --destructive: oklch(0.6 0.22 25); /* Brighter red for visibility */
-  --destructive-foreground: oklch(0.96 0.005 65);
-  --border: oklch(0.35 0.01 30); /* Lightened to 35% for 2.9:1 contrast (acceptable for borders) */
-  --input: oklch(0.35 0.01 30);
-  /* Changed ring color to match new primary */
-  --ring: oklch(0.96 0.005 65);
-  /* </CHANGE> */
-  --chart-1: oklch(0.7 0.16 70); /* Brighter amber/gold */
-  --chart-2: oklch(0.55 0.14 150); /* Brighter forest green */
-  --chart-3: oklch(0.55 0.15 35); /* Brighter copper */
-  --chart-4: oklch(0.6 0.1 320); /* Brighter burgundy */
-  --chart-5: oklch(0.65 0.18 45); /* Brighter warm orange */
-  --sidebar: oklch(0.17 0.01 30);
-  --sidebar-foreground: oklch(0.96 0.005 65);
-  /* Updated sidebar primary to match new primary color */
-  --sidebar-primary: oklch(0.96 0.005 65);
-  --sidebar-primary-foreground: oklch(0.12 0.01 30);
-  /* </CHANGE> */
-  --sidebar-accent: oklch(0.22 0.01 30);
-  --sidebar-accent-foreground: oklch(0.96 0.005 65);
-  --sidebar-border: oklch(0.35 0.01 30);
-  --sidebar-ring: oklch(0.5 0.01 30);
+  --background: oklch(0.12 0.01 255);
+  --foreground: oklch(0.98 0 0);
+  
+  --card: oklch(0.16 0.01 255);
+  --card-foreground: oklch(0.98 0 0);
+  
+  --popover: oklch(0.16 0.01 255);
+  --popover-foreground: oklch(0.98 0 0);
+  
+  --primary: oklch(0.98 0 0);
+  --primary-foreground: oklch(0.12 0.01 255);
+  
+  --secondary: oklch(0.22 0.01 255);
+  --secondary-foreground: oklch(0.98 0 0);
+  
+  --muted: oklch(0.22 0.01 255);
+  --muted-foreground: oklch(0.65 0 0);
+  
+  --accent: oklch(0.22 0.01 255);
+  --accent-foreground: oklch(0.98 0 0);
+  
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  
+  --border: oklch(0.24 0.01 255);
+  --input: oklch(0.24 0.01 255);
+  --ring: oklch(0.8 0 0);
+
+  --chart-1: oklch(0.7 0.16 70);
+  --chart-2: oklch(0.55 0.14 150);
+  --chart-3: oklch(0.55 0.15 35);
+  --chart-4: oklch(0.6 0.1 320);
+  --chart-5: oklch(0.65 0.18 45);
+  
+  --sidebar: oklch(0.14 0.01 255);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.98 0 0);
+  --sidebar-primary-foreground: oklch(0.14 0.01 255);
+  --sidebar-accent: oklch(0.22 0.01 255);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.24 0.01 255);
+  --sidebar-ring: oklch(0.8 0 0);
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
+  --font-sans: "Geist", "Geist Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   --font-mono: "Geist Mono", "Geist Mono Fallback";
-  /* Removed serif font definition */
+  
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -116,10 +131,13 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px); /* Extra large radius for cards */
+  --radius-2xl: calc(var(--radius) + 16px); /* Super rounded */
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);

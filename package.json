@@ -47,7 +47,7 @@
     "input-otp": "latest",
     "jszip": "latest",
     "lucide-react": "latest",
-    "next": "latest",
+    "next": "15.5.8",
     "next-themes": "latest",
     "react": "latest",
     "react-day-picker": "latest",

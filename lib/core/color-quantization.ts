@@ -130,7 +130,15 @@ function splitBox(box: ColorBox): [ColorBox, ColorBox] {
     }
   }
 
-  // Split at median, but adjust to center of longer side
+  // Ensure both sides have at least one color to avoid empty boxes
+  // Adjust median index if it would create an empty box
+  if (medianIndex === colors.length - 1 && colors.length > 1) {
+    medianIndex = colors.length - 2
+  } else if (medianIndex === 0 && colors.length > 1) {
+    medianIndex = 1
+  }
+
+  // Split at median
   const leftColors = colors.slice(0, medianIndex + 1)
   const rightColors = colors.slice(medianIndex + 1)
 
@@ -292,7 +300,9 @@ export function kmeansRefinement(colors: Color[], palette: Color[], maxIteration
     if (!changed) break
   }
 
-  return currentPalette.map(fromPremultiplied)
+  // Return palette in premultiplied alpha space (consistent with buildHistogram)
+  // findNearestColor expects premultiplied colors, so we keep them in this space
+  return currentPalette
 }
 
 /**
@@ -308,16 +318,19 @@ function colorDistance(c1: Color, c2: Color): number {
 
 /**
  * Find nearest palette color for a given color
+ * Both color and palette are expected to be in premultiplied alpha space
  */
 export function findNearestColor(color: Color, palette: Color[]): number {
   let minDist = Number.POSITIVE_INFINITY
   let nearestIndex = 0
 
+  // Convert input color to premultiplied if it's not already
+  // (palette from kmeansRefinement is already in premultiplied space)
   const premultColor = toPremultiplied(color)
 
   for (let i = 0; i < palette.length; i++) {
-    const premultPalette = toPremultiplied(palette[i])
-    const dist = colorDistance(premultColor, premultPalette)
+    // Palette colors are already in premultiplied space from kmeansRefinement
+    const dist = colorDistance(premultColor, palette[i])
     if (dist < minDist) {
       minDist = dist
       nearestIndex = i

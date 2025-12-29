@@ -7,16 +7,15 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 interface FormatConverterProps {
-  onConvert: (format: "png" | "jpeg" | "webp" | "avif") => void
+  onConvert: (format: "png" | "jpeg" | "webp") => void
   currentFormat: string
 }
 
 export function FormatConverter({ onConvert, currentFormat }: FormatConverterProps) {
-  const [selectedFormat, setSelectedFormat] = useState<"png" | "jpeg" | "webp" | "avif">("webp")
+  const [selectedFormat, setSelectedFormat] = useState<"png" | "jpeg" | "webp">("webp")
 
   const formats = [
     { value: "webp", label: "WebP", description: "Best compression, modern browsers" },
-    { value: "avif", label: "AVIF", description: "Next-gen format, smallest files" },
     { value: "jpeg", label: "JPEG", description: "Universal support, photos" },
     { value: "png", label: "PNG", description: "Lossless, transparency" },
   ] as const

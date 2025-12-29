@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useReducer, useEffect } from "react"
+import { useState, useCallback, useReducer, useEffect, useRef } from "react"
 import { useDropzone } from "react-dropzone"
 import { Button } from "@/components/ui/button"
 import { CompressionResultCard } from "@/components/compression-result-card"
@@ -17,7 +17,6 @@ const ACCEPTED_FORMATS = {
   "image/png": [".png"],
   "image/jpeg": [".jpg", ".jpeg"],
   "image/webp": [".webp"],
-  "image/avif": [".avif"],
 }
 
 type State = {
@@ -82,6 +81,9 @@ export function ImageUploadZone() {
 
   // Map to store File objects separately
   const [fileMap] = useState<Map<string, File>>(() => new Map())
+  
+  // Ref to track images for cleanup on unmount
+  const imagesRef = useRef<CompressedImage[]>([])
 
   const processNextImage = useCallback(async (image: CompressedImage) => {
     const file = fileMap.get(image.id)
@@ -153,6 +155,22 @@ export function ImageUploadZone() {
     noClick: false,
     noKeyboard: true,
   })
+
+  // Update ref whenever images change
+  useEffect(() => {
+    imagesRef.current = state.images
+  }, [state.images])
+
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup all blob URLs when component unmounts
+      imagesRef.current.forEach((img) => {
+        if (img.blobUrl) URL.revokeObjectURL(img.blobUrl)
+        if (img.originalBlobUrl) URL.revokeObjectURL(img.originalBlobUrl)
+      })
+    }
+  }, [])
 
   const handleClearAll = () => {
     state.images.forEach((img) => {
@@ -244,7 +262,7 @@ export function ImageUploadZone() {
           </h3>
           
           <p className="text-muted-foreground max-w-md text-lg mb-8 font-normal leading-relaxed">
-            Drag & drop files here or click to browse. <br/> We support PNG, JPEG, WebP & AVIF.
+            Drag & drop files here or click to browse. <br/> We support PNG, JPEG & WebP.
           </p>
           
           <Button

@@ -90,11 +90,11 @@ export function applySelectiveDithering(
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4
 
-      // Add accumulated error
+      // Add accumulated error (including alpha channel)
       const r = Math.max(0, Math.min(255, outputData[idx] + errorBuffer[currentRow][x * 4]))
       const g = Math.max(0, Math.min(255, outputData[idx + 1] + errorBuffer[currentRow][x * 4 + 1]))
       const b = Math.max(0, Math.min(255, outputData[idx + 2] + errorBuffer[currentRow][x * 4 + 2]))
-      const a = outputData[idx + 3]
+      const a = Math.max(0, Math.min(255, outputData[idx + 3] + errorBuffer[currentRow][x * 4 + 3]))
 
       // Find nearest palette color
       const nearestIdx = findNearestColor({ r, g, b, a, count: 1 }, palette)
@@ -106,10 +106,11 @@ export function applySelectiveDithering(
       outputData[idx + 2] = paletteColor.b
       outputData[idx + 3] = paletteColor.a
 
-      // Calculate quantization error
+      // Calculate quantization error (including alpha channel)
       const errR = r - paletteColor.r
       const errG = g - paletteColor.g
       const errB = b - paletteColor.b
+      const errA = a - paletteColor.a
 
       // Only diffuse error in smooth regions
       if (isSmoothRegion(imageData, x, y)) {
@@ -119,6 +120,7 @@ export function applySelectiveDithering(
           errorBuffer[currentRow][(x + 1) * 4] += (errR * 7) / 16
           errorBuffer[currentRow][(x + 1) * 4 + 1] += (errG * 7) / 16
           errorBuffer[currentRow][(x + 1) * 4 + 2] += (errB * 7) / 16
+          errorBuffer[currentRow][(x + 1) * 4 + 3] += (errA * 7) / 16
         }
 
         // Bottom-left pixel (3/16)
@@ -126,18 +128,21 @@ export function applySelectiveDithering(
           errorBuffer[nextRow][(x - 1) * 4] += (errR * 3) / 16
           errorBuffer[nextRow][(x - 1) * 4 + 1] += (errG * 3) / 16
           errorBuffer[nextRow][(x - 1) * 4 + 2] += (errB * 3) / 16
+          errorBuffer[nextRow][(x - 1) * 4 + 3] += (errA * 3) / 16
         }
 
         // Bottom pixel (5/16)
         errorBuffer[nextRow][x * 4] += (errR * 5) / 16
         errorBuffer[nextRow][x * 4 + 1] += (errG * 5) / 16
         errorBuffer[nextRow][x * 4 + 2] += (errB * 5) / 16
+        errorBuffer[nextRow][x * 4 + 3] += (errA * 5) / 16
 
         // Bottom-right pixel (1/16)
         if (x + 1 < width) {
           errorBuffer[nextRow][(x + 1) * 4] += errR / 16
           errorBuffer[nextRow][(x + 1) * 4 + 1] += errG / 16
           errorBuffer[nextRow][(x + 1) * 4 + 2] += errB / 16
+          errorBuffer[nextRow][(x + 1) * 4 + 3] += errA / 16
         }
       }
     }

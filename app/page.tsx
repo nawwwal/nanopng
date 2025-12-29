@@ -33,7 +33,7 @@ export default function Home() {
             Intelligent image optimization <br className="hidden sm:block"/> for the modern web.
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed font-normal">
-            Compress PNG, JPEG, WebP, and AVIF images locally in your browser. 
+            Compress PNG, JPEG, and WebP images locally in your browser. 
             No server uploads, no limits, completely private.
           </p>
         </div>

@@ -11,11 +11,11 @@ export interface CompressedImage {
   originalName: string
   originalSize: number
   compressedSize: number
-  compressedBlob?: Blob
+  compressedBlob?: Blob | File
   blobUrl?: string
   originalBlobUrl?: string
   savings: number
-  format: "png" | "jpeg" | "webp" | "avif"
+  format: "png" | "jpeg" | "webp"
   status: CompressionStatus
   error?: string
   progress?: number
@@ -28,5 +28,5 @@ export interface ImageAnalysis {
   hasTransparency: boolean
   complexity: number
   uniqueColors: number
-  suggestedFormat: "png" | "jpeg" | "webp" | "avif"
+  suggestedFormat: "png" | "jpeg" | "webp"
 }

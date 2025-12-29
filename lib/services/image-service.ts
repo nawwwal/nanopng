@@ -120,9 +120,10 @@ export class ImageService {
     let totalPixels = 0
 
     for (let i = 0; i < data.length; i += 4) {
-      const r = Math.floor((data[i] / 255) * bins)
-      const g = Math.floor((data[i + 1] / 255) * bins)
-      const b = Math.floor((data[i + 2] / 255) * bins)
+      // Clamp bin indices to prevent overflow when pixel value is 255
+      const r = Math.min(bins - 1, Math.floor((data[i] / 255) * bins))
+      const g = Math.min(bins - 1, Math.floor((data[i + 1] / 255) * bins))
+      const b = Math.min(bins - 1, Math.floor((data[i + 2] / 255) * bins))
       
       const binIdx = r * bins * bins + g * bins + b
       histogram[binIdx]++
@@ -157,10 +158,17 @@ export class ImageService {
     let totalVariance = 0
     let sampledBlocks = 0
 
-    // Sample blocks from different regions
+    // Use deterministic grid-based sampling for consistent results
+    const gridCols = Math.ceil(Math.sqrt(sampleBlocks))
+    const gridRows = Math.ceil(sampleBlocks / gridCols)
+    const stepX = Math.max(1, Math.floor((width - blockSize) / gridCols))
+    const stepY = Math.max(1, Math.floor((height - blockSize) / gridRows))
+
     for (let i = 0; i < sampleBlocks; i++) {
-      const x = Math.floor(Math.random() * Math.max(1, width - blockSize))
-      const y = Math.floor(Math.random() * Math.max(1, height - blockSize))
+      const gridX = i % gridCols
+      const gridY = Math.floor(i / gridCols)
+      const x = Math.min(width - blockSize - 1, gridX * stepX)
+      const y = Math.min(height - blockSize - 1, gridY * stepY)
 
       // Calculate variance within this block
       let sumR = 0, sumG = 0, sumB = 0
@@ -244,7 +252,9 @@ export class ImageService {
 
             if (a < 255) hasTransparency = true
 
-            // Quantize colors more aggressively for analysis (4-bit color) to detect photos vs graphics
+            // Quantize colors more aggressively for analysis (4-bit color, max 4096 unique values)
+            // This is used for photo vs graphic detection, not for actual quantization
+            // Note: This differs from buildHistogram() which uses full 8-bit premultiplied colors
             const colorKey = `${r & 0xf0},${g & 0xf0},${b & 0xf0}`
             colorSet.add(colorKey)
 
@@ -256,6 +266,10 @@ export class ImageService {
             }
           }
 
+          // uniqueColors: 4-bit quantized color count (0-4096 range)
+          // Used as a heuristic for photo vs graphic detection
+          // Note: When comparing against 256 threshold in compression, this is approximate
+          // Actual quantization uses buildHistogram() which counts full 8-bit premultiplied colors
           const uniqueColors = colorSet.size
           const avgVariance = totalVariance / (data.length / 4) / 3 // Normalized variance per channel
           const complexity = Math.min(avgVariance / 20, 1) // Normalize 0-1 (20 is empirical threshold for high complexity)
@@ -278,7 +292,7 @@ export class ImageService {
           const isPhoto = photoScore > 0.55
 
           // Determine suggested format
-          let suggestedFormat: "png" | "jpeg" | "webp" | "avif" = "webp"
+          let suggestedFormat: "png" | "jpeg" | "webp" = "webp"
           
           // If it's a photo, WebP or JPEG is usually best
           // If it's a simple graphic with few colors, PNG or WebP-lossless might be better
@@ -341,30 +355,42 @@ export class ImageService {
 
           let bestBlob: Blob | null = null
           let bestSize = originalSize
-          let bestFormat = file.type.split("/")[1] as "png" | "jpeg" | "webp" | "avif"
+          
+          // Normalize format string (handle jpg -> jpeg, etc.)
+          const rawFormat = file.type.split("/")[1] || "png"
+          const normalizedFormat = rawFormat === "jpg" ? "jpeg" : rawFormat
+          let bestFormat = normalizedFormat as "png" | "jpeg" | "webp"
           // default to input format if something goes wrong, but we usually switch to webp/jpeg/png
 
-          // Strategy 1: Advanced Quantization for PNGs (Graphics)
-          if (imgAnalysis.hasTransparency && !imgAnalysis.isPhoto && imgAnalysis.uniqueColors > 256) {
-            // Clone canvas for quantization to avoid dirtying the main one if we need to retry
-             // Actually we can just draw on the main one since we redraw for other strategies or use toBlob
-             // But for quantization we modify pixel data directly.
-             
-             const qCanvas = document.createElement("canvas")
-             qCanvas.width = img.width
-             qCanvas.height = img.height
-             const qCtx = qCanvas.getContext("2d")
-             if (qCtx) {
-                qCtx.drawImage(img, 0, 0)
-                await this.quantizeImage(qCanvas, qCtx, 256)
-                const blob = await new Promise<Blob | null>(r => qCanvas.toBlob(r, "image/png"))
-                if (blob && blob.size < bestSize) {
-                  bestBlob = blob
-                  bestSize = blob.size
-                  bestFormat = "png"
-                }
-             }
+          // Determine if quantization should be applied (for all non-photo graphics with high color counts)
+          // Note: uniqueColors is 4-bit quantized count (0-4096), threshold of 256 is approximate
+          // Actual quantization will use buildHistogram() which counts full 8-bit colors
+          const shouldQuantize = !imgAnalysis.isPhoto && imgAnalysis.uniqueColors > 256
+          let quantizedCanvas: HTMLCanvasElement | null = null
+
+          // Strategy 1: Advanced Quantization for Graphics (transparent or non-transparent)
+          if (shouldQuantize) {
+            const qCanvas = document.createElement("canvas")
+            qCanvas.width = img.width
+            qCanvas.height = img.height
+            const qCtx = qCanvas.getContext("2d")
+            if (qCtx) {
+              qCtx.drawImage(img, 0, 0)
+              await this.quantizeImage(qCanvas, qCtx, 256)
+              quantizedCanvas = qCanvas // Store for use in other strategies
+              
+              // Try PNG format (best for quantized graphics, especially with transparency)
+              const pngBlob = await new Promise<Blob | null>(r => qCanvas.toBlob(r, "image/png"))
+              if (pngBlob && pngBlob.size < bestSize) {
+                bestBlob = pngBlob
+                bestSize = pngBlob.size
+                bestFormat = "png"
+              }
+            }
           }
+
+          // Use quantized canvas if available, otherwise use original canvas
+          const sourceCanvas = quantizedCanvas || canvas
 
           // Strategy 2: WebP (The workhorse)
           // Adjust quality based on complexity
@@ -372,7 +398,7 @@ export class ImageService {
             ? (imgAnalysis.complexity > 0.5 ? 0.82 : 0.85) 
             : 0.90
             
-          const webpBlob = await new Promise<Blob | null>(r => canvas.toBlob(r, "image/webp", webpQuality))
+          const webpBlob = await new Promise<Blob | null>(r => sourceCanvas.toBlob(r, "image/webp", webpQuality))
           if (webpBlob && webpBlob.size < bestSize) {
             bestBlob = webpBlob
             bestSize = webpBlob.size
@@ -382,7 +408,7 @@ export class ImageService {
           // Strategy 3: JPEG (Photos, no transparency)
           if (imgAnalysis.isPhoto && !imgAnalysis.hasTransparency) {
             const jpegQuality = 0.85
-            const jpegBlob = await new Promise<Blob | null>(r => canvas.toBlob(r, "image/jpeg", jpegQuality))
+            const jpegBlob = await new Promise<Blob | null>(r => sourceCanvas.toBlob(r, "image/jpeg", jpegQuality))
             
             // Only prefer JPEG if it beats WebP significantly (unlikely) or if user asked for it (not implemented yet)
             // But we strictly want the smallest size here
@@ -422,7 +448,7 @@ export class ImageService {
             originalBlobUrl: URL.createObjectURL(file),
             savings: Math.max(0, savings),
             format: bestFormat,
-            originalFormat: file.type.split("/")[1] as any,
+            originalFormat: normalizedFormat as any,
             status,
             analysis: imgAnalysis
           })

@@ -4,6 +4,207 @@ import { applySelectiveDithering } from "@/lib/core/floyd-steinberg"
 
 export class ImageService {
   /**
+   * Calculate the ratio of solid (uniform color) regions in the image
+   * Graphics typically have 20-80% solid regions, photos have 0-5%
+   */
+  private static calculateSolidRegionRatio(
+    data: Uint8ClampedArray,
+    width: number,
+    height: number
+  ): number {
+    const blockSize = 4
+    let solidBlocks = 0
+    let totalBlocks = 0
+
+    for (let y = 0; y < height - blockSize; y += blockSize) {
+      for (let x = 0; x < width - blockSize; x += blockSize) {
+        totalBlocks++
+        
+        // Sample pixels in this block
+        let minR = 255, maxR = 0
+        let minG = 255, maxG = 0
+        let minB = 255, maxB = 0
+
+        for (let by = 0; by < blockSize; by++) {
+          for (let bx = 0; bx < blockSize; bx++) {
+            const idx = ((y + by) * width + (x + bx)) * 4
+            const r = data[idx]
+            const g = data[idx + 1]
+            const b = data[idx + 2]
+
+            minR = Math.min(minR, r)
+            maxR = Math.max(maxR, r)
+            minG = Math.min(minG, g)
+            maxG = Math.max(maxG, g)
+            minB = Math.min(minB, b)
+            maxB = Math.max(maxB, b)
+          }
+        }
+
+        // Block is solid if max color difference < 5
+        const colorDiff = (maxR - minR) + (maxG - minG) + (maxB - minB)
+        if (colorDiff < 5) {
+          solidBlocks++
+        }
+      }
+    }
+
+    return totalBlocks > 0 ? solidBlocks / totalBlocks : 0
+  }
+
+  /**
+   * Calculate the ratio of sharp edges vs gradual transitions
+   * Photos have more gradual transitions, graphics have more sharp edges
+   */
+  private static calculateEdgeSharpnessRatio(
+    data: Uint8ClampedArray,
+    width: number,
+    height: number
+  ): { sharpEdges: number; gradualTransitions: number; ratio: number } {
+    let sharpEdges = 0
+    let gradualTransitions = 0
+    let totalTransitions = 0
+
+    // Check horizontal transitions
+    for (let y = 0; y < height; y++) {
+      for (let x = 1; x < width; x++) {
+        const idx1 = (y * width + (x - 1)) * 4
+        const idx2 = (y * width + x) * 4
+
+        const r1 = data[idx1], g1 = data[idx1 + 1], b1 = data[idx1 + 2]
+        const r2 = data[idx2], g2 = data[idx2 + 1], b2 = data[idx2 + 2]
+
+        const diff = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2)
+        totalTransitions++
+
+        if (diff > 50) {
+          sharpEdges++
+        } else if (diff < 20) {
+          gradualTransitions++
+        }
+      }
+    }
+
+    // Check vertical transitions
+    for (let y = 1; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx1 = ((y - 1) * width + x) * 4
+        const idx2 = (y * width + x) * 4
+
+        const r1 = data[idx1], g1 = data[idx1 + 1], b1 = data[idx1 + 2]
+        const r2 = data[idx2], g2 = data[idx2 + 1], b2 = data[idx2 + 2]
+
+        const diff = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2)
+        totalTransitions++
+
+        if (diff > 50) {
+          sharpEdges++
+        } else if (diff < 20) {
+          gradualTransitions++
+        }
+      }
+    }
+
+    const ratio = totalTransitions > 0 ? gradualTransitions / totalTransitions : 0
+    return { sharpEdges, gradualTransitions, ratio }
+  }
+
+  /**
+   * Calculate color histogram spread using entropy
+   * Photos have smooth/continuous distributions, graphics have spiky distributions
+   */
+  private static calculateHistogramSpread(data: Uint8ClampedArray): number {
+    // Build histogram with 32 bins per channel (coarser for analysis)
+    const bins = 32
+    const histogram = new Array(bins * bins * bins).fill(0)
+    let totalPixels = 0
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = Math.floor((data[i] / 255) * bins)
+      const g = Math.floor((data[i + 1] / 255) * bins)
+      const b = Math.floor((data[i + 2] / 255) * bins)
+      
+      const binIdx = r * bins * bins + g * bins + b
+      histogram[binIdx]++
+      totalPixels++
+    }
+
+    // Calculate normalized entropy
+    let entropy = 0
+    for (let i = 0; i < histogram.length; i++) {
+      if (histogram[i] > 0) {
+        const p = histogram[i] / totalPixels
+        entropy -= p * Math.log2(p)
+      }
+    }
+
+    // Normalize to 0-1 range (max entropy is log2(bins^3))
+    const maxEntropy = Math.log2(bins * bins * bins)
+    return entropy / maxEntropy
+  }
+
+  /**
+   * Calculate texture score by analyzing micro-variance in small blocks
+   * Photos have consistent non-zero variance, graphics have many zero-variance blocks
+   */
+  private static calculateTextureScore(
+    data: Uint8ClampedArray,
+    width: number,
+    height: number
+  ): number {
+    const blockSize = 8
+    const sampleBlocks = 20 // Sample 20 blocks for performance
+    let totalVariance = 0
+    let sampledBlocks = 0
+
+    // Sample blocks from different regions
+    for (let i = 0; i < sampleBlocks; i++) {
+      const x = Math.floor(Math.random() * Math.max(1, width - blockSize))
+      const y = Math.floor(Math.random() * Math.max(1, height - blockSize))
+
+      // Calculate variance within this block
+      let sumR = 0, sumG = 0, sumB = 0
+      let sumR2 = 0, sumG2 = 0, sumB2 = 0
+      let pixelCount = 0
+
+      for (let by = 0; by < blockSize && (y + by) < height; by++) {
+        for (let bx = 0; bx < blockSize && (x + bx) < width; bx++) {
+          const idx = ((y + by) * width + (x + bx)) * 4
+          const r = data[idx]
+          const g = data[idx + 1]
+          const b = data[idx + 2]
+
+          sumR += r
+          sumG += g
+          sumB += b
+          sumR2 += r * r
+          sumG2 += g * g
+          sumB2 += b * b
+          pixelCount++
+        }
+      }
+
+      if (pixelCount > 0) {
+        const meanR = sumR / pixelCount
+        const meanG = sumG / pixelCount
+        const meanB = sumB / pixelCount
+
+        const varianceR = (sumR2 / pixelCount) - (meanR * meanR)
+        const varianceG = (sumG2 / pixelCount) - (meanG * meanG)
+        const varianceB = (sumB2 / pixelCount) - (meanB * meanB)
+
+        const avgVariance = (varianceR + varianceG + varianceB) / 3
+        totalVariance += avgVariance
+        sampledBlocks++
+      }
+    }
+
+    const avgVariance = sampledBlocks > 0 ? totalVariance / sampledBlocks : 0
+    // Normalize: typical photo variance is 50-200, graphics is 0-20
+    // Map to 0-1 range where >50 is high (photo-like)
+    return Math.min(avgVariance / 100, 1)
+  }
+  /**
    * Analyze an image to determine its characteristics and best compression strategy
    */
   static async analyze(file: File): Promise<ImageAnalysis> {
@@ -14,8 +215,8 @@ export class ImageService {
       img.onload = () => {
         try {
           const canvas = document.createElement("canvas")
-          // Use a small sample size for analysis to be fast
-          const sampleSize = Math.min(img.width, 100)
+          // Use a larger sample size for better analysis (increased from 100px to 200px)
+          const sampleSize = Math.min(img.width, 200)
           const scale = sampleSize / img.width
           canvas.width = sampleSize
           canvas.height = img.height * scale
@@ -59,11 +260,22 @@ export class ImageService {
           const avgVariance = totalVariance / (data.length / 4) / 3 // Normalized variance per channel
           const complexity = Math.min(avgVariance / 20, 1) // Normalize 0-1 (20 is empirical threshold for high complexity)
 
-          const isPhoto =
-            file.type === "image/jpeg" ||
-            file.type === "image/heic" ||
-            (uniqueColors > 500 && complexity > 0.2) ||
-            complexity > 0.5
+          // Multi-signal scoring system for robust photo detection
+          const solidRegionRatio = this.calculateSolidRegionRatio(data, canvas.width, canvas.height)
+          const edgeAnalysis = this.calculateEdgeSharpnessRatio(data, canvas.width, canvas.height)
+          const histogramSpread = this.calculateHistogramSpread(data)
+          const textureScore = this.calculateTextureScore(data, canvas.width, canvas.height)
+
+          // Weighted scoring: each signal contributes to photo likelihood
+          // Higher score = more likely to be a photo
+          const photoScore =
+            (1 - solidRegionRatio) * 0.30 +      // Low solid regions = photo (photos have noise, graphics have flat areas)
+            edgeAnalysis.ratio * 0.25 +            // Gradual transitions = photo (smooth gradients, blur)
+            histogramSpread * 0.25 +              // Spread histogram = photo (continuous color distribution)
+            textureScore * 0.20                    // Consistent texture = photo (camera noise, texture)
+
+          // Threshold tuned for accuracy (0.55 = balanced, can be adjusted)
+          const isPhoto = photoScore > 0.55
 
           // Determine suggested format
           let suggestedFormat: "png" | "jpeg" | "webp" | "avif" = "webp"

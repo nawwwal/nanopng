@@ -166,6 +166,34 @@ export function ImageUploadZone() {
     dispatch({ type: "ADD_FILES", payload: newImages })
   }, [fileMap])
 
+  // Global paste handler for clipboard images
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      const imageFiles: File[] = []
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const blob = item.getAsFile()
+          if (blob) {
+            const ext = item.type.split("/")[1] || "png"
+            const name = `pasted-image-${Date.now()}.${ext}`
+            imageFiles.push(new File([blob], name, { type: item.type }))
+          }
+        }
+      }
+      
+      if (imageFiles.length > 0) {
+        e.preventDefault()
+        onDrop(imageFiles)
+      }
+    }
+
+    document.addEventListener("paste", handlePaste)
+    return () => document.removeEventListener("paste", handlePaste)
+  }, [onDrop])
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: ACCEPTED_FORMATS,
@@ -287,7 +315,7 @@ export function ImageUploadZone() {
           </h3>
           
           <p className="text-muted-foreground max-w-md text-lg mb-8 font-normal leading-relaxed">
-            Drag & drop files here or click to browse. <br/> We support PNG, JPEG, WebP, AVIF & HEIC/HEIF.
+            Drag & drop files here, click to browse, or paste from clipboard. <br/> We support PNG, JPEG, WebP, AVIF & HEIC/HEIF.
           </p>
           
           <Button

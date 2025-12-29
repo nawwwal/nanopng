@@ -149,6 +149,13 @@ export function ImageUploadZone() {
     }
 
     const newImages: CompressedImage[] = acceptedFiles.map((file) => {
+      const typePart = file.type ? file.type.split("/")[1] : ""
+      const nameExtPart = file.name.split(".").pop()?.toLowerCase() ?? ""
+      let inferredFormat = (typePart || nameExtPart || "png").toLowerCase()
+
+      if (inferredFormat === "jpg") inferredFormat = "jpeg"
+      if (!["png", "jpeg", "webp", "avif"].includes(inferredFormat)) inferredFormat = "png"
+
       const id = Math.random().toString(36).substr(2, 9)
       fileMap.set(id, file)
       return {
@@ -157,7 +164,7 @@ export function ImageUploadZone() {
         originalSize: file.size,
         compressedSize: 0,
         savings: 0,
-        format: file.type.split("/")[1] as any,
+        format: inferredFormat as any,
         status: "queued",
         progress: 0,
       }
@@ -173,15 +180,18 @@ export function ImageUploadZone() {
       if (!items) return
 
       const imageFiles: File[] = []
-      for (const item of items) {
-        if (item.type.startsWith("image/")) {
-          const blob = item.getAsFile()
-          if (blob) {
-            const ext = item.type.split("/")[1] || "png"
-            const name = `pasted-image-${Date.now()}.${ext}`
-            imageFiles.push(new File([blob], name, { type: item.type }))
-          }
-        }
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (!item) continue
+        if (!item.type?.startsWith("image/")) continue
+
+        const blob = item.getAsFile()
+        if (!blob) continue
+
+        const mime = item.type || blob.type || "image/png"
+        const ext = mime.split("/")[1] || "png"
+        const name = `pasted-image-${Date.now()}-${i + 1}.${ext}`
+        imageFiles.push(new File([blob], name, { type: mime }))
       }
       
       if (imageFiles.length > 0) {
@@ -190,8 +200,8 @@ export function ImageUploadZone() {
       }
     }
 
-    document.addEventListener("paste", handlePaste)
-    return () => document.removeEventListener("paste", handlePaste)
+    window.addEventListener("paste", handlePaste, true)
+    return () => window.removeEventListener("paste", handlePaste, true)
   }, [onDrop])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

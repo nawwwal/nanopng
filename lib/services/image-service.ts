@@ -1,6 +1,7 @@
 import { CompressedImage, ImageAnalysis } from "@/types/image"
 import { buildHistogram, medianCut, kmeansRefinement, findNearestColor } from "@/lib/core/color-quantization"
 import { applySelectiveDithering } from "@/lib/core/floyd-steinberg"
+import { canEncodeAvif } from "@/lib/core/format-capabilities"
 
 export class ImageService {
   /**
@@ -328,7 +329,8 @@ export class ImageService {
   static async compress(
     file: File, 
     id: string,
-    analysis?: ImageAnalysis
+    analysis?: ImageAnalysis,
+    originalFormat?: string
   ): Promise<CompressedImage> {
     const originalSize = file.size
     
@@ -357,10 +359,11 @@ export class ImageService {
           let bestSize = originalSize
           
           // Normalize format string (handle jpg -> jpeg, etc.)
-          const rawFormat = file.type.split("/")[1] || "png"
-          const normalizedFormat = rawFormat === "jpg" ? "jpeg" : rawFormat
-          let bestFormat = normalizedFormat as "png" | "jpeg" | "webp"
-          // default to input format if something goes wrong, but we usually switch to webp/jpeg/png
+          // Use originalFormat if provided (for decoded HEIC files), otherwise derive from file.type
+          const rawFormat = originalFormat || file.type.split("/")[1] || "png"
+          const normalizedFormat = rawFormat === "jpg" ? "jpeg" : rawFormat.toLowerCase()
+          let bestFormat = normalizedFormat as "png" | "jpeg" | "webp" | "avif"
+          // default to input format if something goes wrong, but we usually switch to avif/webp/jpeg/png
 
           // Determine if quantization should be applied (for all non-photo graphics with high color counts)
           // Note: uniqueColors is 4-bit quantized count (0-4096), threshold of 256 is approximate
@@ -392,7 +395,22 @@ export class ImageService {
           // Use quantized canvas if available, otherwise use original canvas
           const sourceCanvas = quantizedCanvas || canvas
 
-          // Strategy 2: WebP (The workhorse)
+          // Strategy 2: AVIF (Best compression, if supported)
+          // AVIF typically achieves 30-50% better compression than WebP
+          if (await canEncodeAvif()) {
+            const avifQuality = imgAnalysis.isPhoto ? 0.75 : 0.85
+            const avifBlob = await new Promise<Blob | null>(r => 
+              sourceCanvas.toBlob(r, "image/avif", avifQuality)
+            )
+            // Verify the blob was created and has the correct MIME type
+            if (avifBlob && avifBlob.type === "image/avif" && avifBlob.size < bestSize) {
+              bestBlob = avifBlob
+              bestSize = avifBlob.size
+              bestFormat = "avif"
+            }
+          }
+
+          // Strategy 3: WebP (The workhorse)
           // Adjust quality based on complexity
           const webpQuality = imgAnalysis.isPhoto 
             ? (imgAnalysis.complexity > 0.5 ? 0.82 : 0.85) 
@@ -405,7 +423,7 @@ export class ImageService {
             bestFormat = "webp"
           }
 
-          // Strategy 3: JPEG (Photos, no transparency)
+          // Strategy 4: JPEG (Photos, no transparency)
           if (imgAnalysis.isPhoto && !imgAnalysis.hasTransparency) {
             const jpegQuality = 0.85
             const jpegBlob = await new Promise<Blob | null>(r => sourceCanvas.toBlob(r, "image/jpeg", jpegQuality))
@@ -448,7 +466,7 @@ export class ImageService {
             originalBlobUrl: URL.createObjectURL(file),
             savings: Math.max(0, savings),
             format: bestFormat,
-            originalFormat: normalizedFormat as any,
+            originalFormat: (originalFormat || normalizedFormat) as any,
             status,
             analysis: imgAnalysis
           })

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { CompressionResultCard } from "@/components/compression-result-card"
 import { ImageService } from "@/lib/services/image-service"
 import type { CompressedImage, CompressionStatus } from "@/types/image"
+import { ensureDecodable, isHeicFile } from "@/lib/core/format-decoder"
 import JSZip from "jszip"
 import { cn } from "@/lib/utils"
 
@@ -17,6 +18,9 @@ const ACCEPTED_FORMATS = {
   "image/png": [".png"],
   "image/jpeg": [".jpg", ".jpeg"],
   "image/webp": [".webp"],
+  "image/avif": [".avif"],
+  "image/heic": [".heic"],
+  "image/heif": [".heif"],
 }
 
 type State = {
@@ -91,10 +95,24 @@ export function ImageUploadZone() {
 
     try {
       dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "analyzing" } })
-      const analysis = await ImageService.analyze(file)
+      
+      // Detect original format before decoding (to preserve HEIC/HEIF info)
+      const isHeic = await isHeicFile(file)
+      const originalFormat = isHeic 
+        ? (file.name.toLowerCase().endsWith(".heif") ? "heif" : "heic")
+        : undefined
+      
+      // Decode HEIC/HEIF files to a standard format before processing
+      const decodedFile = await ensureDecodable(file)
+      // Convert Blob to File if needed (ensureDecodable may return Blob)
+      const fileToProcess = decodedFile instanceof File 
+        ? decodedFile 
+        : new File([decodedFile], file.name.replace(/\.(heic|heif)$/i, ".png"), { type: "image/png" })
+      
+      const analysis = await ImageService.analyze(fileToProcess)
 
       dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "compressing" } })
-      const result = await ImageService.compress(file, image.id, analysis)
+      const result = await ImageService.compress(fileToProcess, image.id, analysis, originalFormat)
 
       dispatch({ type: "UPDATE_IMAGE", payload: result })
     } catch (error) {
@@ -191,7 +209,14 @@ export function ImageUploadZone() {
       successfulImages.forEach((img) => {
         const blob = img.compressedBlob || fileMap.get(img.id)
         if (blob) {
-            const ext = img.format === "jpeg" ? "jpg" : img.format
+            // Map format to file extension
+            const extMap: Record<string, string> = {
+              jpeg: "jpg",
+              avif: "avif",
+              webp: "webp",
+              png: "png",
+            }
+            const ext = extMap[img.format] || img.format
             const name = `optimized-${img.originalName.replace(/\.[^/.]+$/, "")}.${ext}`
             zip.file(name, blob)
         }
@@ -262,7 +287,7 @@ export function ImageUploadZone() {
           </h3>
           
           <p className="text-muted-foreground max-w-md text-lg mb-8 font-normal leading-relaxed">
-            Drag & drop files here or click to browse. <br/> We support PNG, JPEG & WebP.
+            Drag & drop files here or click to browse. <br/> We support PNG, JPEG, WebP, AVIF & HEIC/HEIF.
           </p>
           
           <Button

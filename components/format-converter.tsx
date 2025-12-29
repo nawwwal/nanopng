@@ -1,24 +1,37 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { canEncodeAvif } from "@/lib/core/format-capabilities"
+import { Badge } from "@/components/ui/badge"
 
 interface FormatConverterProps {
-  onConvert: (format: "png" | "jpeg" | "webp") => void
+  onConvert: (format: "png" | "jpeg" | "webp" | "avif") => void
   currentFormat: string
 }
 
 export function FormatConverter({ onConvert, currentFormat }: FormatConverterProps) {
-  const [selectedFormat, setSelectedFormat] = useState<"png" | "jpeg" | "webp">("webp")
+  const [selectedFormat, setSelectedFormat] = useState<"png" | "jpeg" | "webp" | "avif">("webp")
+  const [avifSupported, setAvifSupported] = useState<boolean>(false)
+
+  useEffect(() => {
+    canEncodeAvif().then(setAvifSupported)
+  }, [])
 
   const formats = [
-    { value: "webp", label: "WebP", description: "Best compression, modern browsers" },
-    { value: "jpeg", label: "JPEG", description: "Universal support, photos" },
-    { value: "png", label: "PNG", description: "Lossless, transparency" },
-  ] as const
+    { 
+      value: "avif" as const, 
+      label: "AVIF", 
+      description: "Best compression (30-50% better than WebP)", 
+      supported: avifSupported 
+    },
+    { value: "webp" as const, label: "WebP", description: "Best compression, modern browsers", supported: true },
+    { value: "jpeg" as const, label: "JPEG", description: "Universal support, photos", supported: true },
+    { value: "png" as const, label: "PNG", description: "Lossless, transparency", supported: true },
+  ]
 
   return (
     <Card className="p-6">
@@ -27,9 +40,22 @@ export function FormatConverter({ onConvert, currentFormat }: FormatConverterPro
         <div className="space-y-3">
           {formats.map((format) => (
             <div key={format.value} className="flex items-start space-x-3">
-              <RadioGroupItem value={format.value} id={format.value} className="mt-1" />
-              <Label htmlFor={format.value} className="cursor-pointer flex-1">
-                <div className="font-medium">{format.label}</div>
+              <RadioGroupItem 
+                value={format.value} 
+                id={format.value} 
+                className="mt-1" 
+                disabled={!format.supported}
+              />
+              <Label 
+                htmlFor={format.value} 
+                className={`cursor-pointer flex-1 ${!format.supported ? "opacity-50" : ""}`}
+              >
+                <div className="font-medium flex items-center gap-2">
+                  {format.label}
+                  {format.value === "avif" && !format.supported && (
+                    <Badge variant="outline" className="text-xs">Not supported</Badge>
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground">{format.description}</div>
               </Label>
             </div>

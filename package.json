@@ -44,6 +44,7 @@
     "cmdk": "latest",
     "date-fns": "latest",
     "embla-carousel-react": "latest",
+    "heic2any": "^0.0.4",
     "input-otp": "latest",
     "jszip": "latest",
     "lucide-react": "latest",

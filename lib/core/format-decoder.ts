@@ -3,8 +3,8 @@
  * Handles decoding of formats that require special handling (HEIC/HEIF)
  * Other formats (AVIF, PNG, JPEG, WebP) are decoded natively by the browser
  */
-
-import heic2any from "heic2any"
+// IMPORTANT: Do not import `heic2any` at module scope.
+// It references `window` during initialization and will crash Next.js SSR.
 
 /**
  * Check if a file is HEIC/HEIF format by MIME type or magic bytes
@@ -53,7 +53,13 @@ export async function isHeicFile(file: File): Promise<boolean> {
  * Preserves transparency by converting to PNG, otherwise uses JPEG
  */
 async function decodeHeic(file: File): Promise<Blob> {
+  if (typeof window === "undefined") {
+    throw new Error("HEIC decoding is only supported in the browser runtime")
+  }
+
   try {
+    const { default: heic2any } = await import("heic2any")
+
     // heic2any returns an array of Blobs (supports multi-image HEIC)
     // We only need the first image
     const result = await heic2any({

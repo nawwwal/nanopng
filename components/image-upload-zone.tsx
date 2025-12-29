@@ -88,6 +88,9 @@ export function ImageUploadZone() {
   
   // Ref to track images for cleanup on unmount
   const imagesRef = useRef<CompressedImage[]>([])
+  
+  // Ref for results section to enable auto-scroll
+  const resultsSectionRef = useRef<HTMLDivElement>(null)
 
   const processNextImage = useCallback(async (image: CompressedImage) => {
     const file = fileMap.get(image.id)
@@ -95,6 +98,9 @@ export function ImageUploadZone() {
 
     try {
       dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "analyzing" } })
+      
+      // Add fake processing delay (1-3 seconds)
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000))
       
       // Detect original format before decoding (to preserve HEIC/HEIF info)
       const isHeic = await isHeicFile(file)
@@ -171,6 +177,11 @@ export function ImageUploadZone() {
     })
 
     dispatch({ type: "ADD_FILES", payload: newImages })
+    
+    // Auto-scroll to results section after a brief delay to allow DOM update
+    setTimeout(() => {
+      resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 100)
   }, [fileMap])
 
   // Global paste handler for clipboard images
@@ -347,7 +358,7 @@ export function ImageUploadZone() {
       </div>
 
       {state.images.length > 0 && (
-        <div className="mt-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div ref={resultsSectionRef} className="mt-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-foreground">

@@ -2,17 +2,14 @@
 
 import { useState, useCallback, useReducer, useEffect, useRef } from "react"
 import { useDropzone } from "react-dropzone"
-import { Button } from "@/components/ui/button"
 import { CompressionResultCard } from "@/components/compression-result-card"
 import { ImageService } from "@/lib/services/image-service"
-import type { CompressedImage, CompressionStatus } from "@/types/image"
+import type { CompressedImage, CompressionStatus, ImageFormat } from "@/types/image"
 import { ensureDecodable, isHeicFile } from "@/lib/core/format-decoder"
 import JSZip from "jszip"
 import { cn } from "@/lib/utils"
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
-const MAX_FILES = 100
-const CONCURRENT_PROCESSING = 3
+const CONCURRENT_PROCESSING = 5
 
 const ACCEPTED_FORMATS = {
   "image/png": [".png"],
@@ -23,10 +20,20 @@ const ACCEPTED_FORMATS = {
   "image/heif": [".heif"],
 }
 
+// Format file size contextually (KB, MB, GB)
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B"
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
 type State = {
   images: CompressedImage[]
   isProcessing: boolean
   queueIndex: number
+  formatMode: "smart" | "keep"
 }
 
 type Action =
@@ -35,6 +42,7 @@ type Action =
   | { type: "UPDATE_IMAGE"; payload: CompressedImage }
   | { type: "NEXT_QUEUE" }
   | { type: "CLEAR_ALL" }
+  | { type: "SET_FORMAT_MODE"; payload: "smart" | "keep" }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -67,7 +75,9 @@ function reducer(state: State, action: Action): State {
        }
        return state
     case "CLEAR_ALL":
-      return { images: [], isProcessing: false, queueIndex: 0 }
+      return { images: [], isProcessing: false, queueIndex: 0, formatMode: state.formatMode }
+    case "SET_FORMAT_MODE":
+      return { ...state, formatMode: action.payload }
     default:
       return state
   }
@@ -78,10 +88,10 @@ export function ImageUploadZone() {
     images: [],
     isProcessing: false,
     queueIndex: 0,
+    formatMode: "smart",
   })
   
   const [isCreatingZip, setIsCreatingZip] = useState(false)
-  const [isHovering, setIsHovering] = useState(false)
 
   // Map to store File objects separately
   const [fileMap] = useState<Map<string, File>>(() => new Map())
@@ -92,25 +102,63 @@ export function ImageUploadZone() {
   // Ref for results section to enable auto-scroll
   const resultsSectionRef = useRef<HTMLDivElement>(null)
 
-  const processNextImage = useCallback(async (image: CompressedImage) => {
+  // Handler for format changes on individual images (with artificial loading)
+  const handleFormatChange = useCallback(async (imageId: string, newFormat: ImageFormat) => {
+    const image = state.images.find(img => img.id === imageId)
+    const file = fileMap.get(imageId)
+    if (!image || !file) return
+
+    // Set to compressing state
+    dispatch({ type: "UPDATE_STATUS", payload: { id: imageId, status: "compressing" } })
+
+    try {
+      // Add natural artificial delay for format conversion
+      const sizeInMB = file.size / (1024 * 1024)
+      const conversionDelay = 300 + (sizeInMB * 150) + (Math.random() * 200)
+      await new Promise(resolve => setTimeout(resolve, conversionDelay))
+
+      const result = await ImageService.compressToFormat(
+        file,
+        newFormat,
+        imageId,
+        image.originalName,
+        image.originalSize,
+        image.analysis
+      )
+      dispatch({ type: "UPDATE_IMAGE", payload: result })
+    } catch (error) {
+      console.error("Format change failed", error)
+      dispatch({ 
+        type: "UPDATE_STATUS", 
+        payload: { 
+          id: imageId, 
+          status: "error", 
+          error: error instanceof Error ? error.message : "Format conversion failed" 
+        } 
+      })
+    }
+  }, [state.images, fileMap])
+
+  const processNextImage = useCallback(async (image: CompressedImage, formatMode: "smart" | "keep") => {
     const file = fileMap.get(image.id)
     if (!file) return
 
     try {
       dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "analyzing" } })
       
-      // Add fake processing delay (1-3 seconds)
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000))
+      // Natural analyzing delay
+      const sizeInMB = file.size / (1024 * 1024)
+      const analyzingDelay = 400 + (sizeInMB * 100) + (Math.random() * 200)
+      await new Promise(resolve => setTimeout(resolve, analyzingDelay))
       
-      // Detect original format before decoding (to preserve HEIC/HEIF info)
+      // Detect original format before decoding
       const isHeic = await isHeicFile(file)
       const originalFormat = isHeic 
         ? (file.name.toLowerCase().endsWith(".heif") ? "heif" : "heic")
         : undefined
       
-      // Decode HEIC/HEIF files to a standard format before processing
+      // Decode HEIC/HEIF files
       const decodedFile = await ensureDecodable(file)
-      // Convert Blob to File if needed (ensureDecodable may return Blob)
       const fileToProcess = decodedFile instanceof File 
         ? decodedFile 
         : new File([decodedFile], file.name.replace(/\.(heic|heif)$/i, ".png"), { type: "image/png" })
@@ -118,7 +166,32 @@ export function ImageUploadZone() {
       const analysis = await ImageService.analyze(fileToProcess)
 
       dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "compressing" } })
-      const result = await ImageService.compress(fileToProcess, image.id, analysis, originalFormat)
+
+      // Natural compressing delay
+      const compressingDelay = 600 + (sizeInMB * 200) + (Math.random() * 300)
+      await new Promise(resolve => setTimeout(resolve, compressingDelay))
+
+      let result: CompressedImage
+
+      if (formatMode === "keep") {
+        // Keep original format
+        const keepFormat = (originalFormat === "heic" || originalFormat === "heif") 
+          ? "png" // HEIC/HEIF must be converted
+          : (image.format as ImageFormat)
+        
+        result = await ImageService.compressToFormat(
+          fileToProcess,
+          keepFormat,
+          image.id,
+          image.originalName,
+          image.originalSize,
+          analysis
+        )
+        result.originalFormat = (originalFormat || image.format) as any
+      } else {
+        // Smart format selection
+        result = await ImageService.compress(fileToProcess, image.id, analysis, originalFormat)
+      }
 
       dispatch({ type: "UPDATE_IMAGE", payload: result })
     } catch (error) {
@@ -142,18 +215,14 @@ export function ImageUploadZone() {
     
     if (queued.length > 0 && active < CONCURRENT_PROCESSING) {
       const toProcess = queued.slice(0, CONCURRENT_PROCESSING - active)
-      toProcess.forEach(img => processNextImage(img))
+      toProcess.forEach(img => processNextImage(img, state.formatMode))
     } else if (active === 0 && queued.length === 0) {
       dispatch({ type: "NEXT_QUEUE" })
     }
-  }, [state.images, processNextImage, state.isProcessing])
+  }, [state.images, processNextImage, state.isProcessing, state.formatMode])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > MAX_FILES) {
-      alert(`Maximum ${MAX_FILES} images allowed`)
-      return
-    }
-
+    // No limits - accept all files
     const newImages: CompressedImage[] = acceptedFiles.map((file) => {
       const typePart = file.type ? file.type.split("/")[1] : ""
       const nameExtPart = file.name.split(".").pop()?.toLowerCase() ?? ""
@@ -178,13 +247,13 @@ export function ImageUploadZone() {
 
     dispatch({ type: "ADD_FILES", payload: newImages })
     
-    // Auto-scroll to results section after a brief delay to allow DOM update
+    // Auto-scroll to results section
     setTimeout(() => {
       resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     }, 100)
   }, [fileMap])
 
-  // Global paste handler for clipboard images
+  // Global paste handler
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items
@@ -218,7 +287,6 @@ export function ImageUploadZone() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: ACCEPTED_FORMATS,
-    maxFiles: MAX_FILES,
     noClick: false,
     noKeyboard: true,
   })
@@ -231,7 +299,6 @@ export function ImageUploadZone() {
   // Cleanup blob URLs on unmount
   useEffect(() => {
     return () => {
-      // Cleanup all blob URLs when component unmounts
       imagesRef.current.forEach((img) => {
         if (img.blobUrl) URL.revokeObjectURL(img.blobUrl)
         if (img.originalBlobUrl) URL.revokeObjectURL(img.originalBlobUrl)
@@ -258,7 +325,6 @@ export function ImageUploadZone() {
       successfulImages.forEach((img) => {
         const blob = img.compressedBlob || fileMap.get(img.id)
         if (blob) {
-            // Map format to file extension
             const extMap: Record<string, string> = {
               jpeg: "jpg",
               avif: "avif",
@@ -296,28 +362,25 @@ export function ImageUploadZone() {
 
   return (
     <div className="w-full max-w-5xl mx-auto">
+      {/* Brutalist Upload Zone */}
       <div
         {...getRootProps()}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
         className={cn(
-          "relative group cursor-pointer rounded-3xl border-2 border-dashed transition-all duration-500 ease-out overflow-hidden",
+          "relative cursor-pointer border-2 border-dashed transition-all duration-200",
           isDragActive
-            ? "border-primary bg-primary/5 scale-[1.02] shadow-2xl"
-            : isHovering
-              ? "border-primary/50 bg-secondary/30 scale-[1.01] shadow-xl"
-              : "border-border/50 bg-card shadow-lg hover:shadow-xl"
+            ? "border-foreground bg-accent/20 brutalist-shadow"
+            : "border-foreground/50 hover:border-foreground hover:brutalist-shadow"
         )}
       >
         <input {...getInputProps()} />
         
-        <div className="relative px-8 py-20 md:py-28 flex flex-col items-center text-center z-10">
-           <div className={cn(
-             "w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary flex items-center justify-center mb-8 transition-transform duration-500",
-             (isHovering || isDragActive) ? "scale-110 rotate-3" : "scale-100 rotate-0"
-           )}>
+        <div className="px-6 py-12 sm:py-16 md:py-20 flex flex-col items-center text-center">
+          <div className={cn(
+            "w-16 h-16 border-2 border-foreground flex items-center justify-center mb-6 transition-transform duration-200",
+            isDragActive && "brutalist-shadow-accent scale-105"
+          )}>
             <svg
-              className="w-10 h-10 text-primary"
+              className="w-8 h-8 text-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -325,66 +388,116 @@ export function ImageUploadZone() {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={1.5}
+                strokeWidth={2}
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
           </div>
           
-          <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-3 tracking-tight">
-            {isDragActive ? "Drop to upload" : "Upload images"}
+          <h3 className="text-xl sm:text-2xl font-black uppercase mb-2 tracking-tight">
+            {isDragActive ? "Drop it" : "Drop images here"}
           </h3>
           
-          <p className="text-muted-foreground max-w-md text-lg mb-8 font-normal leading-relaxed">
-            Drag & drop files here, click to browse, or paste from clipboard. <br/> We support PNG, JPEG, WebP, AVIF & HEIC/HEIF.
+          <p className="text-muted-foreground max-w-md text-sm mb-6">
+            Or click to browse. Paste from clipboard works too.<br/>
+            <span className="font-bold">PNG, JPEG, WebP, AVIF, HEIC</span>
           </p>
           
-          <Button
-            size="lg"
+          <button
+            type="button"
             className={cn(
-                "rounded-full px-8 h-12 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl",
-                (isHovering || isDragActive) ? "bg-primary text-primary-foreground scale-105" : "bg-primary text-primary-foreground"
+              "px-6 py-2.5 border-2 border-foreground font-bold uppercase text-sm transition-all duration-100",
+              "hover:bg-foreground hover:text-background",
+              "active:translate-x-0.5 active:translate-y-0.5",
+              isDragActive && "bg-accent text-accent-foreground border-accent-foreground"
             )}
           >
             Select Files
-          </Button>
-        </div>
-        
-        {/* Decorative Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-             <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-secondary rounded-full blur-3xl" />
+          </button>
         </div>
       </div>
 
       {state.images.length > 0 && (
-        <div ref={resultsSectionRef} className="mt-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                Your Library <span className="text-muted-foreground font-normal text-lg ml-2">({successfulCount}/{state.images.length})</span>
-              </h2>
-               {successfulCount > 0 && (
-                <p className="text-muted-foreground mt-1">
-                  Saved <span className="text-foreground font-semibold">{(totalSavingsBytes / 1024).toFixed(1)} KB</span> total ({averageSavings.toFixed(0)}%)
-                </p>
-              )}
+        <div ref={resultsSectionRef} className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Header with Format Mode Toggle */}
+          <div className="flex flex-col gap-4 mb-6">
+            {/* Format Mode Toggle - Improved with icons */}
+            <div className="flex flex-wrap items-center gap-2 p-3 border-2 border-foreground bg-secondary">
+              <span className="text-xs font-bold uppercase tracking-wider mr-1">Output:</span>
+              <button
+                onClick={() => dispatch({ type: "SET_FORMAT_MODE", payload: "smart" })}
+                className={cn(
+                  "h-8 px-3 text-xs font-bold uppercase transition-all flex items-center gap-1.5",
+                  state.formatMode === "smart"
+                    ? "bg-foreground text-background"
+                    : "border border-foreground hover:bg-foreground/10"
+                )}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Smallest Size
+              </button>
+              <button
+                onClick={() => dispatch({ type: "SET_FORMAT_MODE", payload: "keep" })}
+                className={cn(
+                  "h-8 px-3 text-xs font-bold uppercase transition-all flex items-center gap-1.5",
+                  state.formatMode === "keep"
+                    ? "bg-foreground text-background"
+                    : "border border-foreground hover:bg-foreground/10"
+                )}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Same Format
+              </button>
+              <span className="text-[10px] text-muted-foreground ml-auto hidden sm:block">
+                {state.formatMode === "smart" ? "Auto-converts to AVIF/WebP for best compression" : "Keeps original format, just optimizes"}
+              </span>
             </div>
-            <div className="flex gap-3 w-full sm:w-auto">
-              {successfulCount > 0 && (
-                <Button onClick={handleDownloadAll} disabled={isCreatingZip} className="flex-1 sm:flex-none rounded-full shadow-sm">
-                   {isCreatingZip ? "Zipping..." : "Download All"}
-                </Button>
-              )}
-              <Button variant="outline" onClick={handleClearAll} className="flex-1 sm:flex-none rounded-full border-border/60 bg-transparent hover:bg-secondary/50">
-                Clear All
-              </Button>
+
+            {/* Results Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black uppercase tracking-tight">
+                  Results <span className="text-muted-foreground font-normal">({successfulCount}/{state.images.length})</span>
+                </h2>
+                {successfulCount > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Saved <span className="font-bold text-foreground">{formatFileSize(totalSavingsBytes)}</span> total 
+                    <span className="accent-bg text-accent-foreground px-1 ml-1 font-bold">-{averageSavings.toFixed(0)}%</span>
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                {successfulCount > 0 && (
+                  <button
+                    onClick={handleDownloadAll}
+                    disabled={isCreatingZip}
+                    className="flex-1 sm:flex-none h-9 px-4 bg-foreground text-background font-bold uppercase text-xs hover:bg-foreground/90 disabled:opacity-50 transition-opacity flex items-center justify-center"
+                  >
+                    {isCreatingZip ? "Zipping..." : "Download All"}
+                  </button>
+                )}
+                <button
+                  onClick={handleClearAll}
+                  className="flex-1 sm:flex-none h-9 px-4 border-2 border-foreground font-bold uppercase text-xs hover:bg-secondary transition-colors flex items-center justify-center"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          {/* Results List */}
+          <div className="space-y-2">
             {state.images.map((image) => (
-              <CompressionResultCard key={image.id} image={image} />
+              <CompressionResultCard 
+                key={image.id} 
+                image={image}
+                onFormatChange={handleFormatChange}
+              />
             ))}
           </div>
         </div>

@@ -6,6 +6,10 @@ export type CompressionStatus =
   | "already-optimized"
   | "error"
 
+export type ImageFormat = "png" | "jpeg" | "webp" | "avif"
+export type OriginalFormat = "png" | "jpeg" | "webp" | "avif" | "heic" | "heif"
+export type FormatPreference = "smart" | "keep" | ImageFormat
+
 export interface CompressedImage {
   id: string
   originalName: string
@@ -15,12 +19,14 @@ export interface CompressedImage {
   blobUrl?: string
   originalBlobUrl?: string
   savings: number
-  format: "png" | "jpeg" | "webp" | "avif"
+  format: ImageFormat
   status: CompressionStatus
   error?: string
   progress?: number
-  originalFormat?: "png" | "jpeg" | "webp" | "avif" | "heic" | "heif"
+  originalFormat?: OriginalFormat
   analysis?: ImageAnalysis
+  /** User's format preference for this image - defaults to "smart" */
+  formatPreference?: FormatPreference
 }
 
 export interface ImageAnalysis {

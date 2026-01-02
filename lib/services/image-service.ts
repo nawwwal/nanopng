@@ -1,4 +1,4 @@
-import { CompressedImage, ImageAnalysis } from "@/types/image"
+import { CompressedImage, ImageAnalysis, ImageFormat, FormatPreference } from "@/types/image"
 import { buildHistogram, medianCut, kmeansRefinement, findNearestColor } from "@/lib/core/color-quantization"
 import { applySelectiveDithering } from "@/lib/core/floyd-steinberg"
 import { canEncodeAvif } from "@/lib/core/format-capabilities"
@@ -506,6 +506,121 @@ export class ImageService {
     const dithered = applySelectiveDithering(imageData, palette, findNearestColor)
     
     ctx.putImageData(dithered, 0, 0)
+  }
+
+  /**
+   * Compress an image to a specific format (for user-selected format changes)
+   */
+  static async compressToFormat(
+    file: File | Blob,
+    targetFormat: ImageFormat,
+    id: string,
+    originalName: string,
+    originalSize: number,
+    analysis?: ImageAnalysis
+  ): Promise<CompressedImage> {
+    const imgAnalysis = analysis || (file instanceof File ? await this.analyze(file) : null)
+
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const objectUrl = URL.createObjectURL(file)
+
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement("canvas")
+          canvas.width = img.width
+          canvas.height = img.height
+          
+          const ctx = canvas.getContext("2d", { willReadFrequently: true })
+          if (!ctx) throw new Error("Could not get canvas context")
+
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = "high"
+          ctx.drawImage(img, 0, 0)
+
+          // Apply quantization for graphics if needed
+          if (imgAnalysis && !imgAnalysis.isPhoto && imgAnalysis.uniqueColors > 256 && targetFormat === "png") {
+            await this.quantizeImage(canvas, ctx, 256)
+          }
+
+          // Determine MIME type and quality
+          const mimeMap: Record<ImageFormat, string> = {
+            png: "image/png",
+            jpeg: "image/jpeg",
+            webp: "image/webp",
+            avif: "image/avif"
+          }
+          
+          const qualityMap: Record<ImageFormat, number | undefined> = {
+            png: undefined, // PNG doesn't use quality
+            jpeg: 0.85,
+            webp: imgAnalysis?.isPhoto ? 0.82 : 0.90,
+            avif: imgAnalysis?.isPhoto ? 0.75 : 0.85
+          }
+
+          const mime = mimeMap[targetFormat]
+          const quality = qualityMap[targetFormat]
+
+          // Check AVIF support if targeting AVIF
+          if (targetFormat === "avif" && !(await canEncodeAvif())) {
+            // Fall back to WebP if AVIF not supported
+            const webpBlob = await new Promise<Blob | null>(r => canvas.toBlob(r, "image/webp", 0.85))
+            if (!webpBlob) throw new Error("Failed to create fallback WebP blob")
+            
+            URL.revokeObjectURL(objectUrl)
+            
+            const savings = ((originalSize - webpBlob.size) / originalSize) * 100
+            resolve({
+              id,
+              originalName,
+              originalSize,
+              compressedSize: webpBlob.size,
+              compressedBlob: webpBlob,
+              blobUrl: URL.createObjectURL(webpBlob),
+              originalBlobUrl: URL.createObjectURL(file),
+              savings: Math.max(0, savings),
+              format: "webp",
+              status: savings < 2 ? "already-optimized" : "completed",
+              analysis: imgAnalysis || undefined,
+              formatPreference: targetFormat
+            })
+            return
+          }
+
+          const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, mime, quality))
+          if (!blob) throw new Error(`Failed to create ${targetFormat} blob`)
+
+          URL.revokeObjectURL(objectUrl)
+
+          const savings = ((originalSize - blob.size) / originalSize) * 100
+          
+          resolve({
+            id,
+            originalName,
+            originalSize,
+            compressedSize: blob.size,
+            compressedBlob: blob,
+            blobUrl: URL.createObjectURL(blob),
+            originalBlobUrl: URL.createObjectURL(file),
+            savings: Math.max(0, savings),
+            format: targetFormat,
+            status: savings < 2 ? "already-optimized" : "completed",
+            analysis: imgAnalysis || undefined,
+            formatPreference: targetFormat
+          })
+        } catch (error) {
+          URL.revokeObjectURL(objectUrl)
+          reject(error)
+        }
+      }
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        reject(new Error("Failed to load image for format conversion"))
+      }
+
+      img.src = objectUrl
+    })
   }
 }
 

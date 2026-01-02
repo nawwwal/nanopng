@@ -4,108 +4,108 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Airbnb-inspired Modern Palette */
-  --background: oklch(0.99 0.002 65); /* Warm white */
-  --foreground: oklch(0.14 0.02 255); /* Deep charcoal/black */
+  /* BRUTALIST PALETTE - Pure contrast with acid accent */
+  --background: #ffffff;
+  --foreground: #000000;
   
-  --card: oklch(1 0 0); /* Pure white */
-  --card-foreground: oklch(0.14 0.02 255);
+  --card: #ffffff;
+  --card-foreground: #000000;
   
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.14 0.02 255);
+  --popover: #ffffff;
+  --popover-foreground: #000000;
   
-  /* Rausch-like Brand Color or Modern Black */
-  /* Let's go with a sophisticated Modern Black/Dark Grey as primary, with accents */
-  --primary: oklch(0.14 0.02 255); /* Almost black */
-  --primary-foreground: oklch(1 0 0); /* White */
+  /* Acid green accent - the ONLY color */
+  --primary: #000000;
+  --primary-foreground: #ffffff;
   
-  --secondary: oklch(0.96 0 0); /* Light gray */
-  --secondary-foreground: oklch(0.14 0.02 255);
+  --secondary: #f0f0f0;
+  --secondary-foreground: #000000;
   
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.45 0 0); /* Medium gray */
+  --muted: #e5e5e5;
+  --muted-foreground: #666666;
   
-  /* Airbnb-like Red/Rose for Accents/Highlights if needed, or Green for success */
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.14 0.02 255);
+  /* Acid accent for highlights, success states */
+  --accent: #c8ff00;
+  --accent-foreground: #000000;
   
-  --destructive: oklch(0.6 0.2 25); /* Red */
-  --destructive-foreground: oklch(1 0 0);
+  --destructive: #ff0000;
+  --destructive-foreground: #ffffff;
 
-  /* Subtle Borders */
-  --border: oklch(0.92 0 0);
-  --input: oklch(0.92 0 0);
-  --ring: oklch(0.14 0.02 255);
+  /* Raw borders - visible, intentional */
+  --border: #000000;
+  --input: #000000;
+  --ring: #000000;
 
-  /* Charts */
-  --chart-1: oklch(0.65 0.16 70);
-  --chart-2: oklch(0.48 0.14 150); /* Green */
-  --chart-3: oklch(0.48 0.15 35);
-  --chart-4: oklch(0.42 0.1 320);
-  --chart-5: oklch(0.55 0.18 45);
+  /* Charts - monochrome with accent */
+  --chart-1: #000000;
+  --chart-2: #c8ff00;
+  --chart-3: #666666;
+  --chart-4: #999999;
+  --chart-5: #cccccc;
 
-  /* Radius */
-  --radius: 1rem; /* 16px standard, 24px/32px for large containers */
+  /* ZERO radius - brutalist means sharp */
+  --radius: 0px;
   
   /* Sidebar */
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.14 0.02 255);
-  --sidebar-primary: oklch(0.14 0.02 255);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.96 0 0);
-  --sidebar-accent-foreground: oklch(0.14 0.02 255);
-  --sidebar-border: oklch(0.92 0 0);
-  --sidebar-ring: oklch(0.14 0.02 255);
+  --sidebar: #f5f5f5;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #000000;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #c8ff00;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #000000;
+  --sidebar-ring: #000000;
 }
 
 .dark {
-  --background: oklch(0.12 0.01 255);
-  --foreground: oklch(0.98 0 0);
+  --background: #0a0a0a;
+  --foreground: #ffffff;
   
-  --card: oklch(0.16 0.01 255);
-  --card-foreground: oklch(0.98 0 0);
+  --card: #0a0a0a;
+  --card-foreground: #ffffff;
   
-  --popover: oklch(0.16 0.01 255);
-  --popover-foreground: oklch(0.98 0 0);
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
   
-  --primary: oklch(0.98 0 0);
-  --primary-foreground: oklch(0.12 0.01 255);
+  --primary: #ffffff;
+  --primary-foreground: #000000;
   
-  --secondary: oklch(0.22 0.01 255);
-  --secondary-foreground: oklch(0.98 0 0);
+  --secondary: #1a1a1a;
+  --secondary-foreground: #ffffff;
   
-  --muted: oklch(0.22 0.01 255);
-  --muted-foreground: oklch(0.65 0 0);
+  --muted: #2a2a2a;
+  --muted-foreground: #999999;
   
-  --accent: oklch(0.22 0.01 255);
-  --accent-foreground: oklch(0.98 0 0);
+  --accent: #c8ff00;
+  --accent-foreground: #000000;
   
-  --destructive: oklch(0.6 0.2 25);
-  --destructive-foreground: oklch(0.98 0 0);
+  --destructive: #ff3333;
+  --destructive-foreground: #000000;
   
-  --border: oklch(0.24 0.01 255);
-  --input: oklch(0.24 0.01 255);
-  --ring: oklch(0.8 0 0);
+  --border: #ffffff;
+  --input: #ffffff;
+  --ring: #ffffff;
 
-  --chart-1: oklch(0.7 0.16 70);
-  --chart-2: oklch(0.55 0.14 150);
-  --chart-3: oklch(0.55 0.15 35);
-  --chart-4: oklch(0.6 0.1 320);
-  --chart-5: oklch(0.65 0.18 45);
+  --chart-1: #ffffff;
+  --chart-2: #c8ff00;
+  --chart-3: #999999;
+  --chart-4: #666666;
+  --chart-5: #333333;
   
-  --sidebar: oklch(0.14 0.01 255);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.98 0 0);
-  --sidebar-primary-foreground: oklch(0.14 0.01 255);
-  --sidebar-accent: oklch(0.22 0.01 255);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.24 0.01 255);
-  --sidebar-ring: oklch(0.8 0 0);
+  --sidebar: #0f0f0f;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #c8ff00;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #ffffff;
+  --sidebar-ring: #ffffff;
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  /* BRUTALIST TYPOGRAPHY - Mono for data, bold for impact */
+  --font-sans: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -132,11 +132,12 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 8px); /* Extra large radius for cards */
-  --radius-2xl: calc(var(--radius) + 16px); /* Super rounded */
+  /* All zero radius - brutalist */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -155,4 +156,91 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* BRUTALIST UTILITIES */
+@layer utilities {
+  .brutalist-border {
+    border: 2px solid var(--foreground);
+  }
+  
+  .brutalist-border-thick {
+    border: 3px solid var(--foreground);
+  }
+  
+  .brutalist-shadow {
+    box-shadow: 4px 4px 0 var(--foreground);
+  }
+  
+  .brutalist-shadow-accent {
+    box-shadow: 4px 4px 0 var(--accent);
+  }
+  
+  .brutalist-shadow-lg {
+    box-shadow: 8px 8px 0 var(--foreground);
+  }
+  
+  .accent-text {
+    color: var(--accent);
+  }
+  
+  .accent-bg {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+  
+  /* Scanline effect for that raw feel */
+  .scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    pointer-events: none;
+  }
+  
+  /* Grid overlay effect */
+  .grid-overlay {
+    background-image: 
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: -1px -1px;
+  }
+  
+  /* Marquee animation for stats ticker */
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  
+  .animate-marquee {
+    animation: marquee 20s linear infinite;
+  }
+  
+  /* Brutalist hover - offset shadow shift */
+  .brutalist-hover {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  
+  .brutalist-hover:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--foreground);
+  }
+  
+  .brutalist-hover:active {
+    transform: translate(0, 0);
+    box-shadow: 2px 2px 0 var(--foreground);
+  }
+}
+
+/* Selection styling */
+::selection {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
 }

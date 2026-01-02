@@ -1,87 +1,173 @@
 import { ImageUploadZone } from "@/components/image-upload-zone"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background font-sans selection:bg-primary/10 selection:text-primary">
-      {/* Navbar */}
-      <nav className="border-b border-border/40 sticky top-0 bg-background/80 backdrop-blur-md z-50">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between max-w-6xl">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight hover:opacity-90 transition-opacity">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-               </svg>
+    <main className="min-h-screen bg-background font-mono selection:bg-accent selection:text-accent-foreground">
+      {/* Brutalist Navbar */}
+      <nav className="border-b-2 border-foreground sticky top-0 bg-background z-50">
+        <div className="container mx-auto px-4 sm:px-6 h-14 flex items-center justify-between max-w-7xl">
+          <Link href="/" className="flex items-center gap-2 font-bold text-lg tracking-tight hover:opacity-80 transition-opacity uppercase">
+            <div className="w-8 h-8 bg-foreground flex items-center justify-center text-background font-black text-xs">
+              N
             </div>
             NanoPNG
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Button variant="outline" size="sm" className="rounded-full px-4 hidden sm:flex">
+            <a 
+              href="https://github.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="h-9 px-3 border-2 border-foreground text-foreground text-xs font-bold uppercase hover:bg-foreground hover:text-background transition-colors flex items-center justify-center"
+            >
               GitHub
-            </Button>
+            </a>
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto px-6 py-16 max-w-4xl">
-        {/* Hero Section */}
-        <div className="text-center mb-16 space-y-6">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-balance text-foreground tracking-tight">
-            Intelligent image optimization <br className="hidden sm:block"/> for the modern web.
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed font-normal">
-            Compress PNG, JPEG, and WebP images locally in your browser. 
-            No server uploads, no limits, completely private.
-          </p>
-        </div>
-
-        {/* Main Action Area */}
-        <div className="mb-24">
-           <ImageUploadZone />
-        </div>
-
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 max-w-4xl mx-auto border-t border-border pt-16">
-          <div className="space-y-4">
-            <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mb-2">
-              <svg className="w-6 h-6 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+      {/* Hero Section - Asymmetric Split */}
+      <section className="border-b-2 border-foreground">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+            {/* Left: Copy */}
+            <div className="p-6 sm:p-8 lg:p-12 lg:border-r-2 border-foreground flex flex-col justify-center">
+              <div className="space-y-6">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.9] tracking-tight">
+                  Compress<br/>
+                  images.<br/>
+                  <span className="accent-bg inline-block px-2 mt-2">Locally.</span>
+                </h1>
+                
+                <p className="text-lg sm:text-xl font-bold uppercase tracking-wide text-muted-foreground">
+                  No upload. No limits. No bullsh*t.
+                </p>
+                
+                <div className="pt-4 space-y-3 text-sm sm:text-base">
+                  <div className="flex items-start gap-3">
+                    <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0">01</span>
+                    <span>Your images stay on <strong className="uppercase">your device</strong>. Not on a server. Not in the cloud.</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0">02</span>
+                    <span>Process 100 images while TinyPNG is still loading its first spinner.</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0">03</span>
+                    <span>No &ldquo;upgrade to pro for more than 20 images&rdquo; nonsense.</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0">04</span>
+                    <span>Smart format selection, or <strong className="uppercase">choose your own</strong>. Your call.</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-foreground">100% Private & Local</h3>
-            <p className="text-muted-foreground leading-relaxed">
-              Your images never leave your device. All processing happens directly in your browser using advanced WebAssembly and Canvas APIs.
-            </p>
-          </div>
 
-          <div className="space-y-4">
-            <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mb-2">
-              <svg className="w-6 h-6 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
+            {/* Right: Stats */}
+            <div className="p-6 sm:p-8 lg:p-12 bg-secondary flex flex-col justify-center">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <div className="text-5xl sm:text-6xl lg:text-7xl font-black">100%</div>
+                  <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Private</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-5xl sm:text-6xl lg:text-7xl font-black">∞</div>
+                  <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">No limits</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-5xl sm:text-6xl lg:text-7xl font-black"><span className="accent-bg px-2">70%</span></div>
+                  <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Avg. savings</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-5xl sm:text-6xl lg:text-7xl font-black">$0</div>
+                  <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Forever</div>
+                </div>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-foreground">Smart Compression</h3>
-            <p className="text-muted-foreground leading-relaxed">
-              Automatically detects photos vs graphics to apply the best strategy: distinct color quantization for logos, perceptual compression for photos.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mb-2">
-              <svg className="w-6 h-6 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-foreground">Blazing Fast</h3>
-            <p className="text-muted-foreground leading-relaxed">
-              Multithreaded processing queues handle dozens of images simultaneously without freezing your browser.
-            </p>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Upload Zone */}
+      <section className="py-8 sm:py-12 lg:py-16">
+        <div className="container mx-auto px-4 sm:px-6 max-w-5xl">
+          <ImageUploadZone />
+        </div>
+      </section>
+
+      {/* How It Works - Brutalist Grid */}
+      <section className="border-t-2 border-foreground">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y-2 md:divide-y-0 md:divide-x-2 divide-foreground">
+            <div className="p-6 sm:p-8">
+              <div className="text-6xl sm:text-7xl font-black mb-4">01</div>
+              <h3 className="text-lg font-bold uppercase mb-2">Drop files</h3>
+              <p className="text-sm text-muted-foreground">
+                Drag & drop, paste from clipboard, or click to browse. PNG, JPEG, WebP, AVIF, HEIC supported.
+              </p>
+            </div>
+            
+            <div className="p-6 sm:p-8">
+              <div className="text-6xl sm:text-7xl font-black mb-4">02</div>
+              <h3 className="text-lg font-bold uppercase mb-2">Auto-optimized</h3>
+              <p className="text-sm text-muted-foreground">
+                Photos get perceptual compression. Graphics get palette optimization. The right strategy for each image.
+              </p>
+            </div>
+            
+            <div className="p-6 sm:p-8">
+              <div className="text-6xl sm:text-7xl font-black mb-4">03</div>
+              <h3 className="text-lg font-bold uppercase mb-2">Download</h3>
+              <p className="text-sm text-muted-foreground">
+                Get optimized images instantly. Change formats if needed. Download individually or as a ZIP.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Technical Specs - Raw Data */}
+      <section className="border-t-2 border-foreground bg-foreground text-background">
+        <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-7xl">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+            <div>
+              <div className="text-xs uppercase font-bold opacity-60 mb-1">Processing</div>
+              <div className="text-lg font-bold">100% Local</div>
+              <div className="text-sm opacity-80">WebAssembly + Canvas API</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase font-bold opacity-60 mb-1">Formats</div>
+              <div className="text-lg font-bold">AVIF / WebP / PNG</div>
+              <div className="text-sm opacity-80">Auto or manual selection</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase font-bold opacity-60 mb-1">Concurrency</div>
+              <div className="text-lg font-bold">5 Parallel</div>
+              <div className="text-sm opacity-80">Multi-threaded queue</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase font-bold opacity-60 mb-1">Limits</div>
+              <div className="text-lg font-bold">Unlimited</div>
+              <div className="text-sm opacity-80">Upload unlimited files with no size limit</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t-2 border-foreground py-6">
+        <div className="container mx-auto px-4 sm:px-6 max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-sm text-muted-foreground">
+            Built for people who value their privacy.
+          </div>
+          <div className="text-xs text-muted-foreground font-mono">
+            NANOPNG © {new Date().getFullYear()}
+          </div>
+        </div>
+      </footer>
     </main>
   )
 }

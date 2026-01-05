@@ -29,7 +29,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section - Asymmetric Split */}
-      <section className="border-b-2 border-foreground">
+      <section className="border-b-2 border-foreground lg:bg-[linear-gradient(90deg,var(--background)_50%,var(--secondary)_50%)]">
         <div className="container mx-auto max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-2">
             {/* Left: Copy */}
@@ -67,7 +67,7 @@ export default function Home() {
             </div>
 
             {/* Right: Stats */}
-            <div className="p-4 sm:p-8 lg:p-12 bg-secondary flex flex-col justify-center">
+            <div className="p-4 sm:p-8 lg:p-12 bg-secondary lg:bg-transparent flex flex-col justify-center">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-1">
                   <div className="text-4xl sm:text-6xl lg:text-7xl font-black">100%</div>

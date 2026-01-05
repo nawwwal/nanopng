@@ -67,6 +67,7 @@
     "sonner": "latest",
     "tailwind-merge": "latest",
     "tailwindcss-animate": "latest",
+    "upng-js": "^2.1.0",
     "vaul": "latest",
     "zod": "latest"
   },

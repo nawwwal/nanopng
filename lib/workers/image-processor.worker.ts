@@ -3,6 +3,7 @@
  * Handles heavy quantization and compression tasks off the main thread.
  */
 import * as iq from "image-q";
+import UPNG from "upng-js";
 
 export interface CompressionJob {
     id: string;
@@ -58,8 +59,35 @@ self.onmessage = async (e: MessageEvent<CompressionJob>) => {
             const outPointContainer = imageQuantizer.quantizeSync(inPointContainer, palette);
             resultBuffer = outPointContainer.toUint8Array();
 
+            // 2. ENCODING (Indexed PNG)
+            // Use UPNG to encode the quantized 8-bit image to an actual PNG file buffer.
+            // UPNG.encode expects array of buffers (for frames), width, height, color count.
+            // Since resultBuffer is already quantized to 256 colors by image-q, 
+            // UPNG will detect this and create an efficient palette.
+            const pngBuffer = UPNG.encode([resultBuffer], width, height, 256);
+            resultBuffer = new Uint8Array(pngBuffer); // Result is now a PNG FILE, not raw pixels!
+
         } else {
             // No quantization, just pass through (copy)
+            // But wait, if we are not quantizing, we usually rely on main thread Canvas to encode.
+            // However, to be consistent, if the worker returns "data", we might need to know IF it's a file or pixels.
+            // Current design in ImageService expects "pixels" if it creates ImageData.
+            // WE NEED TO CHANGE THIS CONTRACT.
+
+            // New Contract:
+            // If success=true, data is:
+            // - A PNG FILE BUFFER (if format=png && quantized)
+            // - OR RAW PIXELS (if no quantization)
+            //
+            // Actually, mixing types is confusing.
+            // Let's decide: Worker ALWAYS returns "resultBuffer". 
+            // If it's PNG, it's a file. If it's other, it's pixels?
+            // "options.format" was sent to worker.
+
+            // For now, only PNG path produces a FILE.
+            // The Main Thread checks if it's PNG + Quantized -> Blob. 
+            // Else -> PutImageData -> Blob.
+
             resultBuffer = new Uint8Array(inputUint8);
         }
 

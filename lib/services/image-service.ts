@@ -236,7 +236,6 @@ export class ImageService {
             }
           }
 
-          // Try PNG (Quantized) if graphics
           // Try PNG (Quantized) if graphics OR if explicit PNG requested
           // We force quantization for PNG output to ensure file size savings 
           // even if it's a photo, as standard Canvas PNG is very bloated.
@@ -252,16 +251,11 @@ export class ImageService {
             })
 
             if (result.success && result.data) {
-              // Put quantized data back
-              const qCvs = document.createElement("canvas")
-              qCvs.width = img.width; qCvs.height = img.height
-              const qCtx = qCvs.getContext("2d")!
+              // Result is now a standard PNG file buffer (from UPNG)
+              // We do NOT put it back on canvas (which would decode it to 32-bit RGBA).
+              // We just use it directly.
+              const b = new Blob([result.data], { type: "image/png" })
 
-              // Reconstruct ImageData
-              const qData = new ImageData(new Uint8ClampedArray(result.data), result.width || img.width, result.height || img.height)
-              qCtx.putImageData(qData, 0, 0)
-
-              const b = await new Promise<Blob | null>(r => qCvs.toBlob(r, "image/png"))
               if (b && (!finalizedBlob || b.size < finalizedBlob.size)) {
                 finalizedBlob = b; finalizedFormat = "png"
               }
@@ -319,7 +313,6 @@ export class ImageService {
           ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high"
           ctx.drawImage(img, 0, 0)
 
-          // Quantize if needed
           // Quantize if needed (for all PNG outputs to save size)
           if (targetFormat === "png" && ((imgAnalysis && imgAnalysis.uniqueColors > 256) || true)) {
             const imageData = ctx.getImageData(0, 0, cvs.width, cvs.height)
@@ -331,9 +324,27 @@ export class ImageService {
               options: { format: "png", quality: 1, colors: 256, dithering: true }
             })
 
+            // For PNG, worker returns the encoded file directly
             if (res.success && res.data) {
-              const qData = new ImageData(new Uint8ClampedArray(res.data), res.width || cvs.width, res.height || cvs.height)
-              ctx.putImageData(qData, 0, 0)
+              const pngBlob = new Blob([res.data], { type: "image/png" })
+
+              // Return early with this blob (plus metadata injection)
+              let blob: Blob = pngBlob
+              // Metadata
+              if (file instanceof File || file instanceof Blob) {
+                blob = await copyMetadata(file as Blob, blob)
+              }
+
+              URL.revokeObjectURL(url)
+              const savings = ((origSize - blob.size) / origSize) * 100
+              resolve({
+                id, originalName: name, originalSize: origSize, compressedSize: blob.size, compressedBlob: blob,
+                blobUrl: URL.createObjectURL(blob), originalBlobUrl: URL.createObjectURL(file),
+                savings: Math.max(0, savings), format: targetFormat,
+                status: savings < 2 ? "already-optimized" : "completed",
+                analysis: imgAnalysis || undefined, formatPreference: targetFormat
+              })
+              return
             }
           }
 

@@ -67,17 +67,27 @@ function reducer(state: State, action: Action): State {
         images: state.images.map((img) => (img.id === action.payload.id ? action.payload : img)),
       }
     case "NEXT_QUEUE":
-       const processingCount = state.images.filter(img => img.status === "analyzing" || img.status === "compressing").length
-       const queuedCount = state.images.filter(img => img.status === "queued").length
-       
-       if (processingCount === 0 && queuedCount === 0) {
-         return { ...state, isProcessing: false }
-       }
-       return state
+      const processingCount = state.images.filter(img => img.status === "analyzing" || img.status === "compressing").length
+      const queuedCount = state.images.filter(img => img.status === "queued").length
+
+      if (processingCount === 0 && queuedCount === 0) {
+        return { ...state, isProcessing: false }
+      }
+      return state
     case "CLEAR_ALL":
       return { images: [], isProcessing: false, queueIndex: 0, formatMode: state.formatMode }
     case "SET_FORMAT_MODE":
-      return { ...state, formatMode: action.payload }
+      return {
+        ...state,
+        formatMode: action.payload,
+        // Re-queue all completed/error images to respect the new mode
+        images: state.images.map(img =>
+          (img.status === "completed" || img.status === "already-optimized" || img.status === "error")
+            ? { ...img, status: "queued", progress: 0 }
+            : img
+        ),
+        isProcessing: true // Ensure queue processing restarts
+      }
     default:
       return state
   }
@@ -90,15 +100,15 @@ export function ImageUploadZone() {
     queueIndex: 0,
     formatMode: "smart",
   })
-  
+
   const [isCreatingZip, setIsCreatingZip] = useState(false)
 
   // Map to store File objects separately
   const [fileMap] = useState<Map<string, File>>(() => new Map())
-  
+
   // Ref to track images for cleanup on unmount
   const imagesRef = useRef<CompressedImage[]>([])
-  
+
   // Ref for results section to enable auto-scroll
   const resultsSectionRef = useRef<HTMLDivElement>(null)
 
@@ -128,13 +138,13 @@ export function ImageUploadZone() {
       dispatch({ type: "UPDATE_IMAGE", payload: result })
     } catch (error) {
       console.error("Format change failed", error)
-      dispatch({ 
-        type: "UPDATE_STATUS", 
-        payload: { 
-          id: imageId, 
-          status: "error", 
-          error: error instanceof Error ? error.message : "Format conversion failed" 
-        } 
+      dispatch({
+        type: "UPDATE_STATUS",
+        payload: {
+          id: imageId,
+          status: "error",
+          error: error instanceof Error ? error.message : "Format conversion failed"
+        }
       })
     }
   }, [state.images, fileMap])
@@ -145,24 +155,24 @@ export function ImageUploadZone() {
 
     try {
       dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "analyzing" } })
-      
+
       // Natural analyzing delay
       const sizeInMB = file.size / (1024 * 1024)
       const analyzingDelay = 400 + (sizeInMB * 100) + (Math.random() * 200)
       await new Promise(resolve => setTimeout(resolve, analyzingDelay))
-      
+
       // Detect original format before decoding
       const isHeic = await isHeicFile(file)
-      const originalFormat = isHeic 
+      const originalFormat = isHeic
         ? (file.name.toLowerCase().endsWith(".heif") ? "heif" : "heic")
         : undefined
-      
+
       // Decode HEIC/HEIF files
       const decodedFile = await ensureDecodable(file)
-      const fileToProcess = decodedFile instanceof File 
-        ? decodedFile 
+      const fileToProcess = decodedFile instanceof File
+        ? decodedFile
         : new File([decodedFile], file.name.replace(/\.(heic|heif)$/i, ".png"), { type: "image/png" })
-      
+
       const analysis = await ImageService.analyze(fileToProcess)
 
       dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "compressing" } })
@@ -175,10 +185,10 @@ export function ImageUploadZone() {
 
       if (formatMode === "keep") {
         // Keep original format
-        const keepFormat = (originalFormat === "heic" || originalFormat === "heif") 
+        const keepFormat = (originalFormat === "heic" || originalFormat === "heif")
           ? "png" // HEIC/HEIF must be converted
           : (image.format as ImageFormat)
-        
+
         result = await ImageService.compressToFormat(
           fileToProcess,
           keepFormat,
@@ -196,13 +206,13 @@ export function ImageUploadZone() {
       dispatch({ type: "UPDATE_IMAGE", payload: result })
     } catch (error) {
       console.error("Processing failed", error)
-      dispatch({ 
-        type: "UPDATE_STATUS", 
-        payload: { 
-          id: image.id, 
-          status: "error", 
-          error: error instanceof Error ? error.message : "Unknown error" 
-        } 
+      dispatch({
+        type: "UPDATE_STATUS",
+        payload: {
+          id: image.id,
+          status: "error",
+          error: error instanceof Error ? error.message : "Unknown error"
+        }
       })
     }
   }, [fileMap])
@@ -212,7 +222,7 @@ export function ImageUploadZone() {
 
     const active = state.images.filter(i => i.status === "analyzing" || i.status === "compressing").length
     const queued = state.images.filter(i => i.status === "queued")
-    
+
     if (queued.length > 0 && active < CONCURRENT_PROCESSING) {
       const toProcess = queued.slice(0, CONCURRENT_PROCESSING - active)
       toProcess.forEach(img => processNextImage(img, state.formatMode))
@@ -246,7 +256,7 @@ export function ImageUploadZone() {
     })
 
     dispatch({ type: "ADD_FILES", payload: newImages })
-    
+
     // Auto-scroll to results section
     setTimeout(() => {
       resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -273,7 +283,7 @@ export function ImageUploadZone() {
         const name = `pasted-image-${Date.now()}-${i + 1}.${ext}`
         imageFiles.push(new File([blob], name, { type: mime }))
       }
-      
+
       if (imageFiles.length > 0) {
         e.preventDefault()
         onDrop(imageFiles)
@@ -325,15 +335,15 @@ export function ImageUploadZone() {
       successfulImages.forEach((img) => {
         const blob = img.compressedBlob || fileMap.get(img.id)
         if (blob) {
-            const extMap: Record<string, string> = {
-              jpeg: "jpg",
-              avif: "avif",
-              webp: "webp",
-              png: "png",
-            }
-            const ext = extMap[img.format] || img.format
-            const name = `optimized-${img.originalName.replace(/\.[^/.]+$/, "")}.${ext}`
-            zip.file(name, blob)
+          const extMap: Record<string, string> = {
+            jpeg: "jpg",
+            avif: "avif",
+            webp: "webp",
+            png: "png",
+          }
+          const ext = extMap[img.format] || img.format
+          const name = `optimized-${img.originalName.replace(/\.[^/.]+$/, "")}.${ext}`
+          zip.file(name, blob)
         }
       })
       const content = await zip.generateAsync({ type: "blob" })
@@ -373,7 +383,7 @@ export function ImageUploadZone() {
         )}
       >
         <input {...getInputProps()} />
-        
+
         <div className="px-6 py-12 sm:py-16 md:py-20 flex flex-col items-center text-center">
           <div className={cn(
             "w-16 h-16 border-2 border-foreground flex items-center justify-center mb-6 transition-transform duration-200",
@@ -393,16 +403,16 @@ export function ImageUploadZone() {
               />
             </svg>
           </div>
-          
+
           <h3 className="text-xl sm:text-2xl font-black uppercase mb-2 tracking-tight">
             {isDragActive ? "Drop it" : "Drop images here"}
           </h3>
-          
+
           <p className="text-muted-foreground max-w-md text-sm mb-6">
-            Or click to browse. Paste from clipboard works too.<br/>
+            Or click to browse. Paste from clipboard works too.<br />
             <span className="font-bold">PNG, JPEG, WebP, AVIF, HEIC</span>
           </p>
-          
+
           <button
             type="button"
             className={cn(
@@ -465,7 +475,7 @@ export function ImageUploadZone() {
                 </h2>
                 {successfulCount > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Saved <span className="font-bold text-foreground">{formatFileSize(totalSavingsBytes)}</span> total 
+                    Saved <span className="font-bold text-foreground">{formatFileSize(totalSavingsBytes)}</span> total
                     <span className="accent-bg text-accent-foreground px-1 ml-1 font-bold">-{averageSavings.toFixed(0)}%</span>
                   </p>
                 )}
@@ -493,8 +503,8 @@ export function ImageUploadZone() {
           {/* Results List */}
           <div className="space-y-2">
             {state.images.map((image) => (
-              <CompressionResultCard 
-                key={image.id} 
+              <CompressionResultCard
+                key={image.id}
                 image={image}
                 onFormatChange={handleFormatChange}
               />

@@ -97,8 +97,21 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
   const isAlreadyOptimized = image.status === "already-optimized"
   const wasConverted = image.originalFormat && image.originalFormat !== image.format
 
+  // Handle card click to toggle analyzer
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Check if click was on an interactive element
+    const target = e.target as HTMLElement
+    if (target.closest('button') || target.closest('[data-interactive]')) {
+      return // Don't toggle on button clicks
+    }
+    setShowAnalyzer(!showAnalyzer)
+  }
+
   return (
-    <div className="border-2 border-foreground group">
+    <div
+      className="border-2 border-foreground group card-interactive stagger-item"
+      onClick={handleCardClick}
+    >
       {/* Main Row */}
       <div className="p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
@@ -106,7 +119,7 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
           <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
             {/* Status Icon */}
             <div className={cn(
-              "w-10 h-10 border-2 flex items-center justify-center shrink-0 font-black text-sm",
+              "w-10 h-10 border-2 flex items-center justify-center shrink-0 font-black text-sm transition-transform group-hover:scale-105",
               isAlreadyOptimized
                 ? "border-muted-foreground text-muted-foreground"
                 : "border-foreground accent-bg"
@@ -116,7 +129,7 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
 
             {/* Thumbnail */}
             {(image.previewUrl || image.blobUrl) && (
-              <div className="w-10 h-10 border border-foreground flex items-center justify-center shrink-0 overflow-hidden bg-secondary">
+              <div className="w-10 h-10 border border-foreground flex items-center justify-center shrink-0 overflow-hidden bg-secondary transition-transform group-hover:scale-105">
                 <img src={image.previewUrl || image.blobUrl} alt="" className="w-full h-full object-cover" />
               </div>
             )}
@@ -153,12 +166,12 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
               <button
                 onClick={() => setIsFormatMenuOpen(!isFormatMenuOpen)}
                 className={cn(
-                  "h-8 px-3 border-2 border-foreground text-xs font-bold uppercase flex items-center gap-1.5 transition-colors min-w-[80px] justify-between",
+                  "h-8 px-3 border-2 border-foreground text-xs font-bold uppercase flex items-center gap-1.5 min-w-[80px] justify-between btn-spring",
                   isFormatMenuOpen ? "bg-foreground text-background" : "hover:bg-secondary"
                 )}
               >
                 <span>{image.format.toUpperCase()}</span>
-                <svg className={cn("w-3 h-3 transition-transform", isFormatMenuOpen && "rotate-180")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={cn("w-3 h-3 transition-transform duration-200", isFormatMenuOpen && "rotate-180")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -169,7 +182,7 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
                     className="fixed inset-0 z-10"
                     onClick={() => setIsFormatMenuOpen(false)}
                   />
-                  <div className="absolute right-0 top-full mt-1 z-20 border-2 border-foreground bg-background min-w-[100px]">
+                  <div className="absolute right-0 top-full mt-1 z-20 border-2 border-foreground bg-background min-w-[100px] dropdown-animate brutalist-shadow-sm">
                     {FORMAT_OPTIONS.map((option) => (
                       <button
                         key={option.value}
@@ -194,12 +207,12 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
             <button
               onClick={() => setShowAnalyzer(!showAnalyzer)}
               className={cn(
-                "w-8 h-8 border-2 border-foreground flex items-center justify-center transition-colors",
+                "w-8 h-8 border-2 border-foreground flex items-center justify-center btn-spring",
                 showAnalyzer ? "bg-foreground text-background" : "hover:bg-secondary"
               )}
               title="View Details"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={cn("w-4 h-4 transition-transform duration-200", showAnalyzer && "rotate-180")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
@@ -208,7 +221,7 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
             {!isAlreadyOptimized && (
               <button
                 onClick={handleDownload}
-                className="h-8 px-3 bg-foreground text-background border-2 border-foreground text-xs font-bold uppercase hover:bg-foreground/90 transition-colors flex items-center justify-center"
+                className="h-8 px-3 bg-foreground text-background border-2 border-foreground text-xs font-bold uppercase flex items-center justify-center btn-spring hover:brutalist-shadow-sm"
               >
                 ↓
               </button>
@@ -219,7 +232,7 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
 
       {/* Analyzer Panel */}
       {showAnalyzer && (
-        <div className="border-t-2 border-foreground bg-secondary/50 p-4 animate-in slide-in-from-top-2 duration-200">
+        <div className="border-t-2 border-foreground bg-secondary/50 p-4 expand-animate">
           <ImageAnalyzer image={image} />
         </div>
       )}

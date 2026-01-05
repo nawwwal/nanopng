@@ -281,18 +281,29 @@ export class ImageService {
           }
 
 
-          // SIZE CHECK: Smart Mode Safety
-          // If the "optimized" blob is larger than original, revert to original.
-          if (finalizedBlob.size >= originalSize) {
-            finalizedBlob = file
-            finalizedFormat = normFormat as any
-          }
-
           if (!finalizedBlob) { finalizedBlob = file; finalizedFormat = normFormat as any; }
 
           // METADATA PRESERVATION
-          // Inject metadata from original file into the new blob
-          const blobWithMeta = await copyMetadata(file, finalizedBlob)
+          let blobWithMeta = finalizedBlob
+
+          // Only inject metadata if we have a NEW blob
+          if (finalizedBlob !== file) {
+            try {
+              blobWithMeta = await copyMetadata(file, finalizedBlob)
+            } catch (err) {
+              console.warn("Metadata injection failed, using raw blob", err)
+              blobWithMeta = finalizedBlob
+            }
+          }
+
+          // FINAL SIZE CHECK: Smart Mode Safety
+          // Check actual FINAL size (including metadata).
+          // If larger than original, revert to original.
+          if (blobWithMeta.size >= originalSize) {
+            blobWithMeta = file
+            finalizedFormat = normFormat as any
+          }
+
           const bestSize = blobWithMeta.size
           const savings = Math.max(0, (originalSize - bestSize) / originalSize * 100)
 
@@ -308,7 +319,7 @@ export class ImageService {
             savings,
             format: finalizedFormat,
             originalFormat: (originalFormat || normFormat) as any,
-            status: savings < 2 ? "already-optimized" : "completed",
+            status: savings < 1 ? "already-optimized" : "completed",
             analysis: imgAnalysis,
             generation
           })
@@ -356,6 +367,19 @@ export class ImageService {
                 blob = await copyMetadata(file as Blob, blob)
               }
 
+              // SIZE CHECK
+              if (blob.size >= origSize) {
+                // Revert to original
+                resolve({
+                  id, originalName: name, originalSize: origSize, compressedSize: origSize, compressedBlob: file as Blob,
+                  blobUrl: URL.createObjectURL(file as Blob), originalBlobUrl: URL.createObjectURL(file),
+                  savings: 0, format: targetFormat, status: "already-optimized",
+                  analysis: imgAnalysis || undefined, formatPreference: targetFormat, generation
+                })
+                URL.revokeObjectURL(url)
+                return
+              }
+
               URL.revokeObjectURL(url)
               const savings = ((origSize - blob.size) / origSize) * 100
               resolve({
@@ -391,11 +415,22 @@ export class ImageService {
           const size = blob.size
           const savings = Math.max(0, (origSize - size) / origSize * 100)
 
+          let finalBlob = blob
+          let finalSize = size
+          let finalStatus = savings < 2 ? "already-optimized" : "completed" as any
+
+          if (size >= origSize) {
+            finalBlob = file as Blob
+            finalSize = origSize
+            finalStatus = "already-optimized"
+          }
+
           URL.revokeObjectURL(url)
           resolve({
-            id, originalName: name, originalSize: origSize, compressedSize: size, compressedBlob: blob,
-            blobUrl: URL.createObjectURL(blob), originalBlobUrl: URL.createObjectURL(file),
-            savings, format: targetFormat, status: savings < 2 ? "already-optimized" : "completed",
+            id, originalName: name, originalSize: origSize, compressedSize: finalSize, compressedBlob: finalBlob,
+            blobUrl: URL.createObjectURL(finalBlob), originalBlobUrl: URL.createObjectURL(file),
+            savings: size >= origSize ? 0 : savings, format: targetFormat,
+            status: finalStatus,
             analysis: imgAnalysis || undefined, formatPreference: targetFormat,
             generation
           })

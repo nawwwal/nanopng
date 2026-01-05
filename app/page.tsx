@@ -20,7 +20,7 @@ export default function Home() {
               href="https://github.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="h-9 px-3 border-2 border-foreground text-foreground text-xs font-bold uppercase hover:bg-foreground hover:text-background transition-colors flex items-center justify-center"
+              className="h-9 px-3 border-2 border-foreground text-foreground text-xs font-bold uppercase flex items-center justify-center btn-spring hover:bg-foreground hover:text-background"
             >
               GitHub
             </a>

@@ -174,11 +174,14 @@ export function ImageUploadZone() {
 
     try {
       // 1. Compute Hash first
-      const hash = await ImageService.computeHash(file)
+      const inputHash = await ImageService.computeHash(file)
+
+      // Composite key: Hash + Mode
+      const cacheKey = `${inputHash}:${formatMode}`
 
       // 2. Check Cache
-      if (resultCacheRef.current.has(hash)) {
-        const cached = resultCacheRef.current.get(hash)!
+      if (resultCacheRef.current.has(cacheKey)) {
+        const cached = resultCacheRef.current.get(cacheKey)!
         // If we found a match, we just clone it but give it a new ID/Name/Gen
         console.log("Cache hit for", file.name)
 
@@ -194,7 +197,7 @@ export function ImageUploadZone() {
             originalSize: file.size,
             generation: image.generation, // Keep current generation
             status: "already-optimized", // Or completed, but cache means we are done
-            hash // Ensure hash is set
+            hash: inputHash // Ensure hash is set
           }
         })
         return
@@ -250,11 +253,11 @@ export function ImageUploadZone() {
         result = await ImageService.compress(fileToProcess, image.id, image.generation, analysis, originalFormat)
       }
 
-      result.hash = hash // Store hash
+      result.hash = inputHash // Store raw hash
 
       // Update Cache if successful
       if (result.status === "completed" || result.status === "already-optimized") {
-        resultCacheRef.current.set(hash, result)
+        resultCacheRef.current.set(cacheKey, result)
       }
 
       dispatch({ type: "UPDATE_IMAGE", payload: result })
@@ -432,10 +435,10 @@ export function ImageUploadZone() {
       <div
         {...getRootProps()}
         className={cn(
-          "relative cursor-pointer border-2 border-dashed transition-all duration-200",
+          "relative cursor-pointer border-2 border-dashed hover-lift",
           isDragActive
             ? "border-foreground bg-accent/20 brutalist-shadow"
-            : "border-foreground/50 hover:border-foreground hover:brutalist-shadow"
+            : "border-foreground/50 hover:border-foreground"
         )}
       >
         <input {...getInputProps()} />
@@ -472,9 +475,8 @@ export function ImageUploadZone() {
           <button
             type="button"
             className={cn(
-              "px-6 py-2.5 border-2 border-foreground font-bold uppercase text-sm transition-all duration-100",
-              "hover:bg-foreground hover:text-background",
-              "active:translate-x-0.5 active:translate-y-0.5",
+              "px-6 py-2.5 border-2 border-foreground font-bold uppercase text-sm btn-spring",
+              "hover:bg-foreground hover:text-background hover:brutalist-shadow-sm",
               isDragActive && "bg-accent text-accent-foreground border-accent-foreground"
             )}
           >
@@ -493,7 +495,7 @@ export function ImageUploadZone() {
               <button
                 onClick={() => dispatch({ type: "SET_FORMAT_MODE", payload: "smart" })}
                 className={cn(
-                  "h-8 px-3 text-xs font-bold uppercase transition-all flex items-center gap-1.5",
+                  "h-8 px-3 text-xs font-bold uppercase flex items-center gap-1.5 btn-spring",
                   state.formatMode === "smart"
                     ? "bg-foreground text-background"
                     : "border border-foreground hover:bg-foreground/10"
@@ -507,7 +509,7 @@ export function ImageUploadZone() {
               <button
                 onClick={() => dispatch({ type: "SET_FORMAT_MODE", payload: "keep" })}
                 className={cn(
-                  "h-8 px-3 text-xs font-bold uppercase transition-all flex items-center gap-1.5",
+                  "h-8 px-3 text-xs font-bold uppercase flex items-center gap-1.5 btn-spring",
                   state.formatMode === "keep"
                     ? "bg-foreground text-background"
                     : "border border-foreground hover:bg-foreground/10"
@@ -541,14 +543,14 @@ export function ImageUploadZone() {
                   <button
                     onClick={handleDownloadAll}
                     disabled={isCreatingZip}
-                    className="flex-1 sm:flex-none h-9 px-4 bg-foreground text-background font-bold uppercase text-xs hover:bg-foreground/90 disabled:opacity-50 transition-opacity flex items-center justify-center"
+                    className="flex-1 sm:flex-none h-9 px-4 bg-foreground text-background font-bold uppercase text-xs disabled:opacity-50 flex items-center justify-center btn-spring hover:brutalist-shadow-sm"
                   >
                     {isCreatingZip ? "Zipping..." : "Download All"}
                   </button>
                 )}
                 <button
                   onClick={handleClearAll}
-                  className="flex-1 sm:flex-none h-9 px-4 border-2 border-foreground font-bold uppercase text-xs hover:bg-secondary transition-colors flex items-center justify-center"
+                  className="flex-1 sm:flex-none h-9 px-4 border-2 border-foreground font-bold uppercase text-xs flex items-center justify-center btn-spring hover:bg-secondary"
                 >
                   Clear All
                 </button>

@@ -5,6 +5,17 @@ import { CompressionJob, CompressionResult } from "@/lib/workers/image-processor
 
 export class ImageService {
   /**
+   * Compute SHA-256 hash of a file for deduplication
+   */
+  static async computeHash(file: File): Promise<string> {
+    const buffer = await file.arrayBuffer()
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+    return hashHex
+  }
+
+  /**
    * Calculate the ratio of solid regions
    */
   private static calculateSolidRegionRatio(

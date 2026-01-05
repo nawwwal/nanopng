@@ -31,6 +31,8 @@ export interface CompressedImage {
   generation: number
   /** Thumbnail URL */
   previewUrl?: string
+  /** SHA-256 Hash of original file */
+  hash?: string
 }
 
 export interface ImageAnalysis {

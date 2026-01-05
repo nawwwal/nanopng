@@ -115,6 +115,9 @@ export function ImageUploadZone() {
     formatMode: "smart",
   })
 
+  // Dedup cache: hash -> CompressedImage (success only)
+  const resultCacheRef = useRef<Map<string, CompressedImage>>(new Map())
+
   const [isCreatingZip, setIsCreatingZip] = useState(false)
 
   // Map to store File objects separately
@@ -170,6 +173,33 @@ export function ImageUploadZone() {
     if (!file) return
 
     try {
+      // 1. Compute Hash first
+      const hash = await ImageService.computeHash(file)
+
+      // 2. Check Cache
+      if (resultCacheRef.current.has(hash)) {
+        const cached = resultCacheRef.current.get(hash)!
+        // If we found a match, we just clone it but give it a new ID/Name/Gen
+        console.log("Cache hit for", file.name)
+
+        // Artificial small delay for UX so it doesn't feel instant/broken
+        await new Promise(r => setTimeout(r, 100 + Math.random() * 100))
+
+        dispatch({
+          type: "UPDATE_IMAGE",
+          payload: {
+            ...cached,
+            id: image.id,
+            originalName: file.name, // Keep new name
+            originalSize: file.size,
+            generation: image.generation, // Keep current generation
+            status: "already-optimized", // Or completed, but cache means we are done
+            hash // Ensure hash is set
+          }
+        })
+        return
+      }
+
       dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "analyzing" } })
 
       // Natural analyzing delay
@@ -218,6 +248,13 @@ export function ImageUploadZone() {
       } else {
         // Smart format selection
         result = await ImageService.compress(fileToProcess, image.id, image.generation, analysis, originalFormat)
+      }
+
+      result.hash = hash // Store hash
+
+      // Update Cache if successful
+      if (result.status === "completed" || result.status === "already-optimized") {
+        resultCacheRef.current.set(hash, result)
       }
 
       dispatch({ type: "UPDATE_IMAGE", payload: result })

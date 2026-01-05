@@ -157,9 +157,11 @@ export class ImageService {
   }
 
   // Helper to run worker
-  private static async runWorker(job: CompressionJob): Promise<CompressionResult> {
+  private static async runWorker(job: Omit<CompressionJob, "id">): Promise<CompressionResult> {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL("../workers/image-processor.worker.ts", import.meta.url))
+      const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
+
       worker.onmessage = (e) => {
         worker.terminate()
         resolve(e.data)
@@ -168,10 +170,10 @@ export class ImageService {
         worker.terminate()
         reject(e)
       }
-      // Transfer buffer?
-      // We can't easily transfer ImageData.data.buffer if it's clamped array view of a larger buffer.
-      // Just copy for now.
-      worker.postMessage(job)
+
+      // Transfer buffer to worker for zero-copy
+      const message: CompressionJob = { ...job, id }
+      worker.postMessage(message, [job.data])
     })
   }
 
@@ -235,19 +237,29 @@ export class ImageService {
           }
 
           // Try PNG (Quantized) if graphics
-          if (shouldQuantize) {
+          // Try PNG (Quantized) if graphics OR if explicit PNG requested
+          // We force quantization for PNG output to ensure file size savings 
+          // even if it's a photo, as standard Canvas PNG is very bloated.
+          if (shouldQuantize || finalizedFormat === "png") {
+            const imageData = ctx.getImageData(0, 0, cvs.width, cvs.height)
+
             // Use Worker
             const result = await this.runWorker({
-              id,
-              imageData: imageData, // Clone?
+              width: imageData.width,
+              height: imageData.height,
+              data: imageData.data.buffer, // Transfer the buffer
               options: { format: "png", quality: 1, colors: 256, dithering: true }
             })
 
-            if (result.success && result.imageData) {
+            if (result.success && result.data) {
               // Put quantized data back
               const qCvs = document.createElement("canvas")
               qCvs.width = img.width; qCvs.height = img.height
-              qCvs.getContext("2d")!.putImageData(result.imageData, 0, 0)
+              const qCtx = qCvs.getContext("2d")!
+
+              // Reconstruct ImageData
+              const qData = new ImageData(new Uint8ClampedArray(result.data), result.width || img.width, result.height || img.height)
+              qCtx.putImageData(qData, 0, 0)
 
               const b = await new Promise<Blob | null>(r => qCvs.toBlob(r, "image/png"))
               if (b && (!finalizedBlob || b.size < finalizedBlob.size)) {
@@ -308,12 +320,21 @@ export class ImageService {
           ctx.drawImage(img, 0, 0)
 
           // Quantize if needed
-          if (targetFormat === "png" && imgAnalysis && !imgAnalysis.isPhoto && imgAnalysis.uniqueColors > 256) {
+          // Quantize if needed (for all PNG outputs to save size)
+          if (targetFormat === "png" && ((imgAnalysis && imgAnalysis.uniqueColors > 256) || true)) {
+            const imageData = ctx.getImageData(0, 0, cvs.width, cvs.height)
+
             const res = await this.runWorker({
-              id, imageData: ctx.getImageData(0, 0, cvs.width, cvs.height),
+              width: imageData.width,
+              height: imageData.height,
+              data: imageData.data.buffer,
               options: { format: "png", quality: 1, colors: 256, dithering: true }
             })
-            if (res.success && res.imageData) ctx.putImageData(res.imageData, 0, 0)
+
+            if (res.success && res.data) {
+              const qData = new ImageData(new Uint8ClampedArray(res.data), res.width || cvs.width, res.height || cvs.height)
+              ctx.putImageData(qData, 0, 0)
+            }
           }
 
           let mime = "image/jpeg", q = 0.85

@@ -16,9 +16,9 @@ export default function Home() {
           </Link>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <a 
-              href="https://github.com" 
-              target="_blank" 
+            <a
+              href="https://github.com"
+              target="_blank"
               rel="noopener noreferrer"
               className="h-9 px-3 border-2 border-foreground text-foreground text-xs font-bold uppercase hover:bg-foreground hover:text-background transition-colors flex items-center justify-center"
             >
@@ -33,18 +33,18 @@ export default function Home() {
         <div className="container mx-auto max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-2">
             {/* Left: Copy */}
-            <div className="p-6 sm:p-8 lg:p-12 lg:border-r-2 border-foreground flex flex-col justify-center">
+            <div className="p-4 sm:p-8 lg:p-12 border-b-2 lg:border-b-0 lg:border-r-2 border-foreground flex flex-col justify-center">
               <div className="space-y-6">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.9] tracking-tight">
-                  Compress<br/>
-                  images.<br/>
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.9] tracking-tight">
+                  Compress<br />
+                  images.<br />
                   <span className="accent-bg inline-block px-2 mt-2">Locally.</span>
                 </h1>
-                
+
                 <p className="text-lg sm:text-xl font-bold uppercase tracking-wide text-muted-foreground">
                   No upload. No limits. No bullsh*t.
                 </p>
-                
+
                 <div className="pt-4 space-y-3 text-sm sm:text-base">
                   <div className="flex items-start gap-3">
                     <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0">01</span>
@@ -67,22 +67,22 @@ export default function Home() {
             </div>
 
             {/* Right: Stats */}
-            <div className="p-6 sm:p-8 lg:p-12 bg-secondary flex flex-col justify-center">
+            <div className="p-4 sm:p-8 lg:p-12 bg-secondary flex flex-col justify-center">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <div className="text-5xl sm:text-6xl lg:text-7xl font-black">100%</div>
+                  <div className="text-4xl sm:text-6xl lg:text-7xl font-black">100%</div>
                   <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Private</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-5xl sm:text-6xl lg:text-7xl font-black">∞</div>
+                  <div className="text-4xl sm:text-6xl lg:text-7xl font-black">∞</div>
                   <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">No limits</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-5xl sm:text-6xl lg:text-7xl font-black"><span className="accent-bg px-2">70%</span></div>
+                  <div className="text-4xl sm:text-6xl lg:text-7xl font-black"><span className="accent-bg px-2">70%</span></div>
                   <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Avg. savings</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-5xl sm:text-6xl lg:text-7xl font-black">$0</div>
+                  <div className="text-4xl sm:text-6xl lg:text-7xl font-black">$0</div>
                   <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Forever</div>
                 </div>
               </div>
@@ -109,7 +109,7 @@ export default function Home() {
                 Drag & drop, paste from clipboard, or click to browse. PNG, JPEG, WebP, AVIF, HEIC supported.
               </p>
             </div>
-            
+
             <div className="p-6 sm:p-8">
               <div className="text-6xl sm:text-7xl font-black mb-4">02</div>
               <h3 className="text-lg font-bold uppercase mb-2">Auto-optimized</h3>
@@ -117,7 +117,7 @@ export default function Home() {
                 Photos get perceptual compression. Graphics get palette optimization. The right strategy for each image.
               </p>
             </div>
-            
+
             <div className="p-6 sm:p-8">
               <div className="text-6xl sm:text-7xl font-black mb-4">03</div>
               <h3 className="text-lg font-bold uppercase mb-2">Download</h3>

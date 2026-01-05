@@ -280,6 +280,14 @@ export class ImageService {
             finalizedBlob = await new Promise<Blob | null>(r => cvs.toBlob(r, file.type, 0.9))
           }
 
+
+          // SIZE CHECK: Smart Mode Safety
+          // If the "optimized" blob is larger than original, revert to original.
+          if (finalizedBlob.size >= originalSize) {
+            finalizedBlob = file
+            finalizedFormat = normFormat as any
+          }
+
           if (!finalizedBlob) { finalizedBlob = file; finalizedFormat = normFormat as any; }
 
           // METADATA PRESERVATION

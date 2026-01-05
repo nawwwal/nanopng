@@ -32,7 +32,7 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
 
   const handleDownload = () => {
     if (!image.blobUrl && !image.originalBlobUrl) return
-    
+
     const url = image.blobUrl || image.originalBlobUrl
     if (!url) return
 
@@ -60,16 +60,18 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
       compressing: { text: "COMPRESSING...", bgClass: "bg-accent/30 animate-pulse" },
       error: { text: image.error || "ERROR", bgClass: "bg-destructive/20" }
     }
-    
+
     const config = statusConfig[image.status] || statusConfig.queued
-    
+
     return (
       <div className={cn("border-2 border-foreground/30 p-3 sm:p-4", config.bgClass)}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 border border-foreground/30 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 border border-foreground/30 flex items-center justify-center shrink-0 overflow-hidden bg-secondary">
               {image.status === "error" ? (
                 <span className="text-destructive font-bold">!</span>
+              ) : image.previewUrl ? (
+                <img src={image.previewUrl} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-2 h-2 bg-foreground/50 animate-pulse" />
               )}
@@ -105,12 +107,19 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
             {/* Status Icon */}
             <div className={cn(
               "w-10 h-10 border-2 flex items-center justify-center shrink-0 font-black text-sm",
-              isAlreadyOptimized 
-                ? "border-muted-foreground text-muted-foreground" 
+              isAlreadyOptimized
+                ? "border-muted-foreground text-muted-foreground"
                 : "border-foreground accent-bg"
             )}>
               {isAlreadyOptimized ? "OK" : `-${Math.round(image.savings)}%`}
             </div>
+
+            {/* Thumbnail */}
+            {(image.previewUrl || image.blobUrl) && (
+              <div className="w-10 h-10 border border-foreground flex items-center justify-center shrink-0 overflow-hidden bg-secondary">
+                <img src={image.previewUrl || image.blobUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
 
             {/* Text Info */}
             <div className="flex-1 min-w-0">
@@ -122,7 +131,7 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
                   </span>
                 )}
               </div>
-              
+
               <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono mt-0.5">
                 <span className={!isAlreadyOptimized ? "line-through opacity-60" : ""}>
                   {formatFileSize(image.originalSize)}
@@ -153,11 +162,11 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              
+
               {isFormatMenuOpen && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-10" 
+                  <div
+                    className="fixed inset-0 z-10"
                     onClick={() => setIsFormatMenuOpen(false)}
                   />
                   <div className="absolute right-0 top-full mt-1 z-20 border-2 border-foreground bg-background min-w-[100px]">
@@ -167,8 +176,8 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
                         onClick={() => handleFormatSelect(option.value)}
                         className={cn(
                           "w-full px-3 py-2 text-xs font-bold uppercase text-left transition-colors",
-                          option.value === image.format 
-                            ? "bg-accent text-accent-foreground" 
+                          option.value === image.format
+                            ? "bg-accent text-accent-foreground"
                             : "hover:bg-secondary"
                         )}
                       >
@@ -182,8 +191,8 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
             </div>
 
             {/* Info Button - h-8 */}
-            <button 
-              onClick={() => setShowAnalyzer(!showAnalyzer)} 
+            <button
+              onClick={() => setShowAnalyzer(!showAnalyzer)}
               className={cn(
                 "w-8 h-8 border-2 border-foreground flex items-center justify-center transition-colors",
                 showAnalyzer ? "bg-foreground text-background" : "hover:bg-secondary"
@@ -194,11 +203,11 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
-            
+
             {/* Download Button - h-8 */}
             {!isAlreadyOptimized && (
-              <button 
-                onClick={handleDownload} 
+              <button
+                onClick={handleDownload}
                 className="h-8 px-3 bg-foreground text-background border-2 border-foreground text-xs font-bold uppercase hover:bg-foreground/90 transition-colors flex items-center justify-center"
               >
                 ↓

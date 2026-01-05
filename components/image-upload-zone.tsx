@@ -38,7 +38,7 @@ type State = {
 
 type Action =
   | { type: "ADD_FILES"; payload: CompressedImage[] }
-  | { type: "UPDATE_STATUS"; payload: { id: string; status: CompressionStatus; progress?: number; error?: string } }
+  | { type: "UPDATE_STATUS"; payload: { id: string; status: CompressionStatus; progress?: number; error?: string; generation?: number } }
   | { type: "UPDATE_IMAGE"; payload: CompressedImage }
   | { type: "NEXT_QUEUE" }
   | { type: "CLEAR_ALL" }
@@ -57,14 +57,28 @@ function reducer(state: State, action: Action): State {
         ...state,
         images: state.images.map((img) =>
           img.id === action.payload.id
-            ? { ...img, status: action.payload.status, progress: action.payload.progress, error: action.payload.error }
+            ? {
+              ...img,
+              status: action.payload.status,
+              progress: action.payload.progress,
+              error: action.payload.error,
+              generation: action.payload.generation !== undefined ? action.payload.generation : img.generation
+            }
             : img
         ),
       }
     case "UPDATE_IMAGE":
       return {
         ...state,
-        images: state.images.map((img) => (img.id === action.payload.id ? action.payload : img)),
+        images: state.images.map((img) => {
+          if (img.id !== action.payload.id) return img
+          // Robustness: Ignore stale results from older generations
+          if (action.payload.generation < img.generation) {
+            console.log(`Ignoring stale result for ${img.originalName} (Gen ${action.payload.generation} < ${img.generation})`)
+            return img
+          }
+          return action.payload
+        }),
       }
     case "NEXT_QUEUE":
       const processingCount = state.images.filter(img => img.status === "analyzing" || img.status === "compressing").length
@@ -83,7 +97,7 @@ function reducer(state: State, action: Action): State {
         // Re-queue all completed/error images to respect the new mode
         images: state.images.map(img =>
           (img.status === "completed" || img.status === "already-optimized" || img.status === "error")
-            ? { ...img, status: "queued", progress: 0 }
+            ? { ...img, status: "queued", progress: 0, generation: (img.generation || 0) + 1 }
             : img
         ),
         isProcessing: true // Ensure queue processing restarts
@@ -118,8 +132,9 @@ export function ImageUploadZone() {
     const file = fileMap.get(imageId)
     if (!image || !file) return
 
-    // Set to compressing state
-    dispatch({ type: "UPDATE_STATUS", payload: { id: imageId, status: "compressing" } })
+    const nextGen = (image.generation || 0) + 1
+    // Set to compressing state with new generation
+    dispatch({ type: "UPDATE_STATUS", payload: { id: imageId, status: "compressing", generation: nextGen } })
 
     try {
       // Add natural artificial delay for format conversion
@@ -133,6 +148,7 @@ export function ImageUploadZone() {
         imageId,
         image.originalName,
         image.originalSize,
+        nextGen, // Pass new generation
         image.analysis
       )
       dispatch({ type: "UPDATE_IMAGE", payload: result })
@@ -195,12 +211,13 @@ export function ImageUploadZone() {
           image.id,
           image.originalName,
           image.originalSize,
+          image.generation, // Pass current generation
           analysis
         )
         result.originalFormat = (originalFormat || image.format) as any
       } else {
         // Smart format selection
-        result = await ImageService.compress(fileToProcess, image.id, analysis, originalFormat)
+        result = await ImageService.compress(fileToProcess, image.id, image.generation, analysis, originalFormat)
       }
 
       dispatch({ type: "UPDATE_IMAGE", payload: result })
@@ -252,6 +269,8 @@ export function ImageUploadZone() {
         format: inferredFormat as any,
         status: "queued",
         progress: 0,
+        generation: 0,
+        previewUrl: URL.createObjectURL(file)
       }
     })
 

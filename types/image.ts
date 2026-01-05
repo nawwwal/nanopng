@@ -27,6 +27,10 @@ export interface CompressedImage {
   analysis?: ImageAnalysis
   /** User's format preference for this image - defaults to "smart" */
   formatPreference?: FormatPreference
+  /** Generation ID to handle race conditions */
+  generation: number
+  /** Thumbnail URL */
+  previewUrl?: string
 }
 
 export interface ImageAnalysis {

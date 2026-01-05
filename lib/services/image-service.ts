@@ -180,6 +180,7 @@ export class ImageService {
   static async compress(
     file: File,
     id: string,
+    generation: number,
     analysis?: ImageAnalysis,
     originalFormat?: string
   ): Promise<CompressedImage> {
@@ -289,7 +290,8 @@ export class ImageService {
             format: finalizedFormat,
             originalFormat: (originalFormat || normFormat) as any,
             status: savings < 2 ? "already-optimized" : "completed",
-            analysis: imgAnalysis
+            analysis: imgAnalysis,
+            generation
           })
 
         } catch (e) { URL.revokeObjectURL(url); reject(e) }
@@ -300,7 +302,7 @@ export class ImageService {
   }
 
   // Copied logic for explicit format conversion
-  static async compressToFormat(file: File | Blob, targetFormat: ImageFormat, id: string, name: string, origSize: number, analysis?: ImageAnalysis): Promise<CompressedImage> {
+  static async compressToFormat(file: File | Blob, targetFormat: ImageFormat, id: string, name: string, origSize: number, generation: number, analysis?: ImageAnalysis): Promise<CompressedImage> {
     const imgAnalysis = analysis || (file instanceof File ? await this.analyze(file) : null)
     return new Promise((resolve, reject) => {
       const img = new Image()
@@ -342,7 +344,8 @@ export class ImageService {
                 blobUrl: URL.createObjectURL(blob), originalBlobUrl: URL.createObjectURL(file),
                 savings: Math.max(0, savings), format: targetFormat,
                 status: savings < 2 ? "already-optimized" : "completed",
-                analysis: imgAnalysis || undefined, formatPreference: targetFormat
+                analysis: imgAnalysis || undefined, formatPreference: targetFormat,
+                generation
               })
               return
             }
@@ -374,7 +377,8 @@ export class ImageService {
             id, originalName: name, originalSize: origSize, compressedSize: size, compressedBlob: blob,
             blobUrl: URL.createObjectURL(blob), originalBlobUrl: URL.createObjectURL(file),
             savings, format: targetFormat, status: savings < 2 ? "already-optimized" : "completed",
-            analysis: imgAnalysis || undefined, formatPreference: targetFormat
+            analysis: imgAnalysis || undefined, formatPreference: targetFormat,
+            generation
           })
         } catch (e) { URL.revokeObjectURL(url); reject(e) }
       }

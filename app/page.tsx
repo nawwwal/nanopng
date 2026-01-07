@@ -69,10 +69,7 @@ export default function Home() {
 
             {/* Right: Interactive Compression Demo */}
             <div className="p-4 sm:p-8 lg:p-12 bg-secondary lg:bg-transparent flex flex-col justify-center min-h-[400px] lg:min-h-[500px]">
-              <JellySqueeze
-                title="↕ Drag to see compression"
-                showControls={true}
-              />
+              <JellySqueeze title="↕ Move cursor to compress" />
             </div>
           </div>
         </div>

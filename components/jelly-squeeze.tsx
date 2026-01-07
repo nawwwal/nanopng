@@ -1,42 +1,26 @@
 "use client"
 
 import React, { useEffect, useRef, useState, useLayoutEffect } from "react"
-import gsap from "gsap"
-import { Draggable } from "gsap/dist/Draggable"
-import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// Register GSAP plugin
-if (typeof window !== "undefined") {
-    gsap.registerPlugin(Draggable)
-}
-
 interface JellySqueezeProps {
-    /**
-     * Whether to show the bottom controls
-     * @default true
-     */
-    showControls?: boolean
     /**
      * Additional CSS classes
      */
     className?: string
     /**
      * Title text to display
-     * @default "Drag to compress"
+     * @default "Move cursor to compress"
      */
     title?: string
 }
 
 export function JellySqueeze({
-    showControls = true,
     className,
-    title = "Drag to compress"
+    title = "Move cursor to compress"
 }: JellySqueezeProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
-    const dragTriggerRef = useRef<HTMLDivElement>(null)
-    const [followMouse, setFollowMouse] = useState(false)
     const [isReady, setIsReady] = useState(false)
 
     // Animation state
@@ -81,9 +65,9 @@ export function JellySqueeze({
         }
     }, [])
 
-    // Canvas & GSAP setup
+    // Canvas & mouse follow setup
     useLayoutEffect(() => {
-        if (!isReady || !canvasRef.current || !dragTriggerRef.current) return
+        if (!isReady || !canvasRef.current) return
 
         const canvas = canvasRef.current
         const ctx = canvas.getContext("2d")
@@ -118,28 +102,6 @@ export function JellySqueeze({
 
         setCanvasSize()
         window.addEventListener("resize", setCanvasSize)
-
-        // Initialize GSAP position
-        gsap.set(canvas, { y: 0 })
-
-        // Draggable setup
-        const draggable = Draggable.create(canvas, {
-            trigger: dragTriggerRef.current,
-            type: "y",
-            inertia: true,
-            bounds: { minY: 0, maxY: state.maxSqueeze },
-            allowNativeTouchScrolling: false,
-            dragResistance: 0.3,
-            edgeResistance: 0.9,
-            minDuration: 0.5,
-            maxDuration: 1.5,
-            onDrag: function () {
-                state.targetSqueeze = this.y
-            },
-            onThrowUpdate: function () {
-                state.targetSqueeze = this.y
-            }
-        })[0]
 
         // Animation loop
         state.startTime = Date.now()
@@ -248,31 +210,23 @@ export function JellySqueeze({
 
         animate()
 
-        // Mouse move handler for follow mode
+        // Mouse move handler - always active
         const handleMouseMove = (e: MouseEvent) => {
-            if (followMouse && containerRef.current) {
+            if (containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect()
                 const normalizedY = (e.clientY - rect.top) / rect.height
                 state.targetSqueeze = Math.max(0, Math.min(state.maxSqueeze, normalizedY * state.maxSqueeze))
             }
         }
 
-        if (followMouse) {
-            window.addEventListener("mousemove", handleMouseMove)
-            draggable.disable()
-        } else {
-            draggable.enable()
-            gsap.set(canvas, { y: state.displaySqueeze })
-            draggable.update()
-        }
+        window.addEventListener("mousemove", handleMouseMove)
 
         return () => {
             window.removeEventListener("resize", setCanvasSize)
             window.removeEventListener("mousemove", handleMouseMove)
             cancelAnimationFrame(state.rafId)
-            draggable.kill()
         }
-    }, [isReady, followMouse])
+    }, [isReady])
 
     return (
         <div
@@ -303,13 +257,6 @@ export function JellySqueeze({
                         isReady ? "opacity-100" : "opacity-0"
                     )}
                 />
-
-                {/* Invisible Drag Trigger */}
-                <div
-                    ref={dragTriggerRef}
-                    className="absolute inset-0 cursor-grab active:cursor-grabbing z-20"
-                    aria-label="Drag to squeeze"
-                />
             </div>
 
             {/* Loading State */}
@@ -324,36 +271,7 @@ export function JellySqueeze({
                 </div>
             </div>
 
-            {/* Bottom Controls */}
-            {showControls && (
-                <div
-                    className={cn(
-                        "absolute bottom-4 w-full flex justify-center z-20 transition-opacity duration-500",
-                        isReady ? "opacity-100" : "opacity-0"
-                    )}
-                >
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold uppercase group">
-                        <input
-                            type="checkbox"
-                            className="peer sr-only"
-                            checked={followMouse}
-                            onChange={(e) => setFollowMouse(e.target.checked)}
-                        />
-                        <div className="w-4 h-4 border-2 border-foreground flex items-center justify-center transition-colors peer-checked:bg-foreground">
-                            <Check
-                                className={cn(
-                                    "w-3 h-3 transition-opacity",
-                                    followMouse ? "text-background opacity-100" : "opacity-0"
-                                )}
-                                strokeWidth={3}
-                            />
-                        </div>
-                        <span className="text-muted-foreground group-hover:text-foreground transition-colors">
-                            Follow mouse
-                        </span>
-                    </label>
-                </div>
-            )}
+
 
             {/* Loader animation style */}
             <style jsx>{`

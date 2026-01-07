@@ -30,8 +30,8 @@ export function JellySqueeze({
         displaySqueeze: 0,
         velocity: 0, // For elastic spring
         smoothing: 0.12, // Slightly higher for more responsive feel
-        springStiffness: 0.15, // Spring tension
-        springDamping: 0.75, // Damping factor (lower = more bouncy)
+        springStiffness: 0.2, // Increased tension (was 0.15)
+        springDamping: 0.5, // Reduced damping for more bounce (was 0.75, then 0.6)
         startTime: 0,
         rafId: 0,
         isMounted: false,
@@ -41,13 +41,10 @@ export function JellySqueeze({
         blocks: [] as { x: number; y: number; size: number; offset: number; isAccent: boolean }[]
     })
 
-    // Initialize blocks pattern with random accent assignment
-    useEffect(() => {
-        animState.current.isMounted = true
-
-        // Create grid of blocks for visualization with random accent colors
+    // Initialize blocks pattern
+    const initBlocks = () => {
         const blocks: typeof animState.current.blocks = []
-        const gridSize = 6
+        const gridSize = 12 // Increased density (was 6)
         for (let i = 0; i < gridSize; i++) {
             for (let j = 0; j < gridSize; j++) {
                 blocks.push({
@@ -60,6 +57,12 @@ export function JellySqueeze({
             }
         }
         animState.current.blocks = blocks
+    }
+
+    // Initialize blocks pattern with random accent assignment
+    useEffect(() => {
+        animState.current.isMounted = true
+        initBlocks()
 
         // Small delay to ensure proper mounting
         setTimeout(() => setIsReady(true), 100)
@@ -125,13 +128,14 @@ export function JellySqueeze({
             state.displaySqueeze += state.velocity * 60 * dt
 
             // Clamp to bounds but allow slight overshoot for elasticity
-            if (state.displaySqueeze < -20) {
-                state.displaySqueeze = -20
-                state.velocity *= -0.3 // Bounce back
+            // Increased overshoot range for more noticeable rebound
+            if (state.displaySqueeze < -40) {
+                state.displaySqueeze = -40
+                state.velocity *= -0.5 // Stronger bounce back
             }
-            if (state.displaySqueeze > state.maxSqueeze + 20) {
-                state.displaySqueeze = state.maxSqueeze + 20
-                state.velocity *= -0.3 // Bounce back
+            if (state.displaySqueeze > state.maxSqueeze + 40) {
+                state.displaySqueeze = state.maxSqueeze + 40
+                state.velocity *= -0.5 // Stronger bounce back
             }
 
             // Calculate compression percentage (0-70%)
@@ -151,7 +155,7 @@ export function JellySqueeze({
             const centerX = width / 2
             const centerY = height / 2
             const baseSize = Math.min(width, height) * 0.6
-            const gridSize = 6
+            const gridSize = 12 // Matches initBlocks
             const blockSize = baseSize / gridSize
 
             // Draw blocks with squeeze effect
@@ -167,7 +171,7 @@ export function JellySqueeze({
 
                 // Block size reduces with compression
                 const currentBlockSize = blockSize * (1 - squeezeEffect * 0.15)
-                const gap = 3 + squeezeEffect * 2
+                const gap = 2 + squeezeEffect * 1.5 // Reduced base gap for denser grid
 
                 // Use pre-assigned random accent pattern
                 if (block.isAccent && squeezeEffect > 0.1) {
@@ -177,19 +181,25 @@ export function JellySqueeze({
                 }
 
                 // Draw block with brutalist sharp edges
+                // Adjusted positions for denser fit
                 ctx.fillRect(
                     x + gap / 2,
                     y + gap / 2 + squeezeEffect * 30,
-                    currentBlockSize - gap,
-                    currentBlockSize - gap
+                    Math.max(0, currentBlockSize - gap),
+                    Math.max(0, currentBlockSize - gap)
                 )
             })
 
             // Draw border frame
             ctx.strokeStyle = isDark ? "#ffffff" : "#000000"
             ctx.lineWidth = 3
-            const frameY = centerY - baseSize / 2 + (clampedSqueeze / state.maxSqueeze) * 30
-            const frameHeight = baseSize * (1 - squeezePercent * 0.4)
+
+            // Box height reduction
+            // Make the height reduction more significant visually to match the 70% claim
+            // 0.8 factor ensures it shrinks to ~30% of original height (1 - 0.7) roughly
+            const frameHeight = baseSize * (1 - squeezePercent * 0.9)
+            const frameY = centerY - baseSize / 2 + (baseSize - frameHeight) / 2 + squeezeEffect * 15
+
             ctx.strokeRect(
                 centerX - baseSize / 2 - 10,
                 frameY - 10,
@@ -231,7 +241,9 @@ export function JellySqueeze({
         const handleMouseMove = (e: MouseEvent) => {
             if (containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect()
+                // Normalize Y from top (0) to bottom (1)
                 const normalizedY = (e.clientY - rect.top) / rect.height
+                // Squeeze increases as we move DOWN
                 state.targetSqueeze = Math.max(0, Math.min(state.maxSqueeze, normalizedY * state.maxSqueeze))
             }
         }
@@ -239,12 +251,16 @@ export function JellySqueeze({
         // Mouse enter/leave for rebound effect
         const handleMouseEnter = () => {
             state.isMouseOver = true
+            // Randomize colors on new interaction
+            initBlocks()
         }
 
         const handleMouseLeave = () => {
             state.isMouseOver = false
             // Spring back to original position with a bounce
             state.targetSqueeze = 0
+            // Add a little velocity kick for fun
+            state.velocity -= 50
         }
 
         const container = containerRef.current

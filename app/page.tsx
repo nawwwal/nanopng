@@ -1,5 +1,6 @@
 import { ImageUploadZone } from "@/components/image-upload-zone"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { JellySqueeze } from "@/components/jelly-squeeze"
 import Link from "next/link"
 
 export default function Home() {
@@ -28,7 +29,7 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero Section - Asymmetric Split */}
+      {/* Hero Section - Asymmetric Split with Interactive Demo */}
       <section className="border-b-2 border-foreground lg:bg-[linear-gradient(90deg,var(--background)_50%,var(--secondary)_50%)]">
         <div className="container mx-auto max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-2">
@@ -66,26 +67,12 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right: Stats */}
-            <div className="p-4 sm:p-8 lg:p-12 bg-secondary lg:bg-transparent flex flex-col justify-center">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-1">
-                  <div className="text-4xl sm:text-6xl lg:text-7xl font-black">100%</div>
-                  <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Private</div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-4xl sm:text-6xl lg:text-7xl font-black">∞</div>
-                  <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">No limits</div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-4xl sm:text-6xl lg:text-7xl font-black"><span className="accent-bg px-2">70%</span></div>
-                  <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Avg. savings</div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-4xl sm:text-6xl lg:text-7xl font-black">$0</div>
-                  <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Forever</div>
-                </div>
-              </div>
+            {/* Right: Interactive Compression Demo */}
+            <div className="p-4 sm:p-8 lg:p-12 bg-secondary lg:bg-transparent flex flex-col justify-center min-h-[400px] lg:min-h-[500px]">
+              <JellySqueeze
+                title="↕ Drag to see compression"
+                showControls={true}
+              />
             </div>
           </div>
         </div>

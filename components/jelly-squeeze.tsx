@@ -28,20 +28,24 @@ export function JellySqueeze({
         squeezeAmount: 0,
         targetSqueeze: 0,
         displaySqueeze: 0,
-        smoothing: 0.08,
+        velocity: 0, // For elastic spring
+        smoothing: 0.12, // Slightly higher for more responsive feel
+        springStiffness: 0.15, // Spring tension
+        springDamping: 0.75, // Damping factor (lower = more bouncy)
         startTime: 0,
         rafId: 0,
         isMounted: false,
+        isMouseOver: false, // Track if mouse is in container
         maxSqueeze: 200,
         originalSize: 2.4, // MB
-        blocks: [] as { x: number; y: number; size: number; offset: number }[]
+        blocks: [] as { x: number; y: number; size: number; offset: number; isAccent: boolean }[]
     })
 
-    // Initialize blocks pattern
+    // Initialize blocks pattern with random accent assignment
     useEffect(() => {
         animState.current.isMounted = true
 
-        // Create grid of blocks for visualization
+        // Create grid of blocks for visualization with random accent colors
         const blocks: typeof animState.current.blocks = []
         const gridSize = 6
         for (let i = 0; i < gridSize; i++) {
@@ -50,7 +54,8 @@ export function JellySqueeze({
                     x: i,
                     y: j,
                     size: 1,
-                    offset: Math.random() * Math.PI * 2
+                    offset: Math.random() * Math.PI * 2,
+                    isAccent: Math.random() < 0.25 // ~25% chance of being accent colored
                 })
             }
         }
@@ -103,7 +108,7 @@ export function JellySqueeze({
         setCanvasSize()
         window.addEventListener("resize", setCanvasSize)
 
-        // Animation loop
+        // Animation loop with elastic spring physics
         state.startTime = Date.now()
         const animate = () => {
             if (!state.isMounted || !ctx) return
@@ -112,12 +117,26 @@ export function JellySqueeze({
             const dt = Math.min((now - state.startTime) / 1000, 0.1)
             state.startTime = now
 
-            // Smooth lerp
-            const dampening = 1.0 - Math.exp(-state.smoothing * 60 * dt)
-            state.displaySqueeze += (state.targetSqueeze - state.displaySqueeze) * dampening
+            // Elastic spring physics
+            const displacement = state.targetSqueeze - state.displaySqueeze
+            const springForce = displacement * state.springStiffness
+            state.velocity += springForce
+            state.velocity *= state.springDamping // Apply damping
+            state.displaySqueeze += state.velocity * 60 * dt
+
+            // Clamp to bounds but allow slight overshoot for elasticity
+            if (state.displaySqueeze < -20) {
+                state.displaySqueeze = -20
+                state.velocity *= -0.3 // Bounce back
+            }
+            if (state.displaySqueeze > state.maxSqueeze + 20) {
+                state.displaySqueeze = state.maxSqueeze + 20
+                state.velocity *= -0.3 // Bounce back
+            }
 
             // Calculate compression percentage (0-70%)
-            const squeezePercent = (state.displaySqueeze / state.maxSqueeze) * 0.7
+            const clampedSqueeze = Math.max(0, Math.min(state.maxSqueeze, state.displaySqueeze))
+            const squeezePercent = (clampedSqueeze / state.maxSqueeze) * 0.7
             const compressedSize = state.originalSize * (1 - squeezePercent)
 
             // Clear canvas
@@ -136,9 +155,9 @@ export function JellySqueeze({
             const blockSize = baseSize / gridSize
 
             // Draw blocks with squeeze effect
-            state.blocks.forEach((block) => {
-                const squeezeEffect = state.displaySqueeze / state.maxSqueeze
+            const squeezeEffect = Math.max(0, state.displaySqueeze) / state.maxSqueeze
 
+            state.blocks.forEach((block) => {
                 // Calculate squeeze distortion
                 const distanceFromCenter = Math.abs(block.y - gridSize / 2) / (gridSize / 2)
                 const squeezeY = squeezeEffect * (1 - distanceFromCenter) * 0.4
@@ -150,10 +169,8 @@ export function JellySqueeze({
                 const currentBlockSize = blockSize * (1 - squeezeEffect * 0.15)
                 const gap = 3 + squeezeEffect * 2
 
-                // Alternate colors for checkerboard pattern
-                const isAccent = (block.x + block.y) % 3 === 0
-
-                if (isAccent && squeezeEffect > 0.1) {
+                // Use pre-assigned random accent pattern
+                if (block.isAccent && squeezeEffect > 0.1) {
                     ctx.fillStyle = colors.accent
                 } else {
                     ctx.fillStyle = isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.9)"
@@ -171,7 +188,7 @@ export function JellySqueeze({
             // Draw border frame
             ctx.strokeStyle = isDark ? "#ffffff" : "#000000"
             ctx.lineWidth = 3
-            const frameY = centerY - baseSize / 2 + (state.displaySqueeze / state.maxSqueeze) * 30
+            const frameY = centerY - baseSize / 2 + (clampedSqueeze / state.maxSqueeze) * 30
             const frameHeight = baseSize * (1 - squeezePercent * 0.4)
             ctx.strokeRect(
                 centerX - baseSize / 2 - 10,
@@ -219,11 +236,31 @@ export function JellySqueeze({
             }
         }
 
+        // Mouse enter/leave for rebound effect
+        const handleMouseEnter = () => {
+            state.isMouseOver = true
+        }
+
+        const handleMouseLeave = () => {
+            state.isMouseOver = false
+            // Spring back to original position with a bounce
+            state.targetSqueeze = 0
+        }
+
+        const container = containerRef.current
+        if (container) {
+            container.addEventListener("mouseenter", handleMouseEnter)
+            container.addEventListener("mouseleave", handleMouseLeave)
+        }
         window.addEventListener("mousemove", handleMouseMove)
 
         return () => {
             window.removeEventListener("resize", setCanvasSize)
             window.removeEventListener("mousemove", handleMouseMove)
+            if (container) {
+                container.removeEventListener("mouseenter", handleMouseEnter)
+                container.removeEventListener("mouseleave", handleMouseLeave)
+            }
             cancelAnimationFrame(state.rafId)
         }
     }, [isReady])

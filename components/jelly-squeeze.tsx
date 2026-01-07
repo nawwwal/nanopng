@@ -239,6 +239,9 @@ export function JellySqueeze({
 
         // Mouse move handler - always active
         const handleMouseMove = (e: MouseEvent) => {
+            // Only track if mouse is over the container
+            if (!state.isMouseOver) return
+
             if (containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect()
                 // Normalize Y from top (0) to bottom (1)
@@ -259,8 +262,8 @@ export function JellySqueeze({
             state.isMouseOver = false
             // Spring back to original position with a bounce
             state.targetSqueeze = 0
-            // Add a little velocity kick for fun
-            state.velocity -= 50
+            // Add a strong velocity kick for over-elastic rebound
+            state.velocity -= 120
         }
 
         const container = containerRef.current

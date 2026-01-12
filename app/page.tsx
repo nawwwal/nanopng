@@ -21,6 +21,7 @@ export default function Home() {
               href="https://github.com"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="GitHub (opens in new tab)"
               className="h-9 px-3 border-2 border-foreground text-foreground text-xs font-bold uppercase flex items-center justify-center btn-spring hover:bg-foreground hover:text-background"
             >
               GitHub
@@ -85,6 +86,7 @@ export default function Home() {
       {/* How It Works - Brutalist Grid */}
       <section className="border-t-2 border-foreground">
         <div className="container mx-auto max-w-7xl">
+          <h2 className="sr-only">How it works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y-2 md:divide-y-0 md:divide-x-2 divide-foreground">
             <div className="p-6 sm:p-8">
               <div className="text-6xl sm:text-7xl font-black mb-4">01</div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ImageAnalyzer } from "@/components/image-analyzer"
 import type { CompressedImage, ImageFormat } from "@/types/image"
 import { cn } from "@/lib/utils"
@@ -52,13 +52,24 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
     }
   }
 
+  // Handle Escape key to close format menu
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isFormatMenuOpen && e.key === "Escape") {
+        setIsFormatMenuOpen(false)
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [isFormatMenuOpen])
+
   // Status display for non-completed states
   if (image.status !== "completed" && image.status !== "already-optimized") {
     const statusConfig = {
       queued: { text: "QUEUED", bgClass: "bg-secondary" },
       analyzing: { text: "ANALYZING...", bgClass: "bg-secondary animate-pulse" },
       compressing: { text: "COMPRESSING...", bgClass: "bg-accent/30 animate-pulse" },
-      error: { text: image.error || "ERROR", bgClass: "bg-destructive/20" }
+      error: { text: image.error ? `ERROR: ${image.error}` : "ERROR", bgClass: "bg-destructive/20" }
     }
 
     const config = statusConfig[image.status] || statusConfig.queued
@@ -71,7 +82,7 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
               {image.status === "error" ? (
                 <span className="text-destructive font-bold">!</span>
               ) : image.previewUrl ? (
-                <img src={image.previewUrl} alt="" className="w-full h-full object-cover" />
+                <img src={image.previewUrl} alt={`Preview of ${image.originalName}`} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-2 h-2 bg-foreground/50 animate-pulse" />
               )}
@@ -98,19 +109,31 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
   const wasConverted = image.originalFormat && image.originalFormat !== image.format
 
   // Handle card click to toggle analyzer
-  const handleCardClick = (e: React.MouseEvent) => {
+  const handleCardClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     // Check if click was on an interactive element
-    const target = e.target as HTMLElement
-    if (target.closest('button') || target.closest('[data-interactive]')) {
-      return // Don't toggle on button clicks
+    // For keyboard events, we don't need this check as much because focus is explicit
+    if (e.type === 'click') {
+        const target = (e as React.MouseEvent).target as HTMLElement
+        if (target.closest('button') || target.closest('[data-interactive]')) {
+          return // Don't toggle on button clicks
+        }
     }
     setShowAnalyzer(!showAnalyzer)
   }
 
   return (
     <div
-      className="border-2 border-foreground group card-interactive stagger-item"
+      className="border-2 border-foreground group card-interactive stagger-item cursor-pointer focus-visible:ring-2 focus-visible:ring-foreground outline-none"
       onClick={handleCardClick}
+      role="button"
+      tabIndex={0}
+      aria-expanded={showAnalyzer}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleCardClick(e);
+        }
+      }}
     >
       {/* Main Row */}
       <div className="p-3 sm:p-4">
@@ -130,7 +153,11 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
             {/* Thumbnail */}
             {(image.previewUrl || image.blobUrl) && (
               <div className="w-10 h-10 border border-foreground flex items-center justify-center shrink-0 overflow-hidden bg-secondary transition-transform group-hover:scale-105">
-                <img src={image.previewUrl || image.blobUrl} alt="" className="w-full h-full object-cover" />
+                <img 
+                    src={image.previewUrl || image.blobUrl} 
+                    alt={`Preview of ${image.originalName}`} 
+                    className="w-full h-full object-cover" 
+                />
               </div>
             )}
 
@@ -164,14 +191,26 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
             {/* Format Dropdown */}
             <div className="relative">
               <button
-                onClick={() => setIsFormatMenuOpen(!isFormatMenuOpen)}
+                onClick={(e) => {
+                    e.stopPropagation(); // Prevent card click
+                    setIsFormatMenuOpen(!isFormatMenuOpen)
+                }}
+                aria-haspopup="listbox"
+                aria-expanded={isFormatMenuOpen}
+                aria-label={`Current format: ${image.format.toUpperCase()}. Click to change.`}
                 className={cn(
                   "h-8 px-3 border-2 border-foreground text-xs font-bold uppercase flex items-center gap-1.5 min-w-[80px] justify-between btn-spring",
                   isFormatMenuOpen ? "bg-foreground text-background" : "hover:bg-secondary"
                 )}
               >
                 <span>{image.format.toUpperCase()}</span>
-                <svg className={cn("w-3 h-3 transition-transform duration-200", isFormatMenuOpen && "rotate-180")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg 
+                    className={cn("w-3 h-3 transition-transform duration-200", isFormatMenuOpen && "rotate-180")} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -180,13 +219,24 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
                 <>
                   <div
                     className="fixed inset-0 z-10"
-                    onClick={() => setIsFormatMenuOpen(false)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsFormatMenuOpen(false)
+                    }}
                   />
-                  <div className="absolute right-0 top-full mt-1 z-20 border-2 border-foreground bg-background min-w-[100px] dropdown-animate brutalist-shadow-sm">
+                  <div 
+                    className="absolute right-0 top-full mt-1 z-20 border-2 border-foreground bg-background min-w-[100px] dropdown-animate brutalist-shadow-sm"
+                    role="listbox"
+                  >
                     {FORMAT_OPTIONS.map((option) => (
                       <button
                         key={option.value}
-                        onClick={() => handleFormatSelect(option.value)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleFormatSelect(option.value)
+                        }}
+                        role="option"
+                        aria-selected={option.value === image.format}
                         className={cn(
                           "w-full px-3 py-2 text-xs font-bold uppercase text-left transition-colors",
                           option.value === image.format
@@ -205,14 +255,25 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
 
             {/* Info Button - h-8 */}
             <button
-              onClick={() => setShowAnalyzer(!showAnalyzer)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAnalyzer(!showAnalyzer)
+              }}
               className={cn(
                 "w-8 h-8 border-2 border-foreground flex items-center justify-center btn-spring",
                 showAnalyzer ? "bg-foreground text-background" : "hover:bg-secondary"
               )}
               title="View Details"
+              aria-label="View details"
+              aria-expanded={showAnalyzer}
             >
-              <svg className={cn("w-4 h-4 transition-transform duration-200", showAnalyzer && "rotate-180")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg 
+                className={cn("w-4 h-4 transition-transform duration-200", showAnalyzer && "rotate-180")} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
@@ -220,8 +281,12 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
             {/* Download Button - h-8 */}
             {!isAlreadyOptimized && (
               <button
-                onClick={handleDownload}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload();
+                }}
                 className="h-8 px-3 bg-foreground text-background border-2 border-foreground text-xs font-bold uppercase flex items-center justify-center btn-spring hover:brutalist-shadow-sm"
+                aria-label="Download optimized image"
               >
                 ↓
               </button>
@@ -232,7 +297,11 @@ export function CompressionResultCard({ image, onFormatChange }: CompressionResu
 
       {/* Analyzer Panel */}
       {showAnalyzer && (
-        <div className="border-t-2 border-foreground bg-secondary/50 p-4 expand-animate">
+        <div 
+            className="border-t-2 border-foreground bg-secondary/50 p-4 expand-animate"
+            onClick={(e) => e.stopPropagation()} // Prevent card toggle when clicking inside analyzer
+            data-interactive
+        >
           <ImageAnalyzer image={image} />
         </div>
       )}

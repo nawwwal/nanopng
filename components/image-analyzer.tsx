@@ -35,7 +35,14 @@ export function ImageAnalyzer({ image }: ImageAnalyzerProps) {
                 <span className="text-xs uppercase font-bold text-muted-foreground">Size Reduction</span>
                 <span className="text-lg font-black accent-text">-{image.savings.toFixed(1)}%</span>
               </div>
-              <div className="h-2 bg-secondary border border-foreground/30">
+              <div 
+                role="progressbar"
+                aria-valuenow={Math.round(Math.min(100, image.savings))}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Size reduction percentage"
+                className="h-2 bg-secondary border border-foreground/30"
+              >
                 <div 
                   className="h-full bg-accent" 
                   style={{ width: `${Math.min(100, image.savings)}%` }}
@@ -48,7 +55,14 @@ export function ImageAnalyzer({ image }: ImageAnalyzerProps) {
                 <span className="text-xs uppercase font-bold text-muted-foreground">Est. Quality</span>
                 <span className="text-lg font-black">~{qualityScore.toFixed(0)}%</span>
               </div>
-              <div className="h-2 bg-secondary border border-foreground/30">
+              <div 
+                role="progressbar"
+                aria-valuenow={Math.round(qualityScore)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Estimated quality percentage"
+                className="h-2 bg-secondary border border-foreground/30"
+              >
                 <div 
                   className="h-full bg-foreground" 
                   style={{ width: `${qualityScore}%` }}

@@ -2,14 +2,17 @@
 
 import { useState, useCallback, useReducer, useEffect, useRef } from "react"
 import { useDropzone } from "react-dropzone"
+import { Button } from "@/components/ui/button"
 import { CompressionResultCard } from "@/components/compression-result-card"
-import { ImageService } from "@/lib/services/image-service"
-import type { CompressedImage, CompressionStatus, ImageFormat } from "@/types/image"
+import { CompressionOrchestrator } from "@/lib/services/compression-orchestrator"
+import type { CompressedImage, CompressionStatus, CompressionOptions, OutputFormat, CompressionResult, ImageAnalysis } from "@/lib/types/compression"
 import { ensureDecodable, isHeicFile } from "@/lib/core/format-decoder"
 import JSZip from "jszip"
 import { cn } from "@/lib/utils"
 
-const CONCURRENT_PROCESSING = 5
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+const MAX_FILES = 100
+const CONCURRENT_PROCESSING = 3
 
 const ACCEPTED_FORMATS = {
   "image/png": [".png"],
@@ -20,29 +23,18 @@ const ACCEPTED_FORMATS = {
   "image/heif": [".heif"],
 }
 
-// Format file size contextually (KB, MB, GB)
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B"
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-}
-
 type State = {
   images: CompressedImage[]
   isProcessing: boolean
   queueIndex: number
-  formatMode: "smart" | "keep"
 }
 
 type Action =
   | { type: "ADD_FILES"; payload: CompressedImage[] }
-  | { type: "UPDATE_STATUS"; payload: { id: string; status: CompressionStatus; progress?: number; error?: string; generation?: number } }
+  | { type: "UPDATE_STATUS"; payload: { id: string; status: CompressionStatus; progress?: number; error?: string } }
   | { type: "UPDATE_IMAGE"; payload: CompressedImage }
   | { type: "NEXT_QUEUE" }
   | { type: "CLEAR_ALL" }
-  | { type: "SET_FORMAT_MODE"; payload: "smart" | "keep" }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -57,51 +49,25 @@ function reducer(state: State, action: Action): State {
         ...state,
         images: state.images.map((img) =>
           img.id === action.payload.id
-            ? {
-              ...img,
-              status: action.payload.status,
-              progress: action.payload.progress,
-              error: action.payload.error,
-              generation: action.payload.generation !== undefined ? action.payload.generation : img.generation
-            }
+            ? { ...img, status: action.payload.status, progress: action.payload.progress, error: action.payload.error }
             : img
         ),
       }
     case "UPDATE_IMAGE":
       return {
         ...state,
-        images: state.images.map((img) => {
-          if (img.id !== action.payload.id) return img
-          // Robustness: Ignore stale results from older generations
-          if (action.payload.generation < img.generation) {
-            console.log(`Ignoring stale result for ${img.originalName} (Gen ${action.payload.generation} < ${img.generation})`)
-            return img
-          }
-          return action.payload
-        }),
+        images: state.images.map((img) => (img.id === action.payload.id ? action.payload : img)),
       }
     case "NEXT_QUEUE":
-      const processingCount = state.images.filter(img => img.status === "analyzing" || img.status === "compressing").length
-      const queuedCount = state.images.filter(img => img.status === "queued").length
-
-      if (processingCount === 0 && queuedCount === 0) {
-        return { ...state, isProcessing: false }
-      }
-      return state
+       const processingCount = state.images.filter(img => img.status === "analyzing" || img.status === "compressing").length
+       const queuedCount = state.images.filter(img => img.status === "queued").length
+       
+       if (processingCount === 0 && queuedCount === 0) {
+         return { ...state, isProcessing: false }
+       }
+       return state
     case "CLEAR_ALL":
-      return { images: [], isProcessing: false, queueIndex: 0, formatMode: state.formatMode }
-    case "SET_FORMAT_MODE":
-      return {
-        ...state,
-        formatMode: action.payload,
-        // Re-queue all completed/error images to respect the new mode
-        images: state.images.map(img =>
-          (img.status === "completed" || img.status === "already-optimized" || img.status === "error")
-            ? { ...img, status: "queued", progress: 0, generation: (img.generation || 0) + 1 }
-            : img
-        ),
-        isProcessing: true // Ensure queue processing restarts
-      }
+      return { images: [], isProcessing: false, queueIndex: 0 }
     default:
       return state
   }
@@ -112,184 +78,125 @@ export function ImageUploadZone() {
     images: [],
     isProcessing: false,
     queueIndex: 0,
-    formatMode: "smart",
   })
-
-  // Dedup cache: hash -> CompressedImage (success only)
-  const resultCacheRef = useRef<Map<string, CompressedImage>>(new Map())
-
+  
   const [isCreatingZip, setIsCreatingZip] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
+  
+  // Compression options state
+  const [compressionOptions, setCompressionOptions] = useState<CompressionOptions>({
+    quality: 85,
+    format: "auto",
+  })
+  const [resizeEnabled, setResizeEnabled] = useState(false)
+  const [targetWidth, setTargetWidth] = useState<number | undefined>()
+  const [targetHeight, setTargetHeight] = useState<number | undefined>()
+  const [targetSizeEnabled, setTargetSizeEnabled] = useState(false)
+  const [targetSizeKb, setTargetSizeKb] = useState<number | undefined>()
 
   // Map to store File objects separately
   const [fileMap] = useState<Map<string, File>>(() => new Map())
-
+  
   // Ref to track images for cleanup on unmount
   const imagesRef = useRef<CompressedImage[]>([])
-
+  
   // Ref for results section to enable auto-scroll
   const resultsSectionRef = useRef<HTMLDivElement>(null)
 
-  // Handler for format changes on individual images (with artificial loading)
-  const handleFormatChange = useCallback(async (imageId: string, newFormat: ImageFormat) => {
-    const image = state.images.find(img => img.id === imageId)
-    const file = fileMap.get(imageId)
-    if (!image || !file) return
-
-    const nextGen = (image.generation || 0) + 1
-    // Set to compressing state with new generation
-    dispatch({ type: "UPDATE_STATUS", payload: { id: imageId, status: "compressing", generation: nextGen } })
-
-    try {
-      // Add natural artificial delay for format conversion
-      const sizeInMB = file.size / (1024 * 1024)
-      const conversionDelay = 300 + (sizeInMB * 150) + (Math.random() * 200)
-      await new Promise(resolve => setTimeout(resolve, conversionDelay))
-
-      const result = await ImageService.compressToFormat(
-        file,
-        newFormat,
-        imageId,
-        image.originalName,
-        image.originalSize,
-        nextGen, // Pass new generation
-        image.analysis
-      )
-      dispatch({ type: "UPDATE_IMAGE", payload: result })
-    } catch (error) {
-      console.error("Format change failed", error)
-      dispatch({
-        type: "UPDATE_STATUS",
-        payload: {
-          id: imageId,
-          status: "error",
-          error: error instanceof Error ? error.message : "Format conversion failed"
-        }
-      })
-    }
-  }, [state.images, fileMap])
-
-  const processNextImage = useCallback(async (image: CompressedImage, formatMode: "smart" | "keep") => {
+  const processNextImage = useCallback(async (image: CompressedImage) => {
     const file = fileMap.get(image.id)
     if (!file) return
 
     try {
-      // 1. Compute Hash first
-      const inputHash = await ImageService.computeHash(file)
-
-      // Composite key: Hash + Mode
-      const cacheKey = `${inputHash}:${formatMode}`
-
-      // 2. Check Cache
-      if (resultCacheRef.current.has(cacheKey)) {
-        const cached = resultCacheRef.current.get(cacheKey)!
-        // If we found a match, we just clone it but give it a new ID/Name/Gen
-        console.log("Cache hit for", file.name)
-
-        // Artificial small delay for UX so it doesn't feel instant/broken
-        await new Promise(r => setTimeout(r, 100 + Math.random() * 100))
-
-        dispatch({
-          type: "UPDATE_IMAGE",
-          payload: {
-            ...cached,
-            id: image.id,
-            originalName: file.name, // Keep new name
-            originalSize: file.size,
-            generation: image.generation, // Keep current generation
-            status: "already-optimized", // Or completed, but cache means we are done
-            hash: inputHash // Ensure hash is set
-          }
-        })
-        return
-      }
-
-      dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "analyzing" } })
-
-      // Natural analyzing delay
-      const sizeInMB = file.size / (1024 * 1024)
-      const analyzingDelay = 400 + (sizeInMB * 100) + (Math.random() * 200)
-      await new Promise(resolve => setTimeout(resolve, analyzingDelay))
-
+      dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "compressing" } })
+      
       // Detect original format before decoding
       const isHeic = await isHeicFile(file)
-      const originalFormat = isHeic
+      const originalFormat = isHeic 
         ? (file.name.toLowerCase().endsWith(".heif") ? "heif" : "heic")
         : undefined
-
-      // Decode HEIC/HEIF files
+      
+      // Decode HEIC/HEIF files to a standard format before processing
       const decodedFile = await ensureDecodable(file)
-      const fileToProcess = decodedFile instanceof File
-        ? decodedFile
+      // Convert Blob to File if needed
+      const fileToProcess = decodedFile instanceof File 
+        ? decodedFile 
         : new File([decodedFile], file.name.replace(/\.(heic|heif)$/i, ".png"), { type: "image/png" })
+      
+      // Build compression options
+      const options: CompressionOptions = {
+        ...compressionOptions,
+        targetWidth: resizeEnabled ? targetWidth : undefined,
+        targetHeight: resizeEnabled ? targetHeight : undefined,
+        targetSizeKb: targetSizeEnabled ? targetSizeKb : undefined,
+      }
+      
+      const orchestrator = CompressionOrchestrator.getInstance();
+      const result = await orchestrator.compress({
+          id: image.id,
+          file: fileToProcess,
+          options
+      });
 
-      const analysis = await ImageService.analyze(fileToProcess)
-
-      dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "compressing" } })
-
-      // Natural compressing delay
-      const compressingDelay = 600 + (sizeInMB * 200) + (Math.random() * 300)
-      await new Promise(resolve => setTimeout(resolve, compressingDelay))
-
-      let result: CompressedImage
-
-      if (formatMode === "keep") {
-        // Keep original format
-        const keepFormat = (originalFormat === "heic" || originalFormat === "heif")
-          ? "png" // HEIC/HEIF must be converted
-          : (image.format as ImageFormat)
-
-        result = await ImageService.compressToFormat(
-          fileToProcess,
-          keepFormat,
-          image.id,
-          image.originalName,
-          image.originalSize,
-          image.generation, // Pass current generation
-          analysis
-        )
-        result.originalFormat = (originalFormat || image.format) as any
-      } else {
-        // Smart format selection
-        result = await ImageService.compress(fileToProcess, image.id, image.generation, analysis, originalFormat)
+      const compressedSize = result.blob?.size || 0
+      const savings = file.size > 0 ? ((file.size - compressedSize) / file.size) * 100 : 0
+      
+      let status: "completed" | "already-optimized" = "completed"
+      if (savings < 2 || compressedSize >= file.size) {
+        status = "already-optimized"
       }
 
-      result.hash = inputHash // Store raw hash
-
-      // Update Cache if successful
-      if (result.status === "completed" || result.status === "already-optimized") {
-        resultCacheRef.current.set(cacheKey, result)
+      const completedImage: CompressedImage = {
+          id: image.id,
+          originalName: file.name,
+          originalSize: file.size,
+          compressedSize: compressedSize,
+          compressedBlob: result.blob,
+          blobUrl: result.blob ? URL.createObjectURL(result.blob) : undefined,
+          originalBlobUrl: URL.createObjectURL(file),
+          savings: Math.max(0, savings),
+          format: (result.format as "png" | "jpeg" | "webp" | "avif") || "png",
+          originalFormat: (originalFormat || file.type.split("/")[1] || "png") as any,
+          status,
+          analysis: result.analysis,
+          resizeApplied: result.resizeApplied,
+          targetSizeMet: result.targetSizeMet
       }
 
-      dispatch({ type: "UPDATE_IMAGE", payload: result })
+      dispatch({ type: "UPDATE_IMAGE", payload: completedImage })
     } catch (error) {
       console.error("Processing failed", error)
-      dispatch({
-        type: "UPDATE_STATUS",
-        payload: {
-          id: image.id,
-          status: "error",
-          error: error instanceof Error ? error.message : "Unknown error"
-        }
+      dispatch({ 
+        type: "UPDATE_STATUS", 
+        payload: { 
+          id: image.id, 
+          status: "error", 
+          error: error instanceof Error ? error.message : "Unknown error" 
+        } 
       })
     }
-  }, [fileMap])
+  }, [fileMap, compressionOptions, resizeEnabled, targetWidth, targetHeight, targetSizeEnabled, targetSizeKb])
 
   useEffect(() => {
     if (!state.isProcessing) return
 
     const active = state.images.filter(i => i.status === "analyzing" || i.status === "compressing").length
     const queued = state.images.filter(i => i.status === "queued")
-
+    
     if (queued.length > 0 && active < CONCURRENT_PROCESSING) {
       const toProcess = queued.slice(0, CONCURRENT_PROCESSING - active)
-      toProcess.forEach(img => processNextImage(img, state.formatMode))
+      toProcess.forEach(img => processNextImage(img))
     } else if (active === 0 && queued.length === 0) {
       dispatch({ type: "NEXT_QUEUE" })
     }
-  }, [state.images, processNextImage, state.isProcessing, state.formatMode])
+  }, [state.images, processNextImage, state.isProcessing])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    // No limits - accept all files
+    if (acceptedFiles.length > MAX_FILES) {
+      alert(`Maximum ${MAX_FILES} images allowed`)
+      return
+    }
+
     const newImages: CompressedImage[] = acceptedFiles.map((file) => {
       const typePart = file.type ? file.type.split("/")[1] : ""
       const nameExtPart = file.name.split(".").pop()?.toLowerCase() ?? ""
@@ -309,20 +216,18 @@ export function ImageUploadZone() {
         format: inferredFormat as any,
         status: "queued",
         progress: 0,
-        generation: 0,
-        previewUrl: URL.createObjectURL(file)
       }
     })
 
     dispatch({ type: "ADD_FILES", payload: newImages })
-
-    // Auto-scroll to results section
+    
+    // Auto-scroll to results section after a brief delay to allow DOM update
     setTimeout(() => {
       resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     }, 100)
   }, [fileMap])
 
-  // Global paste handler
+  // Global paste handler for clipboard images
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items
@@ -342,7 +247,7 @@ export function ImageUploadZone() {
         const name = `pasted-image-${Date.now()}-${i + 1}.${ext}`
         imageFiles.push(new File([blob], name, { type: mime }))
       }
-
+      
       if (imageFiles.length > 0) {
         e.preventDefault()
         onDrop(imageFiles)
@@ -356,6 +261,7 @@ export function ImageUploadZone() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: ACCEPTED_FORMATS,
+    maxFiles: MAX_FILES,
     noClick: false,
     noKeyboard: true,
   })
@@ -368,6 +274,7 @@ export function ImageUploadZone() {
   // Cleanup blob URLs on unmount
   useEffect(() => {
     return () => {
+      // Cleanup all blob URLs when component unmounts
       imagesRef.current.forEach((img) => {
         if (img.blobUrl) URL.revokeObjectURL(img.blobUrl)
         if (img.originalBlobUrl) URL.revokeObjectURL(img.originalBlobUrl)
@@ -394,15 +301,16 @@ export function ImageUploadZone() {
       successfulImages.forEach((img) => {
         const blob = img.compressedBlob || fileMap.get(img.id)
         if (blob) {
-          const extMap: Record<string, string> = {
-            jpeg: "jpg",
-            avif: "avif",
-            webp: "webp",
-            png: "png",
-          }
-          const ext = extMap[img.format] || img.format
-          const name = `optimized-${img.originalName.replace(/\.[^/.]+$/, "")}.${ext}`
-          zip.file(name, blob)
+            // Map format to file extension
+            const extMap: Record<string, string> = {
+              jpeg: "jpg",
+              avif: "avif",
+              webp: "webp",
+              png: "png",
+            }
+            const ext = extMap[img.format] || img.format
+            const name = `optimized-${img.originalName.replace(/\.[^/.]+$/, "")}.${ext}`
+            zip.file(name, blob)
         }
       })
       const content = await zip.generateAsync({ type: "blob" })
@@ -431,25 +339,151 @@ export function ImageUploadZone() {
 
   return (
     <div className="w-full max-w-5xl mx-auto">
-      {/* Brutalist Upload Zone */}
+      {/* Compression Options Panel */}
+      <div className="mb-8 p-6 bg-card border border-border rounded-2xl shadow-lg">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Compression Settings</h3>
+        
+        <div className="space-y-6">
+          {/* Quality and Format Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Quality Slider */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Quality: {compressionOptions.quality}%
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={compressionOptions.quality}
+                onChange={(e) => setCompressionOptions({ ...compressionOptions, quality: parseInt(e.target.value) })}
+                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+              />
+            </div>
+            
+            {/* Format Selector */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Output Format
+              </label>
+              <select
+                value={compressionOptions.format}
+                onChange={(e) => setCompressionOptions({ ...compressionOptions, format: e.target.value as OutputFormat })}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="auto">Auto</option>
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
+                <option value="webp">WebP</option>
+                <option value="avif">AVIF</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Resize Options */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="resize-enabled"
+                checked={resizeEnabled}
+                onChange={(e) => {
+                  setResizeEnabled(e.target.checked)
+                  if (!e.target.checked) {
+                    setTargetWidth(undefined)
+                    setTargetHeight(undefined)
+                  }
+                }}
+                className="w-4 h-4 rounded border-border accent-primary"
+              />
+              <label htmlFor="resize-enabled" className="text-sm font-medium text-foreground cursor-pointer">
+                Resize to dimensions
+              </label>
+            </div>
+            
+            {resizeEnabled && (
+              <div className="grid grid-cols-2 gap-4 ml-6">
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Width (px)</label>
+                  <input
+                    type="number"
+                    value={targetWidth || ''}
+                    onChange={(e) => setTargetWidth(e.target.value ? parseInt(e.target.value) : undefined)}
+                    placeholder="Auto"
+                    min="1"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Height (px)</label>
+                  <input
+                    type="number"
+                    value={targetHeight || ''}
+                    onChange={(e) => setTargetHeight(e.target.value ? parseInt(e.target.value) : undefined)}
+                    placeholder="Auto"
+                    min="1"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="target-size-enabled"
+                checked={targetSizeEnabled}
+                onChange={(e) => {
+                  setTargetSizeEnabled(e.target.checked)
+                  if (!e.target.checked) {
+                    setTargetSizeKb(undefined)
+                  }
+                }}
+                className="w-4 h-4 rounded border-border accent-primary"
+              />
+              <label htmlFor="target-size-enabled" className="text-sm font-medium text-foreground cursor-pointer">
+                Target file size
+              </label>
+            </div>
+            
+            {targetSizeEnabled && (
+              <div className="ml-6">
+                <input
+                  type="number"
+                  value={targetSizeKb || ''}
+                  onChange={(e) => setTargetSizeKb(e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="Size in KB"
+                  min="1"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
       <div
         {...getRootProps()}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
         className={cn(
-          "relative cursor-pointer border-2 border-dashed hover-lift",
+          "relative group cursor-pointer rounded-3xl border-2 border-dashed transition-all duration-500 ease-out overflow-hidden",
           isDragActive
-            ? "border-foreground bg-accent/20 brutalist-shadow"
-            : "border-foreground/50 hover:border-foreground"
+            ? "border-primary bg-primary/5 scale-[1.02] shadow-2xl"
+            : isHovering
+              ? "border-primary/50 bg-secondary/30 scale-[1.01] shadow-xl"
+              : "border-border/50 bg-card shadow-lg hover:shadow-xl"
         )}
       >
         <input {...getInputProps()} />
-
-        <div className="px-6 py-12 sm:py-16 md:py-20 flex flex-col items-center text-center">
-          <div className={cn(
-            "w-16 h-16 border-2 border-foreground flex items-center justify-center mb-6 transition-transform duration-200",
-            isDragActive && "brutalist-shadow-accent scale-105"
-          )}>
+        
+        <div className="relative px-8 py-20 md:py-28 flex flex-col items-center text-center z-10">
+           <div className={cn(
+             "w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary flex items-center justify-center mb-8 transition-transform duration-500",
+             (isHovering || isDragActive) ? "scale-110 rotate-3" : "scale-100 rotate-0"
+           )}>
             <svg
-              className="w-8 h-8 text-foreground"
+              className="w-10 h-10 text-primary"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -457,115 +491,66 @@ export function ImageUploadZone() {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
+                strokeWidth={1.5}
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
           </div>
-
-          <h3 className="text-xl sm:text-2xl font-black uppercase mb-2 tracking-tight">
-            {isDragActive ? "Drop it" : "Drop images here"}
+          
+          <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-3 tracking-tight">
+            {isDragActive ? "Drop to upload" : "Upload images"}
           </h3>
-
-          <p className="text-muted-foreground max-w-md text-sm mb-6">
-            Or click to browse. Paste from clipboard works too.<br />
-            <span className="font-bold">PNG, JPEG, WebP, AVIF, HEIC</span>
+          
+          <p className="text-muted-foreground max-w-md text-lg mb-8 font-normal leading-relaxed">
+            Drag & drop files here, click to browse, or paste from clipboard. <br/> We support PNG, JPEG, WebP, AVIF & HEIC/HEIF.
           </p>
-
-          <button
-            type="button"
+          
+          <Button
+            size="lg"
             className={cn(
-              "px-6 py-2.5 border-2 border-foreground font-bold uppercase text-sm btn-spring",
-              "hover:bg-foreground hover:text-background hover:brutalist-shadow-sm",
-              isDragActive && "bg-accent text-accent-foreground border-accent-foreground"
+                "rounded-full px-8 h-12 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl",
+                (isHovering || isDragActive) ? "bg-primary text-primary-foreground scale-105" : "bg-primary text-primary-foreground"
             )}
           >
             Select Files
-          </button>
+          </Button>
+        </div>
+        
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+             <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-secondary rounded-full blur-3xl" />
         </div>
       </div>
 
       {state.images.length > 0 && (
-        <div ref={resultsSectionRef} className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {/* Header with Format Mode Toggle */}
-          <div className="flex flex-col gap-4 mb-6">
-            {/* Format Mode Toggle - Improved with icons */}
-            <div className="flex flex-wrap items-center gap-2 p-3 border-2 border-foreground bg-secondary">
-              <span className="text-xs font-bold uppercase tracking-wider mr-1">Output:</span>
-              <button
-                onClick={() => dispatch({ type: "SET_FORMAT_MODE", payload: "smart" })}
-                className={cn(
-                  "h-8 px-3 text-xs font-bold uppercase flex items-center gap-1.5 btn-spring",
-                  state.formatMode === "smart"
-                    ? "bg-foreground text-background"
-                    : "border border-foreground hover:bg-foreground/10"
-                )}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                Smallest Size
-              </button>
-              <button
-                onClick={() => dispatch({ type: "SET_FORMAT_MODE", payload: "keep" })}
-                className={cn(
-                  "h-8 px-3 text-xs font-bold uppercase flex items-center gap-1.5 btn-spring",
-                  state.formatMode === "keep"
-                    ? "bg-foreground text-background"
-                    : "border border-foreground hover:bg-foreground/10"
-                )}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                Same Format
-              </button>
-              <span className="text-[10px] text-muted-foreground ml-auto hidden sm:block">
-                {state.formatMode === "smart" ? "Auto-converts to AVIF/WebP for best compression" : "Keeps original format, just optimizes"}
-              </span>
+        <div ref={resultsSectionRef} className="mt-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                Your Library <span className="text-muted-foreground font-normal text-lg ml-2">({successfulCount}/{state.images.length})</span>
+              </h2>
+               {successfulCount > 0 && (
+                <p className="text-muted-foreground mt-1">
+                  Saved <span className="text-foreground font-semibold">{(totalSavingsBytes / 1024).toFixed(1)} KB</span> total ({averageSavings.toFixed(0)}%)
+                </p>
+              )}
             </div>
-
-            {/* Results Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-black uppercase tracking-tight">
-                  Results <span className="text-muted-foreground font-normal">({successfulCount}/{state.images.length})</span>
-                </h2>
-                {successfulCount > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Saved <span className="font-bold text-foreground">{formatFileSize(totalSavingsBytes)}</span> total
-                    <span className="accent-bg text-accent-foreground px-1 ml-1 font-bold">-{averageSavings.toFixed(0)}%</span>
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                {successfulCount > 0 && (
-                  <button
-                    onClick={handleDownloadAll}
-                    disabled={isCreatingZip}
-                    className="flex-1 sm:flex-none h-9 px-4 bg-foreground text-background font-bold uppercase text-xs disabled:opacity-50 flex items-center justify-center btn-spring hover:brutalist-shadow-sm"
-                  >
-                    {isCreatingZip ? "Zipping..." : "Download All"}
-                  </button>
-                )}
-                <button
-                  onClick={handleClearAll}
-                  className="flex-1 sm:flex-none h-9 px-4 border-2 border-foreground font-bold uppercase text-xs flex items-center justify-center btn-spring hover:bg-secondary"
-                >
-                  Clear All
-                </button>
-              </div>
+            <div className="flex gap-3 w-full sm:w-auto">
+              {successfulCount > 0 && (
+                <Button onClick={handleDownloadAll} disabled={isCreatingZip} className="flex-1 sm:flex-none rounded-full shadow-sm">
+                   {isCreatingZip ? "Zipping..." : "Download All"}
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleClearAll} className="flex-1 sm:flex-none rounded-full border-border/60 bg-transparent hover:bg-secondary/50">
+                Clear All
+              </Button>
             </div>
           </div>
 
-          {/* Results List */}
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4">
             {state.images.map((image) => (
-              <CompressionResultCard
-                key={image.id}
-                image={image}
-                onFormatChange={handleFormatChange}
-              />
+              <CompressionResultCard key={image.id} image={image} />
             ))}
           </div>
         </div>

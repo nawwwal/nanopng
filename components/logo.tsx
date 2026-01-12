@@ -1,0 +1,50 @@
+export function Logo() {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 32 32" 
+      width="32" 
+      height="32"
+      className="w-8 h-8"
+    >
+      {/* Background - always dark for consistency */}
+      <rect width="32" height="32" fill="#0a0a0a"/>
+      
+      {/* Grid cells (4x4 grid with 6x6 cells and 2px gaps) */}
+      {/* Row 1 */}
+      <rect x="2" y="2" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="10" y="2" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="18" y="2" width="6" height="6" fill="#c8ff00"/>
+      <rect x="26" y="2" width="6" height="6" fill="#1a1a1a"/>
+      
+      {/* Row 2 */}
+      <rect x="2" y="10" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="10" y="10" width="6" height="6" fill="#c8ff00"/>
+      <rect x="18" y="10" width="6" height="6" fill="#c8ff00"/>
+      <rect x="26" y="10" width="6" height="6" fill="#1a1a1a"/>
+      
+      {/* Row 3 */}
+      <rect x="2" y="18" width="6" height="6" fill="#c8ff00"/>
+      <rect x="10" y="18" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="18" y="18" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="26" y="18" width="6" height="6" fill="#c8ff00"/>
+      
+      {/* Row 4 */}
+      <rect x="2" y="26" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="10" y="26" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="18" y="26" width="6" height="6" fill="#c8ff00"/>
+      <rect x="26" y="26" width="6" height="6" fill="#1a1a1a"/>
+      
+      {/* Border for definition in light theme */}
+      <rect 
+        x="0.5" 
+        y="0.5" 
+        width="31" 
+        height="31" 
+        fill="none" 
+        stroke="#0a0a0a" 
+        strokeWidth="1"
+      />
+    </svg>
+  )
+}

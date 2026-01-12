@@ -1,6 +1,7 @@
 import { ImageUploadZone } from "@/components/image-upload-zone"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { JellySqueeze } from "@/components/jelly-squeeze"
+import { Logo } from "@/components/logo"
 import Link from "next/link"
 
 export default function Home() {
@@ -10,9 +11,7 @@ export default function Home() {
       <nav className="border-b-2 border-foreground sticky top-0 bg-background z-50">
         <div className="container mx-auto px-4 sm:px-6 h-14 flex items-center justify-between max-w-7xl">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg tracking-tight hover:opacity-80 transition-opacity uppercase">
-            <div className="w-8 h-8 bg-foreground flex items-center justify-center text-background font-black text-xs">
-              N
-            </div>
+            <Logo />
             NanoPNG
           </Link>
           <div className="flex items-center gap-3">
@@ -21,6 +20,7 @@ export default function Home() {
               href="https://github.com"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="GitHub (opens in new tab)"
               className="h-9 px-3 border-2 border-foreground text-foreground text-xs font-bold uppercase flex items-center justify-center btn-spring hover:bg-foreground hover:text-background"
             >
               GitHub
@@ -85,6 +85,7 @@ export default function Home() {
       {/* How It Works - Brutalist Grid */}
       <section className="border-t-2 border-foreground">
         <div className="container mx-auto max-w-7xl">
+          <h2 className="sr-only">How it works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y-2 md:divide-y-0 md:divide-x-2 divide-foreground">
             <div className="p-6 sm:p-8">
               <div className="text-6xl sm:text-7xl font-black mb-4">01</div>

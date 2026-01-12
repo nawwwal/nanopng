@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   description:
     "Compress PNG and JPEG images with intelligent optimization. Reduce file sizes by up to 80% while maintaining visual quality.",
   generator: "v0.app",
+  icons: {
+    icon: "/favicon.svg",
+  },
 }
 
 export default function RootLayout({

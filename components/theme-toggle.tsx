@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">("light")
@@ -23,13 +24,9 @@ export function ThemeToggle() {
   }
 
   return (
-    <button
-      onClick={toggleTheme}
-      className="w-9 h-9 border-2 border-foreground flex items-center justify-center btn-spring hover:bg-secondary icon-spin"
-      aria-label="Toggle theme"
-    >
+    <Button variant="outline" size="icon" onClick={toggleTheme} className="rounded-full bg-transparent">
       {theme === "light" ? (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -38,7 +35,7 @@ export function ThemeToggle() {
           />
         </svg>
       ) : (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -47,6 +44,7 @@ export function ThemeToggle() {
           />
         </svg>
       )}
-    </button>
+      <span className="sr-only">Toggle theme</span>
+    </Button>
   )
 }

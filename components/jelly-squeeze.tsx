@@ -158,44 +158,11 @@ export function JellySqueeze({
         }
     }, [])
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        const state = animState.current
-        const step = 10
-        
-        switch(e.key) {
-            case "ArrowUp":
-            case "ArrowRight":
-                e.preventDefault()
-                state.targetSqueeze = Math.min(state.maxSqueeze, state.targetSqueeze + step)
-                break
-            case "ArrowDown":
-            case "ArrowLeft":
-                e.preventDefault()
-                state.targetSqueeze = Math.max(0, state.targetSqueeze - step)
-                break
-            case "Home":
-                e.preventDefault()
-                state.targetSqueeze = 0
-                break
-            case "End":
-                e.preventDefault()
-                state.targetSqueeze = state.maxSqueeze
-                break
-        }
-    }
-
     return (
         <div
             ref={containerRef}
-            role="slider"
-            tabIndex={0}
-            aria-label={title}
-            aria-valuenow={Math.round(squeezeValue * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            onKeyDown={handleKeyDown}
             className={cn(
-                "relative flex flex-col items-center justify-center w-full h-full min-h-[300px] overflow-hidden select-none bg-accent/5 cursor-grab active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-foreground",
+                "relative flex flex-col items-center justify-center w-full h-full min-h-[300px] overflow-hidden select-none bg-transparent cursor-grab active:cursor-grabbing",
                 className
             )}
         >

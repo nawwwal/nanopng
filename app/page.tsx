@@ -1,6 +1,7 @@
 import { ImageUploadZone } from "@/components/image-upload-zone"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { JellySqueeze } from "@/components/jelly-squeeze"
+import { Logo } from "@/components/logo"
 import Link from "next/link"
 
 export default function Home() {
@@ -10,9 +11,7 @@ export default function Home() {
       <nav className="border-b-2 border-foreground sticky top-0 bg-background z-50">
         <div className="container mx-auto px-4 sm:px-6 h-14 flex items-center justify-between max-w-7xl">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg tracking-tight hover:opacity-80 transition-opacity uppercase">
-            <div className="w-8 h-8 bg-foreground flex items-center justify-center text-background font-black text-xs">
-              N
-            </div>
+            <Logo />
             NanoPNG
           </Link>
           <div className="flex items-center gap-3">

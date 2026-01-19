@@ -33,7 +33,8 @@ export function AdvancedSettings() {
             {/* Header - clickable to toggle */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full p-3 flex items-center justify-between text-left hover:bg-foreground/5 transition-colors"
+                className="w-full p-3 flex items-center justify-between text-left hover:bg-foreground/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground"
+                aria-expanded={isExpanded}
             >
                 <span className="text-xs font-bold uppercase tracking-wider">
                     Advanced Settings
@@ -46,6 +47,7 @@ export function AdvancedSettings() {
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
                 >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -61,18 +63,20 @@ export function AdvancedSettings() {
                             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
                                 Output Format
                             </label>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Output Format">
                                 {FORMAT_OPTIONS.map(opt => (
                                     <button
                                         key={opt.value}
                                         onClick={() => setCompressionOptions({ format: opt.value })}
                                         className={cn(
-                                            "px-2.5 py-1 border-2 text-xs font-bold uppercase transition-all",
+                                            "px-2.5 py-1 border-2 text-xs font-bold uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-foreground",
                                             compressionOptions.format === opt.value
                                                 ? "border-foreground bg-foreground text-background"
                                                 : "border-foreground/30 hover:border-foreground"
                                         )}
                                         title={opt.desc}
+                                        role="radio"
+                                        aria-checked={compressionOptions.format === opt.value}
                                     >
                                         {opt.label}
                                     </button>
@@ -96,7 +100,7 @@ export function AdvancedSettings() {
                                 max="100"
                                 value={compressionOptions.quality}
                                 onChange={(e) => setCompressionOptions({ quality: parseInt(e.target.value) })}
-                                className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
                                 aria-label="Compression Quality"
                             />
                             <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -113,7 +117,8 @@ export function AdvancedSettings() {
                     <div className="border-t border-foreground/10">
                         <button
                             onClick={() => setShowProMode(!showProMode)}
-                            className="w-full px-4 py-2 flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            className="w-full px-4 py-2 flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground"
+                            aria-expanded={showProMode}
                         >
                             <span className="font-bold uppercase tracking-wider">
                                 {showProMode ? "Hide" : "Show"} Pro Settings
@@ -126,6 +131,7 @@ export function AdvancedSettings() {
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
+                                aria-hidden="true"
                             >
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>

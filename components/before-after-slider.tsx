@@ -60,9 +60,25 @@ export function BeforeAfterSlider({
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden cursor-col-resize select-none"
+      className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden cursor-col-resize select-none ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       onMouseDown={handleMouseDown}
       onTouchStart={handleMouseDown}
+      role="slider"
+      aria-label="Comparison slider"
+      aria-valuenow={sliderPosition}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuetext={`${Math.round(sliderPosition)}% original image visible`}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault()
+          setSliderPosition((prev) => Math.max(0, prev - 5))
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault()
+          setSliderPosition((prev) => Math.min(100, prev + 5))
+        }
+      }}
     >
       {/* After Image (Compressed) - Full width */}
       <div className="absolute inset-0">
@@ -72,7 +88,7 @@ export function BeforeAfterSlider({
           className="w-full h-full object-contain"
           draggable={false}
         />
-        <div className="absolute top-4 right-4 bg-accent/90 text-accent-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">
+        <div className="absolute top-4 right-4 bg-accent/90 text-accent-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10">
           {afterLabel}
         </div>
       </div>
@@ -90,14 +106,14 @@ export function BeforeAfterSlider({
           className="w-full h-full object-contain"
           draggable={false}
         />
-        <div className="absolute top-4 left-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">
+        <div className="absolute top-4 left-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10">
           {beforeLabel}
         </div>
       </div>
 
       {/* Slider Handle */}
       <div
-        className="absolute top-0 bottom-0 w-1 bg-white shadow-lg"
+        className="absolute top-0 bottom-0 w-1 bg-white shadow-lg pointer-events-none"
         style={{ left: `${sliderPosition}%`, transform: "translateX(-50%)" }}
       >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center">

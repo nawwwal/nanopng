@@ -3,8 +3,8 @@
 import { useCallback } from "react"
 import { useDropzone } from "react-dropzone"
 import { useEditor, ACCEPTED_FORMATS } from "./editor-context"
-import { ImageGrid } from "./image-grid"
-import { ImagePreview } from "./image-preview"
+import { ImageGrid } from "@/components/editor/image-grid"
+import { ImagePreview } from "@/components/editor/image-preview"
 import { cn } from "@/lib/utils"
 
 export function UploadPanel() {
@@ -38,7 +38,7 @@ export function UploadPanel() {
                     </div>
                     <button
                         onClick={open}
-                        className="h-9 px-4 border-2 border-foreground text-foreground text-xs font-bold uppercase flex items-center gap-2 btn-spring hover:bg-foreground hover:text-background"
+                        className="h-9 px-4 border-2 border-foreground text-foreground text-xs font-bold uppercase flex items-center gap-2 btn-spring hover:bg-foreground hover:text-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -62,7 +62,7 @@ export function UploadPanel() {
             <div
                 {...getRootProps()}
                 className={cn(
-                    "w-full max-w-lg aspect-square border-3 border-dashed rounded-none transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer",
+                    "w-full max-w-lg aspect-square border-3 border-dashed rounded-none transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-foreground/20",
                     isDragActive
                         ? "border-foreground bg-foreground/5 scale-[1.02]"
                         : "border-foreground/40 hover:border-foreground hover:bg-foreground/5"

@@ -30,7 +30,8 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                 <div className="flex items-center gap-3 min-w-0">
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 border-2 border-foreground flex items-center justify-center hover:bg-foreground hover:text-background transition-colors shrink-0"
+                        className="w-8 h-8 border-2 border-foreground flex items-center justify-center hover:bg-foreground hover:text-background transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1"
+                        aria-label="Back to grid"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -51,7 +52,8 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                             removeImage(image.id)
                             onClose()
                         }}
-                        className="w-8 h-8 border-2 border-destructive/50 text-destructive flex items-center justify-center hover:bg-destructive hover:text-background hover:border-destructive transition-colors"
+                        className="w-8 h-8 border-2 border-destructive/50 text-destructive flex items-center justify-center hover:bg-destructive hover:text-background hover:border-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-1"
+                        aria-label="Remove image"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -81,22 +83,24 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                         <button
                             onClick={() => setShowOriginal(false)}
                             className={cn(
-                                "px-4 py-2 border-2 text-xs font-bold uppercase transition-all",
+                                "px-4 py-2 border-2 text-xs font-bold uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1",
                                 !showOriginal
                                     ? "border-foreground bg-foreground text-background"
                                     : "border-foreground/30 hover:border-foreground"
                             )}
+                            aria-pressed={!showOriginal}
                         >
                             Compressed
                         </button>
                         <button
                             onClick={() => setShowOriginal(true)}
                             className={cn(
-                                "px-4 py-2 border-2 text-xs font-bold uppercase transition-all",
+                                "px-4 py-2 border-2 text-xs font-bold uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1",
                                 showOriginal
                                     ? "border-foreground bg-foreground text-background"
                                     : "border-foreground/30 hover:border-foreground"
                             )}
+                            aria-pressed={showOriginal}
                         >
                             Original
                         </button>

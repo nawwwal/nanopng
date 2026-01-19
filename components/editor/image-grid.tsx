@@ -44,7 +44,7 @@ function ImageThumbnail({
         <div
             ref={elementRef}
             className={cn(
-                "relative aspect-square border-2 cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus:ring-4 focus:ring-foreground focus:ring-opacity-50",
+                "relative aspect-square border-2 cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-foreground focus-visible:ring-opacity-50",
                 isSelected
                     ? "border-foreground ring-2 ring-foreground ring-offset-2 ring-offset-background"
                     : "border-foreground/30 hover:border-foreground"
@@ -96,7 +96,7 @@ function ImageThumbnail({
                     e.stopPropagation()
                     setPreview(image.id)
                 }}
-                className="absolute top-2 right-2 w-7 h-7 border-2 border-foreground bg-background flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-foreground hover:text-background focus:opacity-100"
+                className="absolute top-2 right-2 w-7 h-7 border-2 border-foreground bg-background flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-foreground hover:text-background focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1"
                 aria-label={`Preview ${image.originalName}`}
             >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

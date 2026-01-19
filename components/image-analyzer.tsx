@@ -28,8 +28,8 @@ export function ImageAnalyzer({ image }: ImageAnalyzerProps) {
       {/* Before/After Visualization */}
       <div className="rounded-2xl overflow-hidden border border-border/50 shadow-sm">
         <BeforeAfterSlider
-          beforeImage={image.originalBlobUrl}
-          afterImage={image.blobUrl}
+          beforeImage={image.originalBlobUrl || ""}
+          afterImage={image.blobUrl || ""}
           beforeLabel="Original"
           afterLabel="Optimized"
           objectFit="contain"

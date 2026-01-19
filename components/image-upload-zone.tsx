@@ -151,7 +151,7 @@ export function ImageUploadZone() {
         originalName: file.name,
         originalSize: file.size,
         compressedSize: compressedSize,
-        compressedBlob: result.blob,
+        compressedBlob: result.blob || undefined,
         blobUrl: result.blob ? URL.createObjectURL(result.blob) : undefined,
         originalBlobUrl: URL.createObjectURL(file),
         savings: Math.max(0, savings),
@@ -160,7 +160,8 @@ export function ImageUploadZone() {
         status,
         analysis: result.analysis,
         resizeApplied: result.resizeApplied,
-        targetSizeMet: result.targetSizeMet
+        targetSizeMet: result.targetSizeMet,
+        generation: image.generation
       }
 
       dispatch({ type: "UPDATE_IMAGE", payload: completedImage })
@@ -216,6 +217,7 @@ export function ImageUploadZone() {
         format: inferredFormat as any,
         status: "queued",
         progress: 0,
+        generation: 1
       }
     })
 

@@ -25,6 +25,8 @@ export interface CompressedImage {
   progress?: number
   originalFormat?: OriginalFormat
   analysis?: ImageAnalysis
+  resizeApplied?: boolean
+  targetSizeMet?: boolean
   /** User's format preference for this image - defaults to "smart" */
   formatPreference?: FormatPreference
   /** Generation ID to handle race conditions */

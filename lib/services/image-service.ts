@@ -193,21 +193,46 @@ export class ImageService {
     id: string,
     generation: number,
     analysis?: ImageAnalysis,
-    originalFormat?: string
+    originalFormat?: string,
+    quality?: number,
+    targetWidth?: number,
+    targetHeight?: number
   ): Promise<CompressedImage> {
     const originalSize = file.size
-    const imgAnalysis = analysis || await this.analyze(file) // Re-analyze if needed? analyze is fast enough
+    const imgAnalysis = analysis || await this.analyze(file)
+
+    // Default quality to 0.85 if not provided
+    const q = quality ?? 0.85
 
     return new Promise((resolve, reject) => {
       const img = new Image()
       const url = URL.createObjectURL(file)
       img.onload = async () => {
         try {
+          // Calculate dimensions with optional resize
+          let drawWidth = img.width
+          let drawHeight = img.height
+
+          if (targetWidth || targetHeight) {
+            if (targetWidth && targetHeight) {
+              drawWidth = targetWidth
+              drawHeight = targetHeight
+            } else if (targetWidth) {
+              drawWidth = targetWidth
+              drawHeight = Math.round(img.height * (targetWidth / img.width))
+            } else if (targetHeight) {
+              drawHeight = targetHeight
+              drawWidth = Math.round(img.width * (targetHeight / img.height))
+            }
+          }
+
           const cvs = document.createElement("canvas")
-          cvs.width = img.width; cvs.height = img.height
+          cvs.width = drawWidth
+          cvs.height = drawHeight
           const ctx = cvs.getContext("2d", { willReadFrequently: true })!
-          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high"
-          ctx.drawImage(img, 0, 0)
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = "high"
+          ctx.drawImage(img, 0, 0, drawWidth, drawHeight)
 
           const rawFormat = originalFormat || file.type.split("/")[1] || "png"
           const normFormat = rawFormat === "jpg" ? "jpeg" : rawFormat.toLowerCase()
@@ -235,14 +260,15 @@ export class ImageService {
 
           // Try AVIF
           if (await canEncodeAvif()) {
-            const b = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/avif", isPhoto ? 0.75 : 0.85))
+            const avifQuality = q
+            const b = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/avif", avifQuality))
             if (b && b.size < originalSize) { finalizedBlob = b; finalizedFormat = "avif" }
           }
 
           // Try WebP (if AVIF failed or not supported)
-          if (!finalizedBlob || (finalizedFormat !== 'avif')) { // Simple logic: if AVIF supported, it wins usually.
-            const q = isPhoto ? (imgAnalysis.complexity > 0.5 ? 0.82 : 0.85) : 0.90
-            const b = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/webp", q))
+          if (!finalizedBlob || (finalizedFormat !== 'avif')) {
+            const webpQuality = q
+            const b = await new Promise<Blob | null>(r => cvs.toBlob(r, "image/webp", webpQuality))
             if (b && (!finalizedBlob || b.size < finalizedBlob.size)) {
               finalizedBlob = b; finalizedFormat = "webp"
             }

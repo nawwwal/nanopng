@@ -9,14 +9,14 @@ export function EditorLayoutInner() {
 
     return (
         <div className="h-full w-full overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_390px] h-full">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] h-full">
                 {/* Left Panel - Upload/Canvas */}
-                <div className="border-b-2 lg:border-b-0 lg:border-r-2 border-foreground bg-background h-full overflow-hidden flex flex-col">
+                <div className="border-b lg:border-b-0 lg:border-r border-foreground bg-background h-full overflow-hidden flex flex-col min-h-0">
                     <UploadPanel />
                 </div>
 
                 {/* Right Panel - Pitch/Settings */}
-                <div className="bg-secondary h-full overflow-hidden flex flex-col">
+                <div className="bg-secondary h-full overflow-hidden flex flex-col min-h-0">
                     <SettingsPanel />
                 </div>
             </div>

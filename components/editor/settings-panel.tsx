@@ -43,22 +43,27 @@ export function SettingsPanel() {
     // Settings panel when images present
     return (
         <div className="h-full flex flex-col">
-            {/* Status header */}
-            <div className="px-3 py-2 border-b border-foreground bg-background">
-                <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-baseline gap-2">
-                        <h2 className="text-sm font-black uppercase tracking-tight">Compression</h2>
-                        {selectedCount > 0 ? (
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase border border-foreground/20 px-1 rounded-sm">
-                                {selectedCount} Selected
-                            </span>
-                        ) : (
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-50">
-                                All Images
-                            </span>
-                        )}
-                    </div>
+            {/* Status header - Simplified */}
+            <div className="px-3 py-2 border-b border-foreground bg-background flex items-center justify-between shrink-0 h-10">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-xs font-black uppercase tracking-tight">Settings</h2>
+                    {selectedCount > 0 && (
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase border border-foreground/20 px-1 rounded-sm">
+                            {selectedCount} Selected
+                        </span>
+                    )}
+                </div>
 
+                <div className="flex items-center gap-3">
+                    {/* Savings summary */}
+                    {completedCount > 0 && totalSavings.bytes > 0 && (
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                            <span className="text-muted-foreground hidden sm:inline">Saved:</span>
+                            <span className="font-mono">{(totalSavings.bytes / 1024).toFixed(0)}KB</span>
+                            <span className="text-accent-text bg-accent/10 px-1 rounded">-{totalSavings.percent.toFixed(0)}%</span>
+                        </div>
+                    )}
+                    
                     {/* Processing indicator */}
                     {isProcessing && (
                         <div className="flex items-center gap-1.5" aria-live="polite">
@@ -67,19 +72,10 @@ export function SettingsPanel() {
                         </div>
                     )}
                 </div>
-
-                {/* Savings summary */}
-                {completedCount > 0 && totalSavings.bytes > 0 && (
-                    <div className="flex items-center gap-2 text-xs">
-                        <span className="text-muted-foreground">Saved:</span>
-                        <span className="font-mono font-bold">{(totalSavings.bytes / 1024).toFixed(1)} KB</span>
-                        <span className="text-accent-text font-bold text-[10px] bg-accent/10 px-1 rounded">-{totalSavings.percent.toFixed(0)}%</span>
-                    </div>
-                )}
             </div>
 
             {/* Settings content */}
-            <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 scrollbar-hide">
                 {/* Presets */}
                 <PresetSelector />
 

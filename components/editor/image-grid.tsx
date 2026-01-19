@@ -44,10 +44,10 @@ function ImageThumbnail({
         <div
             ref={elementRef}
             className={cn(
-                "relative aspect-square border-2 cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-foreground focus-visible:ring-opacity-50",
+                "relative aspect-square border cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-foreground focus-visible:ring-opacity-50",
                 isSelected
-                    ? "border-foreground shadow-[4px_4px_0_var(--foreground)] translate-x-[-2px] translate-y-[-2px]"
-                    : "border-foreground/30 hover:border-foreground hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_var(--foreground)]"
+                    ? "border-foreground shadow-[4px_4px_0_var(--foreground)] -translate-y-1"
+                    : "border-foreground/30 hover:border-foreground hover:-translate-y-1 hover:shadow-[4px_4px_0_var(--foreground)]"
             )}
             onClick={() => toggleSelect(image.id)}
             role="checkbox"
@@ -65,7 +65,7 @@ function ImageThumbnail({
                 <img
                     src={imageUrl}
                     alt={image.originalName}
-                    className="w-full h-full object-cover pointer-events-none"
+                    className="w-full h-full object-cover pointer-events-none select-none"
                     draggable={false}
                 />
             ) : (
@@ -78,9 +78,9 @@ function ImageThumbnail({
 
             {/* Selection checkbox */}
             <div className={cn(
-                "absolute top-2 left-2 w-5 h-5 border-2 flex items-center justify-center transition-all pointer-events-none z-10",
+                "absolute top-2 left-2 w-5 h-5 border flex items-center justify-center transition-all pointer-events-none z-10",
                 isSelected
-                    ? "border-accent bg-accent"
+                    ? "border-accent bg-accent shadow-sm"
                     : "border-foreground bg-background/80 opacity-0 group-hover:opacity-100"
             )}>
                 {isSelected && (
@@ -96,11 +96,12 @@ function ImageThumbnail({
                     e.stopPropagation()
                     setPreview(image.id)
                 }}
-                className="absolute top-2 right-2 w-7 h-7 border-2 border-foreground bg-background flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-foreground hover:text-background focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1"
+                className="absolute top-2 right-2 w-7 h-7 border border-foreground bg-background flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-foreground hover:text-background focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1 z-20"
                 aria-label={`Preview ${image.originalName}`}
             >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
             </button>
 
@@ -121,21 +122,23 @@ function ImageThumbnail({
 
             {/* Selected Overlay (Neo Green Gradient) */}
             {isSelected && (
-                <div className="absolute inset-0 bg-gradient-to-br from-accent/40 to-transparent mix-blend-overlay z-10 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/50 to-transparent mix-blend-multiply z-10 pointer-events-none" />
             )}
 
             {/* Bottom info bar */}
             {isComplete && (
-                <div className="absolute bottom-0 left-0 right-0 bg-foreground text-background px-2 py-1 pointer-events-none z-20">
+                <div className="absolute bottom-0 left-0 right-0 bg-foreground text-background px-2 py-1.5 pointer-events-none z-20">
                     <div className="flex items-center justify-between text-xs font-bold leading-none">
-                        <span className="truncate">{image.format.toUpperCase()}</span>
+                        <span className="truncate opacity-70">{image.format.toUpperCase()}</span>
                         <div className="flex items-center gap-2">
-                            {image.savings > 0 && (
-                                <span className="text-accent text-[10px]">-{image.savings.toFixed(0)}%</span>
-                            )}
-                            <span className="text-muted-foreground/80 text-[10px] tabular-nums">
+                            <span className="tabular-nums">
                                 {(image.compressedSize / 1024).toFixed(0)}KB
                             </span>
+                            {image.savings > 0 && (
+                                <span className="bg-accent text-accent-foreground px-1 py-0.5 text-[10px] rounded-[1px]">
+                                    -{image.savings.toFixed(0)}%
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -171,7 +174,7 @@ export function ImageGrid() {
     return (
         <div>
             {/* Selection controls */}
-            <div className="flex items-center justify-between mb-4 px-1">
+            <div className="flex items-center justify-between mb-4 px-1 sticky top-0 bg-background z-20 py-2 border-b border-foreground/10">
                 <div className="flex items-center gap-2">
                     {/* Toggle Selection Mode / Select All */}
                     <button
@@ -217,8 +220,17 @@ export function ImageGrid() {
                             : "border-foreground/30 hover:border-destructive hover:text-destructive"
                     )}
                 >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    {selectedCount > 0 ? "Delete Selected" : "Clear All"}
+                    {selectedCount > 0 ? (
+                        <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            Delete Selected
+                        </>
+                    ) : (
+                        <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            Clear All
+                        </>
+                    )}
                 </button>
             </div>
 

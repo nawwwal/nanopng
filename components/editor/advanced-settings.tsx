@@ -35,7 +35,7 @@ export function AdvancedSettings() {
         <Collapsible
             open={isExpanded}
             onOpenChange={setIsExpanded}
-            className="border-2 border-foreground/20 bg-background"
+            className="border border-foreground/20 bg-background"
         >
             <CollapsibleTrigger asChild>
                 <button
@@ -57,7 +57,7 @@ export function AdvancedSettings() {
             </CollapsibleTrigger>
 
             <CollapsibleContent className="data-[state=open]:animate-radix-slide-down data-[state=closed]:animate-radix-slide-up overflow-hidden">
-                <div className="border-t-2 border-foreground/20 space-y-4">
+                <div className="border-t border-foreground/20 space-y-4">
                     {/* Level 2: Basic Advanced Settings */}
                     <div className="p-4 space-y-4">
                         {/* Output Format */}
@@ -71,7 +71,7 @@ export function AdvancedSettings() {
                                         key={opt.value}
                                         onClick={() => setCompressionOptions({ format: opt.value })}
                                         className={cn(
-                                            "px-2.5 py-1 border-2 text-xs font-bold uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-foreground",
+                                            "px-2.5 py-1 border text-xs font-bold uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-foreground",
                                             compressionOptions.format === opt.value
                                                 ? "border-foreground bg-foreground text-background"
                                                 : "border-foreground/30 hover:border-foreground"
@@ -135,7 +135,7 @@ export function AdvancedSettings() {
                                         onChange={(e) => setCompressionOptions({
                                             targetWidth: e.target.value ? parseInt(e.target.value) : undefined
                                         })}
-                                        className="w-full px-2 py-1.5 border-2 border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                        className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
                                         aria-label="Max Width"
                                     />
                                 </div>
@@ -150,7 +150,7 @@ export function AdvancedSettings() {
                                         onChange={(e) => setCompressionOptions({
                                             targetHeight: e.target.value ? parseInt(e.target.value) : undefined
                                         })}
-                                        className="w-full px-2 py-1.5 border-2 border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                        className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
                                         aria-label="Max Height"
                                     />
                                 </div>
@@ -170,7 +170,7 @@ export function AdvancedSettings() {
                                     onChange={(e) => setCompressionOptions({
                                         targetSizeKb: e.target.value ? parseInt(e.target.value) : undefined
                                     })}
-                                    className="flex-1 px-2 py-1.5 border-2 border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                    className="flex-1 px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
                                     aria-label="Target File Size in KB"
                                 />
                                 <span className="text-xs font-bold uppercase text-muted-foreground">KB</span>

@@ -37,10 +37,7 @@
     "@radix-ui/react-toggle": "latest",
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.5.0",
     "@types/png-chunk-text": "^1.0.3",
-    "@types/three": "^0.182.0",
     "@vercel/analytics": "latest",
     "autoprefixer": "latest",
     "class-variance-authority": "latest",
@@ -70,7 +67,6 @@
     "recharts": "latest",
     "sonner": "latest",
     "tailwind-merge": "latest",
-    "three": "^0.182.0",
     "upng-js": "^2.1.0",
     "vaul": "latest",
     "zod": "latest"

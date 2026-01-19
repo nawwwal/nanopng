@@ -16,7 +16,7 @@ export default function Home() {
       <main className="h-[100dvh] flex flex-col overflow-hidden bg-background font-mono selection:bg-accent selection:text-accent-foreground">
         {/* Brutalist Navbar */}
         <nav className="border-b border-foreground bg-background z-50 shrink-0">
-          <div className="container mx-auto px-4 sm:px-6 h-14 flex items-center justify-between max-w-7xl">
+          <div className="px-4 h-14 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 font-bold text-lg tracking-tight hover:opacity-80 transition-opacity uppercase">
               <Logo />
               NanoPNG

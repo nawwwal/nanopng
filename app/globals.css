@@ -282,13 +282,39 @@
   100% { background-position: 200% 0; }
 }
 
+@keyframes shimmer-fast {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 .shimmer-green {
+  position: relative;
   background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--accent) 50%,
-    transparent 100%
+    110deg,
+    transparent 25%,
+    transparent 40%,
+    var(--accent) 48%,
+    var(--accent) 52%,
+    transparent 60%,
+    transparent 75%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
+  animation: shimmer 1.2s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+}
+
+.shimmer-green::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    var(--accent) 47%,
+    var(--accent) 53%,
+    transparent 65%
+  );
+  background-size: 200% 100%;
+  opacity: 0.6;
+  animation: shimmer-fast 0.9s cubic-bezier(0.5, 0.0, 0.3, 1) infinite;
+  animation-delay: 0.15s;
 }

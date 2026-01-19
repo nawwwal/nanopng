@@ -48,14 +48,14 @@ export function SettingsPanel() {
             <div className="p-4 border-b-2 border-foreground bg-foreground text-background">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-lg font-bold uppercase tracking-tight">Settings</h2>
+                        <h2 className="text-2xl font-black uppercase tracking-tight leading-none mb-1">Settings</h2>
                         {selectedCount > 0 ? (
-                            <p className="text-sm opacity-80">
-                                Apply to {selectedCount} selected image{selectedCount !== 1 ? 's' : ''}
+                            <p className="text-xs font-mono uppercase opacity-90 border border-background/20 inline-block px-1.5 py-0.5 mt-1">
+                                {selectedCount} Selected
                             </p>
                         ) : (
-                            <p className="text-sm opacity-80">
-                                Apply to all {images.length} image{images.length !== 1 ? 's' : ''}
+                            <p className="text-xs font-mono uppercase opacity-70 mt-1">
+                                All Images
                             </p>
                         )}
                     </div>

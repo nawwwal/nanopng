@@ -31,10 +31,12 @@ export function UploadPanel() {
         return (
             <div className="h-full flex flex-col">
                 {/* Header with add more button */}
-                <div className="p-4 border-b-2 border-foreground flex items-center justify-between">
+                <div className="p-4 border-b-2 border-foreground flex items-center justify-between bg-secondary">
                     <div>
-                        <h2 className="text-lg font-bold uppercase tracking-tight">Your Images</h2>
-                        <p className="text-sm text-muted-foreground">{images.length} file{images.length !== 1 ? 's' : ''}</p>
+                        <h2 className="text-xl font-black uppercase tracking-tight">Your Images</h2>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs font-mono px-1.5 py-0.5 border border-foreground/30 bg-background">{images.length} FILES</span>
+                        </div>
                     </div>
                     <button
                         onClick={open}
@@ -64,8 +66,8 @@ export function UploadPanel() {
                 className={cn(
                     "w-full max-w-lg aspect-square border-3 border-dashed rounded-none transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-foreground/20",
                     isDragActive
-                        ? "border-foreground bg-foreground/5 scale-[1.02]"
-                        : "border-foreground/40 hover:border-foreground hover:bg-foreground/5"
+                        ? "border-foreground bg-foreground/5 scale-[1.02] shadow-[4px_4px_0_var(--foreground)]"
+                        : "border-foreground/40 hover:border-foreground hover:bg-foreground/5 hover:shadow-[4px_4px_0_var(--foreground)] hover:-translate-y-1"
                 )}
             >
                 <input {...getInputProps()} />

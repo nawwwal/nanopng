@@ -21,8 +21,8 @@ export function PresetSelector() {
                         className={cn(
                             "p-3 border-2 text-left transition-all duration-200 group",
                             currentPreset === preset.id
-                                ? "border-foreground bg-foreground text-background"
-                                : "border-foreground/30 hover:border-foreground bg-background"
+                                ? "border-foreground accent-bg brutalist-shadow-sm -translate-y-[2px]"
+                                : "border-foreground/30 hover:border-foreground bg-background hover-lift"
                         )}
                     >
                         <div className="flex items-start gap-2">

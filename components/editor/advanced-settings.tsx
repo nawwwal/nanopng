@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useEditor } from "./editor-context"
 import { QualityPreview } from "./quality-preview"
 import { OutputFormat } from "@/lib/types/compression"
 import { cn } from "@/lib/utils"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const FORMAT_OPTIONS: { value: OutputFormat; label: string; desc: string }[] = [
     { value: "auto", label: "Auto", desc: "Best for each image" },
@@ -20,41 +21,42 @@ export function AdvancedSettings() {
     const [showProMode, setShowProMode] = useState(false)
 
     // Auto-expand when custom preset selected
-    if (currentPreset === "custom" && !isExpanded) {
-        setIsExpanded(true)
-    }
+    useEffect(() => {
+        if (currentPreset === "custom") {
+            setIsExpanded(true)
+        }
+    }, [currentPreset])
 
     // Get selected image info for size preview
     const selectedImages = images.filter(img => selectedIds.has(img.id))
     const firstImage = selectedImages[0] || images[0]
 
     return (
-        <div className="border-2 border-foreground/20">
-            {/* Header - clickable to toggle */}
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full p-3 flex items-center justify-between text-left hover:bg-foreground/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground"
-                aria-expanded={isExpanded}
-            >
-                <span className="text-xs font-bold uppercase tracking-wider">
-                    Advanced Settings
-                </span>
-                <svg
-                    className={cn(
-                        "w-4 h-4 transition-transform duration-200",
-                        isExpanded && "rotate-180"
-                    )}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
+        <Collapsible
+            open={isExpanded}
+            onOpenChange={setIsExpanded}
+            className="border-2 border-foreground/20 bg-background"
+        >
+            <CollapsibleTrigger asChild>
+                <button
+                    className="w-full p-3 flex items-center justify-between text-left hover:bg-foreground/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground group"
                 >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
+                    <span className="text-sm font-black uppercase tracking-wider group-data-[state=open]:text-accent-text transition-colors">
+                        Advanced Settings
+                    </span>
+                    <svg
+                        className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            </CollapsibleTrigger>
 
-            {/* Content */}
-            {isExpanded && (
+            <CollapsibleContent className="data-[state=open]:animate-radix-slide-down data-[state=closed]:animate-radix-slide-up overflow-hidden">
                 <div className="border-t-2 border-foreground/20 space-y-4">
                     {/* Level 2: Basic Advanced Settings */}
                     <div className="p-4 space-y-4">
@@ -198,7 +200,7 @@ export function AdvancedSettings() {
                         )}
                     </div>
                 </div>
-            )}
-        </div>
+            </CollapsibleContent>
+        </Collapsible>
     )
 }

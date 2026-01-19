@@ -44,9 +44,9 @@ function ImageThumbnail({
         <div
             ref={elementRef}
             className={cn(
-                "relative aspect-square border-2 cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-foreground focus-visible:ring-opacity-50",
+                "relative aspect-square border-2 cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-accent focus-visible:ring-opacity-50",
                 isSelected
-                    ? "border-foreground ring-2 ring-foreground ring-offset-2 ring-offset-background"
+                    ? "border-accent ring-2 ring-accent ring-offset-2 ring-offset-background shadow-[0_0_15px_rgba(var(--accent),0.3)]"
                     : "border-foreground/30 hover:border-foreground"
             )}
             onClick={() => toggleSelect(image.id)}
@@ -78,13 +78,13 @@ function ImageThumbnail({
 
             {/* Selection checkbox */}
             <div className={cn(
-                "absolute top-2 left-2 w-5 h-5 border-2 flex items-center justify-center transition-all pointer-events-none",
+                "absolute top-2 left-2 w-5 h-5 border-2 flex items-center justify-center transition-all pointer-events-none z-10",
                 isSelected
-                    ? "border-background bg-foreground"
+                    ? "border-accent bg-accent"
                     : "border-foreground bg-background/80 opacity-0 group-hover:opacity-100"
             )}>
                 {isSelected && (
-                    <svg className="w-3 h-3 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                 )}
@@ -119,15 +119,20 @@ function ImageThumbnail({
                 </div>
             )}
 
+            {/* Size Savings Badge - Upfront */}
+            {isComplete && image.savings > 0 && (
+                <div className="absolute top-2 right-2 bg-accent text-accent-foreground px-1.5 py-0.5 z-10 text-[10px] font-black uppercase tracking-wider border border-foreground/10 shadow-sm">
+                    -{image.savings.toFixed(0)}%
+                </div>
+            )}
+
             {/* Bottom info bar */}
             {isComplete && (
                 <div className="absolute bottom-0 left-0 right-0 bg-foreground/90 text-background px-2 py-1 pointer-events-none">
                     <div className="flex items-center justify-between text-xs font-mono">
                         <span className="truncate">{image.format.toUpperCase()}</span>
-                        <span className={cn(
-                            image.savings > 0 ? "text-green-300" : "text-muted"
-                        )}>
-                            {image.savings > 0 ? `-${image.savings.toFixed(0)}%` : "0%"}
+                        <span className="text-muted-foreground text-[10px]">
+                            {(image.compressedSize / 1024).toFixed(0)}KB
                         </span>
                     </div>
                 </div>
@@ -206,7 +211,7 @@ export function ImageGrid() {
                 {/* Marquee selection rectangle */}
                 {isSelecting && selectionRect && selectionRect.width > 5 && selectionRect.height > 5 && (
                     <div
-                        className="absolute border-2 border-foreground bg-foreground/10 pointer-events-none z-10"
+                        className="absolute border-2 border-accent bg-accent/20 pointer-events-none z-10"
                         style={{
                             left: selectionRect.x,
                             top: selectionRect.y,

@@ -5,6 +5,7 @@ import { useDropzone } from "react-dropzone"
 import { useEditor, ACCEPTED_FORMATS } from "./editor-context"
 import { ImageGrid } from "@/components/editor/image-grid"
 import { ImagePreview } from "@/components/editor/image-preview"
+import { ExportButton } from "@/components/export-button"
 import { cn } from "@/lib/utils"
 
 export function UploadPanel() {
@@ -32,23 +33,25 @@ export function UploadPanel() {
             <div className="h-full flex flex-col">
                 {/* Header with add more button */}
                 <div className="p-4 border-b-2 border-foreground flex items-center justify-between bg-secondary">
-                    <div>
-                        <h2 className="text-xl font-black uppercase tracking-tight">Your Images</h2>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs font-bold px-1.5 py-0.5 border border-foreground/30 bg-background tabular-nums">{images.length} FILES</span>
-                        </div>
+                    <h2 className="text-xl font-black uppercase tracking-tight">
+                        Your Images
+                        <span className="ml-2 text-muted-foreground">({images.length})</span>
+                    </h2>
+
+                    <div className="flex items-center gap-2">
+                        <ExportButton />
+                        <button
+                            onClick={open}
+                            className="h-9 w-9 border-2 border-foreground flex items-center justify-center hover:bg-foreground hover:text-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-foreground"
+                            title="Add more images"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                        </button>
                     </div>
-                    <button
-                        onClick={open}
-                        className="h-9 px-4 border-2 border-foreground text-foreground text-xs font-bold uppercase flex items-center gap-2 btn-spring hover:bg-foreground hover:text-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add More
-                    </button>
-                    <input {...getInputProps()} />
                 </div>
+                <input {...getInputProps()} />
 
                 {/* Image grid */}
                 <div className="flex-1 overflow-auto p-4">

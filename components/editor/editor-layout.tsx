@@ -8,15 +8,15 @@ export function EditorLayoutInner() {
     const { hasImages } = useEditor()
 
     return (
-        <div className="min-h-[calc(100vh-3.5rem)] border-t-2 border-foreground">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] min-h-[calc(100vh-3.5rem)]">
+        <div className="h-[calc(100vh-3.5rem)] border-t-2 border-foreground overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] h-full">
                 {/* Left Panel - Upload/Canvas */}
-                <div className="border-b-2 lg:border-b-0 lg:border-r-2 border-foreground bg-background">
+                <div className="border-b-2 lg:border-b-0 lg:border-r-2 border-foreground bg-background h-full overflow-hidden">
                     <UploadPanel />
                 </div>
 
                 {/* Right Panel - Pitch/Settings */}
-                <div className="bg-secondary">
+                <div className="bg-secondary h-full overflow-hidden">
                     <SettingsPanel />
                 </div>
             </div>

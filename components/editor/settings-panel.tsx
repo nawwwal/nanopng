@@ -45,17 +45,17 @@ export function SettingsPanel() {
     return (
         <div className="h-full flex flex-col">
             {/* Status header */}
-            <div className="p-4 border-b-2 border-foreground bg-foreground text-background">
+            <div className="p-4 border-b-2 border-foreground bg-background">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight leading-none mb-1">Settings</h2>
+                        <h2 className="text-lg font-black uppercase tracking-tight leading-none mb-1">Compression</h2>
                         {selectedCount > 0 ? (
-                            <p className="text-xs font-mono uppercase opacity-90 border border-background/20 inline-block px-1.5 py-0.5 mt-1">
-                                {selectedCount} Selected
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Applied to <span className="font-bold text-foreground">{selectedCount} selected</span>
                             </p>
                         ) : (
-                            <p className="text-xs font-mono uppercase opacity-70 mt-1">
-                                All Images
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Applied to <span className="font-bold text-foreground">all images</span>
                             </p>
                         )}
                     </div>
@@ -63,18 +63,18 @@ export function SettingsPanel() {
                     {/* Processing indicator */}
                     {isProcessing && (
                         <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-background rounded-full animate-pulse" />
-                            <span className="text-xs font-mono uppercase">Processing...</span>
+                            <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                            <span className="text-xs font-mono uppercase text-muted-foreground">Processing...</span>
                         </div>
                     )}
                 </div>
 
                 {/* Savings summary */}
                 {completedCount > 0 && totalSavings.bytes > 0 && (
-                    <div className="mt-3 pt-3 border-t border-background/20">
-                        <p className="text-sm">
+                    <div className="mt-3 pt-3 border-t border-foreground/10">
+                        <p className="text-sm text-foreground">
                             Saved <strong className="font-mono">{(totalSavings.bytes / 1024).toFixed(1)} KB</strong>
-                            {" "}({totalSavings.percent.toFixed(0)}% reduction)
+                            {" "}({totalSavings.percent.toFixed(0)}%)
                         </p>
                     </div>
                 )}

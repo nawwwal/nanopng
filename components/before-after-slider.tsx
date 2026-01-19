@@ -1,12 +1,15 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { cn } from "@/lib/utils"
 
 interface BeforeAfterSliderProps {
   beforeImage: string
   afterImage: string
   beforeLabel?: string
   afterLabel?: string
+  className?: string
+  objectFit?: "contain" | "cover" | "fill" | "none" | "scale-down"
 }
 
 export function BeforeAfterSlider({
@@ -14,6 +17,8 @@ export function BeforeAfterSlider({
   afterImage,
   beforeLabel = "Original",
   afterLabel = "Compressed",
+  className,
+  objectFit = "cover"
 }: BeforeAfterSliderProps) {
   const [sliderPosition, setSliderPosition] = useState(50)
   const [isDragging, setIsDragging] = useState(false)
@@ -60,7 +65,12 @@ export function BeforeAfterSlider({
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden cursor-col-resize select-none ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className={cn(
+        "relative w-full overflow-hidden cursor-col-resize select-none ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        // Default to aspect-video if no class provided, but allow override
+        !className?.includes("h-") && !className?.includes("aspect-") ? "aspect-video" : "",
+        className
+      )}
       onMouseDown={handleMouseDown}
       onTouchStart={handleMouseDown}
       role="slider"
@@ -85,10 +95,13 @@ export function BeforeAfterSlider({
         <img
           src={afterImage || "/placeholder.svg"}
           alt={afterLabel}
-          className="w-full h-full object-contain"
+          className={cn("w-full h-full pointer-events-none select-none",
+            objectFit === "contain" ? "object-contain" :
+              objectFit === "cover" ? "object-cover" : "object-fill"
+          )}
           draggable={false}
         />
-        <div className="absolute top-4 right-4 bg-accent/90 text-accent-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10">
+        <div className="absolute top-4 right-4 bg-accent/90 text-accent-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10 pointer-events-none select-none">
           {afterLabel}
         </div>
       </div>
@@ -103,17 +116,20 @@ export function BeforeAfterSlider({
         <img
           src={beforeImage || "/placeholder.svg"}
           alt={beforeLabel}
-          className="w-full h-full object-contain"
+          className={cn("w-full h-full pointer-events-none select-none",
+            objectFit === "contain" ? "object-contain" :
+              objectFit === "cover" ? "object-cover" : "object-fill"
+          )}
           draggable={false}
         />
-        <div className="absolute top-4 left-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10">
+        <div className="absolute top-4 left-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10 pointer-events-none select-none">
           {beforeLabel}
         </div>
       </div>
 
       {/* Slider Handle */}
       <div
-        className="absolute top-0 bottom-0 w-1 bg-white shadow-lg pointer-events-none"
+        className="absolute top-0 bottom-0 w-1 bg-white shadow-lg pointer-events-none z-20"
         style={{ left: `${sliderPosition}%`, transform: "translateX(-50%)" }}
       >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { BeforeAfterSlider } from "@/components/before-after-slider"
 import { useEditor } from "./editor-context"
 import type { CompressedImage } from "@/lib/types/compression"
 import { cn } from "@/lib/utils"
@@ -12,10 +12,10 @@ interface ImagePreviewProps {
 
 export function ImagePreview({ image, onClose }: ImagePreviewProps) {
     const { removeImage } = useEditor()
-    const [showOriginal, setShowOriginal] = useState(false)
+
 
     const isComplete = image.status === "completed" || image.status === "already-optimized"
-    const currentUrl = showOriginal ? image.originalBlobUrl : (image.blobUrl || image.originalBlobUrl)
+    const currentUrl = image.blobUrl || image.originalBlobUrl
 
     const formatSize = (bytes: number) => {
         if (bytes < 1024) return `${bytes} B`
@@ -64,7 +64,14 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
 
             {/* Image display */}
             <div className="flex-1 relative overflow-hidden bg-secondary/30 flex items-center justify-center p-4">
-                {currentUrl ? (
+                {isComplete && image.originalBlobUrl && image.blobUrl ? (
+                    <BeforeAfterSlider
+                        beforeImage={image.originalBlobUrl}
+                        afterImage={image.blobUrl}
+                        className="h-full"
+                        objectFit="contain"
+                    />
+                ) : currentUrl ? (
                     <img
                         src={currentUrl}
                         alt={image.originalName}
@@ -78,33 +85,7 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
             {/* Footer with comparison controls */}
             {isComplete && image.originalBlobUrl && image.blobUrl && (
                 <div className="p-4 border-t-2 border-foreground">
-                    {/* Toggle */}
-                    <div className="flex items-center justify-center gap-4 mb-4">
-                        <button
-                            onClick={() => setShowOriginal(false)}
-                            className={cn(
-                                "px-4 py-2 border-2 text-xs font-bold uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1",
-                                !showOriginal
-                                    ? "border-foreground bg-foreground text-background"
-                                    : "border-foreground/30 hover:border-foreground"
-                            )}
-                            aria-pressed={!showOriginal}
-                        >
-                            Compressed
-                        </button>
-                        <button
-                            onClick={() => setShowOriginal(true)}
-                            className={cn(
-                                "px-4 py-2 border-2 text-xs font-bold uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1",
-                                showOriginal
-                                    ? "border-foreground bg-foreground text-background"
-                                    : "border-foreground/30 hover:border-foreground"
-                            )}
-                            aria-pressed={showOriginal}
-                        >
-                            Original
-                        </button>
-                    </div>
+
 
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-4 text-center">

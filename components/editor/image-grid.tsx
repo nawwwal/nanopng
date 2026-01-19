@@ -46,8 +46,8 @@ function ImageThumbnail({
             className={cn(
                 "relative aspect-square border-2 cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-accent focus-visible:ring-opacity-50",
                 isSelected
-                    ? "border-accent ring-2 ring-accent ring-offset-2 ring-offset-background shadow-[0_0_15px_rgba(var(--accent),0.3)]"
-                    : "border-foreground/30 hover:border-foreground"
+                    ? "border-accent ring-2 ring-accent ring-offset-2 ring-offset-background shadow-[4px_4px_0_var(--accent)]"
+                    : "border-foreground/30 hover:border-foreground hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_var(--foreground)]"
             )}
             onClick={() => toggleSelect(image.id)}
             role="checkbox"
@@ -121,7 +121,7 @@ function ImageThumbnail({
 
             {/* Size Savings Badge - Upfront */}
             {isComplete && image.savings > 0 && (
-                <div className="absolute top-2 right-2 bg-accent text-accent-foreground px-1.5 py-0.5 z-10 text-[10px] font-black uppercase tracking-wider border border-foreground/10 shadow-sm">
+                <div className="absolute top-2 right-11 bg-accent text-accent-foreground px-1.5 py-0.5 z-10 text-[10px] font-black uppercase tracking-wider border border-foreground/10 shadow-sm pointer-events-none">
                     -{image.savings.toFixed(0)}%
                 </div>
             )}

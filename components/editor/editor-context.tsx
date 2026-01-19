@@ -201,10 +201,35 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const setCompressionOptions = useCallback((options: Partial<CompressionOptions>) => {
-        setCompressionOptionsState(prev => ({ ...prev, ...options }))
+        setCompressionOptionsState(prev => {
+            const newOptions = { ...prev, ...options }
+
+            // Trigger reprocessing for all non-processing images
+            // We need to access the current state, so we'll use a side effect or thunk pattern if possible,
+            // but since we are inside a simplified hook, we can access state.images from the ref or closure?
+            // "state" from useReducer is available in this scope.
+
+            const imagesToReprocess = imagesRef.current.filter(img =>
+                img.status === "completed" ||
+                img.status === "already-optimized" ||
+                img.status === "error"
+            )
+
+            if (imagesToReprocess.length > 0) {
+                // Batch update would be better but we can map dispatch
+                imagesToReprocess.forEach(img => {
+                    dispatch({
+                        type: "UPDATE_STATUS",
+                        payload: { id: img.id, status: "queued", progress: 0 }
+                    })
+                })
+            }
+
+            return newOptions
+        })
         // If user manually changes settings, switch to custom preset
         setCurrentPreset("custom")
-    }, [])
+    }, [state.images]) // Added state.images dependency to access latest images? No, imagesRef.current avoids this dependency.
 
     // Process image
     const processNextImage = useCallback(async (image: CompressedImage) => {

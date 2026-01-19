@@ -115,89 +115,61 @@ export function AdvancedSettings() {
                         <QualityPreview />
                     </div>
 
-                    {/* Level 3: Pro Mode Toggle */}
-                    <div className="border-t border-foreground/10">
-                        <button
-                            onClick={() => setShowProMode(!showProMode)}
-                            className="w-full px-4 py-2 flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground"
-                            aria-expanded={showProMode}
-                        >
-                            <span className="font-bold uppercase tracking-wider">
-                                {showProMode ? "Hide" : "Show"} Pro Settings
-                            </span>
-                            <svg
-                                className={cn(
-                                    "w-3 h-3 transition-transform duration-200",
-                                    showProMode && "rotate-180"
-                                )}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                aria-hidden="true"
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
+                    {/* Resize & Constraints */}
+                    <div className="p-4 border-t border-foreground/10 space-y-4">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            Resize & Constraints
+                        </label>
 
-                        {showProMode && (
-                            <div className="px-4 pb-4 space-y-4">
-                                {/* Max Dimensions */}
+                        {/* Max Dimensions */}
+                        <div>
+                            <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                                        Max Dimensions
-                                    </label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <input
-                                                type="number"
-                                                placeholder="Width"
-                                                min="1"
-                                                value={compressionOptions.targetWidth || ""}
-                                                onChange={(e) => setCompressionOptions({
-                                                    targetWidth: e.target.value ? parseInt(e.target.value) : undefined
-                                                })}
-                                                className="w-full px-2 py-1.5 border-2 border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground"
-                                                aria-label="Max Width"
-                                            />
-                                        </div>
-                                        <div>
-                                            <input
-                                                type="number"
-                                                placeholder="Height"
-                                                min="1"
-                                                value={compressionOptions.targetHeight || ""}
-                                                onChange={(e) => setCompressionOptions({
-                                                    targetHeight: e.target.value ? parseInt(e.target.value) : undefined
-                                                })}
-                                                className="w-full px-2 py-1.5 border-2 border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground"
-                                                aria-label="Max Height"
-                                            />
-                                        </div>
-                                    </div>
+                                    <input
+                                        type="number"
+                                        placeholder="Max Width"
+                                        min="1"
+                                        value={compressionOptions.targetWidth || ""}
+                                        onChange={(e) => setCompressionOptions({
+                                            targetWidth: e.target.value ? parseInt(e.target.value) : undefined
+                                        })}
+                                        className="w-full px-2 py-1.5 border-2 border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                        aria-label="Max Width"
+                                    />
                                 </div>
-
-                                {/* Target Size */}
                                 <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                                        Target File Size
-                                    </label>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            placeholder="e.g., 500"
-                                            min="1"
-                                            value={compressionOptions.targetSizeKb || ""}
-                                            onChange={(e) => setCompressionOptions({
-                                                targetSizeKb: e.target.value ? parseInt(e.target.value) : undefined
-                                            })}
-                                            className="flex-1 px-2 py-1.5 border-2 border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground"
-                                            aria-label="Target File Size in KB"
-                                        />
-                                        <span className="text-xs font-bold uppercase text-muted-foreground">KB</span>
-                                    </div>
+                                    <input
+                                        type="number"
+                                        placeholder="Max Height"
+                                        min="1"
+                                        value={compressionOptions.targetHeight || ""}
+                                        onChange={(e) => setCompressionOptions({
+                                            targetHeight: e.target.value ? parseInt(e.target.value) : undefined
+                                        })}
+                                        className="w-full px-2 py-1.5 border-2 border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                        aria-label="Max Height"
+                                    />
                                 </div>
                             </div>
-                        )}
+                        </div>
+
+                        {/* Target Size */}
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    placeholder="Target Size (e.g., 500)"
+                                    min="1"
+                                    value={compressionOptions.targetSizeKb || ""}
+                                    onChange={(e) => setCompressionOptions({
+                                        targetSizeKb: e.target.value ? parseInt(e.target.value) : undefined
+                                    })}
+                                    className="flex-1 px-2 py-1.5 border-2 border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                    aria-label="Target File Size in KB"
+                                />
+                                <span className="text-xs font-bold uppercase text-muted-foreground">KB</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </CollapsibleContent>

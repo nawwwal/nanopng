@@ -35,7 +35,7 @@ export function UploadPanel() {
                     <div>
                         <h2 className="text-xl font-black uppercase tracking-tight">Your Images</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs font-mono px-1.5 py-0.5 border border-foreground/30 bg-background">{images.length} FILES</span>
+                            <span className="text-xs font-bold px-1.5 py-0.5 border border-foreground/30 bg-background tabular-nums">{images.length} FILES</span>
                         </div>
                     </div>
                     <button
@@ -92,7 +92,7 @@ export function UploadPanel() {
 
                 <div className="flex flex-wrap gap-2 justify-center">
                     {["PNG", "JPEG", "WebP", "AVIF", "HEIC"].map(format => (
-                        <span key={format} className="px-2 py-1 text-xs font-mono border border-foreground/30">
+                        <span key={format} className="px-2 py-1 text-xs font-bold uppercase tracking-wider border border-foreground/30">
                             {format}
                         </span>
                     ))}

@@ -77,12 +77,12 @@
     "zod": "latest"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "latest",
+    "@tailwindcss/postcss": "^4.0.0-beta.9",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "postcss": "latest",
-    "tailwindcss": "latest",
+    "tailwindcss": "^4.0.0-beta.9",
     "tw-animate-css": "latest",
     "typescript": "latest"
   }

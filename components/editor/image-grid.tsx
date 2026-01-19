@@ -129,9 +129,9 @@ function ImageThumbnail({
             {/* Bottom info bar */}
             {isComplete && (
                 <div className="absolute bottom-0 left-0 right-0 bg-foreground/90 text-background px-2 py-1 pointer-events-none">
-                    <div className="flex items-center justify-between text-xs font-mono">
+                    <div className="flex items-center justify-between text-xs font-bold">
                         <span className="truncate">{image.format.toUpperCase()}</span>
-                        <span className="text-muted-foreground text-[10px]">
+                        <span className="text-muted-foreground text-[10px] tabular-nums">
                             {(image.compressedSize / 1024).toFixed(0)}KB
                         </span>
                     </div>
@@ -185,7 +185,7 @@ export function ImageGrid() {
                 {selectedCount > 0 && (
                     <>
                         <span className="text-xs text-muted-foreground">•</span>
-                        <span className="text-xs font-mono text-muted-foreground">
+                        <span className="text-xs font-bold text-muted-foreground tabular-nums">
                             {selectedCount} selected
                         </span>
                     </>

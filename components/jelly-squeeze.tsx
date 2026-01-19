@@ -186,7 +186,7 @@ export function JellySqueeze({
             {/* HTML Overlay for Text */}
             <div className="absolute bottom-8 left-0 right-0 z-20 flex flex-col items-center pointer-events-none">
                 {savings > 5 && (
-                    <div className="bg-accent text-black px-2 py-0.5 mb-2 font-bold font-mono text-sm leading-none animate-in fade-in slide-in-from-bottom-2">
+                    <div className="bg-accent text-black px-2 py-0.5 mb-2 font-bold font-mono text-sm leading-none animate-fade-in-up">
                         -{savings}%
                     </div>
                 )}

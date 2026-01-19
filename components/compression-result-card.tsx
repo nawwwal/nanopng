@@ -191,7 +191,7 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
       </div>
 
       {showAnalyzer && (
-        <div className="border-t border-border/40 bg-secondary/20 p-5 animate-in slide-in-from-top-2 duration-200">
+        <div className="border-t border-border/40 bg-secondary/20 p-5 animate-slide-in-down duration-200">
           <ImageAnalyzer image={image} />
         </div>
       )}

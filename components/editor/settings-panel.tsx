@@ -45,37 +45,36 @@ export function SettingsPanel() {
     return (
         <div className="h-full flex flex-col">
             {/* Status header */}
-            <div className="p-4 border-b-2 border-foreground bg-background">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-lg font-black uppercase tracking-tight leading-none mb-1">Compression</h2>
+            <div className="px-3 py-2 border-b border-foreground bg-background">
+                <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-baseline gap-2">
+                        <h2 className="text-sm font-black uppercase tracking-tight">Compression</h2>
                         {selectedCount > 0 ? (
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Applied to <span className="font-bold text-foreground">{selectedCount} selected</span>
-                            </p>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase border border-foreground/20 px-1 rounded-sm">
+                                {selectedCount} Selected
+                            </span>
                         ) : (
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Applied to <span className="font-bold text-foreground">all images</span>
-                            </p>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-50">
+                                All Images
+                            </span>
                         )}
                     </div>
 
                     {/* Processing indicator */}
                     {isProcessing && (
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-                            <span className="text-xs font-mono uppercase text-muted-foreground">Processing...</span>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
+                            <span className="text-[10px] font-bold uppercase text-muted-foreground">Processing</span>
                         </div>
                     )}
                 </div>
 
                 {/* Savings summary */}
                 {completedCount > 0 && totalSavings.bytes > 0 && (
-                    <div className="mt-3 pt-3 border-t border-foreground/10">
-                        <p className="text-sm text-foreground">
-                            Saved <strong className="font-mono">{(totalSavings.bytes / 1024).toFixed(1)} KB</strong>
-                            {" "}({totalSavings.percent.toFixed(0)}%)
-                        </p>
+                    <div className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground">Saved:</span>
+                        <span className="font-mono font-bold">{(totalSavings.bytes / 1024).toFixed(1)} KB</span>
+                        <span className="text-accent-text font-bold text-[10px] bg-accent/10 px-1 rounded">-{totalSavings.percent.toFixed(0)}%</span>
                     </div>
                 )}
             </div>

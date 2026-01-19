@@ -44,9 +44,9 @@ function ImageThumbnail({
         <div
             ref={elementRef}
             className={cn(
-                "relative aspect-square border-2 cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-accent focus-visible:ring-opacity-50",
+                "relative aspect-square border-2 cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-foreground focus-visible:ring-opacity-50",
                 isSelected
-                    ? "border-accent ring-2 ring-accent ring-offset-2 ring-offset-background shadow-[4px_4px_0_var(--accent)]"
+                    ? "border-foreground shadow-[4px_4px_0_var(--foreground)] translate-x-[-2px] translate-y-[-2px]"
                     : "border-foreground/30 hover:border-foreground hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_var(--foreground)]"
             )}
             onClick={() => toggleSelect(image.id)}
@@ -106,34 +106,37 @@ function ImageThumbnail({
 
             {/* Status overlay */}
             {isProcessing && (
-                <div className="absolute inset-0 bg-background/80 flex items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 bg-background/80 flex items-center justify-center pointer-events-none z-20">
                     <div className="w-8 h-8 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
                 </div>
             )}
 
             {hasError && (
-                <div className="absolute inset-0 bg-destructive/80 flex items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 bg-destructive/80 flex items-center justify-center pointer-events-none z-20">
                     <svg className="w-8 h-8 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </div>
             )}
 
-            {/* Size Savings Badge - Upfront */}
-            {isComplete && image.savings > 0 && (
-                <div className="absolute top-2 right-11 bg-accent text-accent-foreground px-1.5 py-0.5 z-10 text-[10px] font-black uppercase tracking-wider border border-foreground/10 shadow-sm pointer-events-none">
-                    -{image.savings.toFixed(0)}%
-                </div>
+            {/* Selected Overlay (Neo Green Gradient) */}
+            {isSelected && (
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/40 to-transparent mix-blend-overlay z-10 pointer-events-none" />
             )}
 
             {/* Bottom info bar */}
             {isComplete && (
-                <div className="absolute bottom-0 left-0 right-0 bg-foreground/90 text-background px-2 py-1 pointer-events-none">
-                    <div className="flex items-center justify-between text-xs font-bold">
+                <div className="absolute bottom-0 left-0 right-0 bg-foreground text-background px-2 py-1 pointer-events-none z-20">
+                    <div className="flex items-center justify-between text-xs font-bold leading-none">
                         <span className="truncate">{image.format.toUpperCase()}</span>
-                        <span className="text-muted-foreground text-[10px] tabular-nums">
-                            {(image.compressedSize / 1024).toFixed(0)}KB
-                        </span>
+                        <div className="flex items-center gap-2">
+                            {image.savings > 0 && (
+                                <span className="text-accent text-[10px]">-{image.savings.toFixed(0)}%</span>
+                            )}
+                            <span className="text-muted-foreground/80 text-[10px] tabular-nums">
+                                {(image.compressedSize / 1024).toFixed(0)}KB
+                            </span>
+                        </div>
                     </div>
                 </div>
             )}
@@ -142,7 +145,7 @@ function ImageThumbnail({
 }
 
 export function ImageGrid() {
-    const { images, selectedIds, selectedCount, selectImage, deselectAll, selectAll, clearAll } = useEditor()
+    const { images, selectedIds, selectedCount, selectImage, deselectAll, selectAll, clearAll, removeImage } = useEditor()
     const containerRef = useRef<HTMLDivElement>(null)
     const itemRectsRef = useRef<Map<string, DOMRect>>(new Map())
 
@@ -168,28 +171,55 @@ export function ImageGrid() {
     return (
         <div>
             {/* Selection controls */}
-            <div className="flex items-center gap-3 mb-4">
-                <button
-                    onClick={selectedCount === images.length ? deselectAll : selectAll}
-                    className="text-xs font-bold uppercase text-muted-foreground hover:text-foreground transition-colors"
-                >
-                    {selectedCount === images.length ? "Deselect All" : "Select All"}
-                </button>
-                <span className="text-xs text-muted-foreground">•</span>
-                <button
-                    onClick={clearAll}
-                    className="text-xs font-bold uppercase text-destructive hover:opacity-80 transition-opacity"
-                >
-                    Clear All
-                </button>
-                {selectedCount > 0 && (
-                    <>
-                        <span className="text-xs text-muted-foreground">•</span>
+            <div className="flex items-center justify-between mb-4 px-1">
+                <div className="flex items-center gap-2">
+                    {/* Toggle Selection Mode / Select All */}
+                    <button
+                        onClick={selectedCount === images.length ? deselectAll : selectAll}
+                        className="h-8 px-3 border border-foreground/30 hover:border-foreground hover:bg-foreground hover:text-background text-xs font-bold uppercase transition-all flex items-center gap-2 rounded-sm"
+                    >
+                        {selectedCount === images.length ? (
+                            <>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                Deselect All
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                Select All
+                            </>
+                        )}
+                    </button>
+
+                    {selectedCount > 0 && (
                         <span className="text-xs font-bold text-muted-foreground tabular-nums">
                             {selectedCount} selected
                         </span>
-                    </>
-                )}
+                    )}
+                </div>
+
+                {/* Delete / Clear Action */}
+                <button
+                    onClick={() => {
+                        if (selectedCount > 0) {
+                            if (confirm(`Delete ${selectedCount} images?`)) {
+                                const ids = Array.from(selectedIds)
+                                ids.forEach(id => removeImage(id))
+                            }
+                        } else {
+                            if (confirm("Clear all images?")) clearAll()
+                        }
+                    }}
+                    className={cn(
+                        "h-8 px-3 border text-xs font-bold uppercase transition-all flex items-center gap-2 rounded-sm",
+                        selectedCount > 0
+                            ? "border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            : "border-foreground/30 hover:border-destructive hover:text-destructive"
+                    )}
+                >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    {selectedCount > 0 ? "Delete Selected" : "Clear All"}
+                </button>
             </div>
 
             {/* Grid with marquee selection */}

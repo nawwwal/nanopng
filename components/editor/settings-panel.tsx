@@ -10,9 +10,9 @@ export function SettingsPanel() {
     // Pitch content when no images
     if (!hasImages) {
         return (
-            <div className="h-full flex flex-col justify-center p-6 lg:p-12">
+            <div className="h-full flex flex-col justify-center p-6 lg:p-8 overflow-hidden">
                 <div className="max-w-md">
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.9] tracking-tight mb-6 text-balance">
+                    <h1 className="text-4xl sm:text-5xl lg:text-5xl font-black uppercase leading-[0.9] tracking-tight mb-6 text-balance">
                         Compress images.
                         <span className="accent-bg inline-block px-2 mt-2">Locally.</span>
                     </h1>

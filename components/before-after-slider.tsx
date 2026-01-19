@@ -10,6 +10,8 @@ interface BeforeAfterSliderProps {
   afterLabel?: string
   className?: string
   objectFit?: "contain" | "cover" | "fill" | "none" | "scale-down"
+  width?: number
+  height?: number
 }
 
 export function BeforeAfterSlider({
@@ -18,7 +20,9 @@ export function BeforeAfterSlider({
   beforeLabel = "Original",
   afterLabel = "Compressed",
   className,
-  objectFit = "cover"
+  objectFit = "cover",
+  width,
+  height
 }: BeforeAfterSliderProps) {
   const [sliderPosition, setSliderPosition] = useState(50)
   const [isDragging, setIsDragging] = useState(false)
@@ -95,6 +99,8 @@ export function BeforeAfterSlider({
         <img
           src={afterImage || "/placeholder.svg"}
           alt={afterLabel}
+          width={width}
+          height={height}
           className={cn("w-full h-full pointer-events-none select-none",
             objectFit === "contain" ? "object-contain" :
               objectFit === "cover" ? "object-cover" : "object-fill"
@@ -116,6 +122,8 @@ export function BeforeAfterSlider({
         <img
           src={beforeImage || "/placeholder.svg"}
           alt={beforeLabel}
+          width={width}
+          height={height}
           className={cn("w-full h-full pointer-events-none select-none",
             objectFit === "contain" ? "object-contain" :
               objectFit === "cover" ? "object-cover" : "object-fill"

@@ -35,6 +35,8 @@ export interface CompressedImage {
   previewUrl?: string
   /** SHA-256 Hash of original file */
   hash?: string
+  width?: number
+  height?: number
 }
 
 export interface ImageAnalysis {

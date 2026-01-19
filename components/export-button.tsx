@@ -33,7 +33,7 @@ function ExportButtonInner() {
             onClick={handleClick}
             disabled={isDisabled}
             className={cn(
-                "h-9 px-4 border-2 text-xs font-bold uppercase flex items-center gap-2 btn-spring transition-all",
+                "h-9 px-4 border-2 text-xs font-bold uppercase flex items-center gap-2 btn-spring transition-colors",
                 isDisabled
                     ? "border-muted-foreground/30 text-muted-foreground cursor-not-allowed"
                     : "border-foreground bg-foreground text-background hover:bg-transparent hover:text-foreground"

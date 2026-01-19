@@ -19,7 +19,7 @@ export function PresetSelector() {
                         key={preset.id}
                         onClick={() => setCurrentPreset(preset.id)}
                         className={cn(
-                            "p-3 border-2 text-left transition-all duration-200 group relative",
+                            "p-3 border-2 text-left transition-colors transition-transform duration-200 group relative",
                             currentPreset === preset.id
                                 ? "border-foreground bg-accent text-accent-foreground shadow-[4px_4px_0_var(--foreground)] -translate-y-[2px]"
                                 : "border-foreground/30 hover:border-foreground bg-background hover:shadow-[4px_4px_0_var(--foreground)] hover:-translate-y-[2px]"

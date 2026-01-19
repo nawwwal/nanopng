@@ -12,9 +12,8 @@ export function SettingsPanel() {
         return (
             <div className="h-full flex flex-col justify-center p-6 lg:p-12">
                 <div className="max-w-md">
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.9] tracking-tight mb-6">
-                        Compress<br />
-                        images.<br />
+                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.9] tracking-tight mb-6 text-balance">
+                        Compress images.
                         <span className="accent-bg inline-block px-2 mt-2">Locally.</span>
                     </h1>
 
@@ -62,7 +61,7 @@ export function SettingsPanel() {
 
                     {/* Processing indicator */}
                     {isProcessing && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5" aria-live="polite">
                             <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
                             <span className="text-[10px] font-bold uppercase text-muted-foreground">Processing</span>
                         </div>

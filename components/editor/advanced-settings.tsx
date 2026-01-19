@@ -71,7 +71,7 @@ export function AdvancedSettings() {
                                         key={opt.value}
                                         onClick={() => setCompressionOptions({ format: opt.value })}
                                         className={cn(
-                                            "px-2.5 py-1 border-2 text-xs font-bold uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-foreground",
+                                            "px-2.5 py-1 border-2 text-xs font-bold uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-foreground",
                                             compressionOptions.format === opt.value
                                                 ? "border-foreground bg-foreground text-background"
                                                 : "border-foreground/30 hover:border-foreground"
@@ -127,6 +127,8 @@ export function AdvancedSettings() {
                                 <div>
                                     <input
                                         type="number"
+                                        name="maxWidth"
+                                        autoComplete="off"
                                         placeholder="Max Width"
                                         min="1"
                                         value={compressionOptions.targetWidth || ""}
@@ -140,6 +142,8 @@ export function AdvancedSettings() {
                                 <div>
                                     <input
                                         type="number"
+                                        name="maxHeight"
+                                        autoComplete="off"
                                         placeholder="Max Height"
                                         min="1"
                                         value={compressionOptions.targetHeight || ""}
@@ -158,6 +162,8 @@ export function AdvancedSettings() {
                             <div className="flex items-center gap-2">
                                 <input
                                     type="number"
+                                    name="targetSize"
+                                    autoComplete="off"
                                     placeholder="Target Size (e.g., 500)"
                                     min="1"
                                     value={compressionOptions.targetSizeKb || ""}

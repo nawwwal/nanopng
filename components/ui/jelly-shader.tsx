@@ -332,6 +332,13 @@ function VoxelScene({ squeeze, colors, seed }: { squeeze: number, colors: any, s
         setIsCollapsed(!isCollapsed);
     }
 
+    const handleKeyDown = (e: any) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.stopPropagation();
+            setIsCollapsed(!isCollapsed);
+        }
+    }
+
     return (
         <instancedMesh 
             ref={meshRef} 
@@ -339,6 +346,8 @@ function VoxelScene({ squeeze, colors, seed }: { squeeze: number, colors: any, s
             onClick={handleClick}
             onPointerOver={() => document.body.style.cursor = 'pointer'}
             onPointerOut={() => document.body.style.cursor = 'default'}
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
         >
             <boxGeometry args={[BOX_SIZE, BOX_SIZE, 1.0]} />
             <shaderMaterial

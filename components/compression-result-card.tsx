@@ -105,7 +105,7 @@ export function CompressionResultCard({ image }: CompressionResultCardProps) {
   const wasConverted = image.originalFormat && image.originalFormat !== image.format
 
   return (
-    <Card className="group overflow-hidden border-border/60 bg-card shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl">
+    <Card className="group overflow-hidden border-border/60 bg-card shadow-sm hover:shadow-md transition-shadow duration-300 rounded-2xl">
       <div className="p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
           {/* Left Section: Icon + Info */}

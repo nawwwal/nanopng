@@ -68,6 +68,8 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                     <BeforeAfterSlider
                         beforeImage={image.originalBlobUrl}
                         afterImage={image.blobUrl}
+                        width={image.width}
+                        height={image.height}
                         className="h-full"
                         objectFit="contain"
                     />
@@ -75,10 +77,12 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                     <img
                         src={currentUrl}
                         alt={image.originalName}
+                        width={image.width}
+                        height={image.height}
                         className="max-w-full max-h-full object-contain"
                     />
                 ) : (
-                    <div className="w-16 h-16 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
+                    <div role="status" aria-label="Loading image" className="w-16 h-16 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
                 )}
             </div>
 

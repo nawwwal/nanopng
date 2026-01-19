@@ -44,6 +44,7 @@ export function UploadPanel() {
                             onClick={open}
                             className="h-9 w-9 border-2 border-foreground flex items-center justify-center hover:bg-foreground hover:text-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-foreground"
                             title="Add more images"
+                            aria-label="Add more images"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -67,7 +68,7 @@ export function UploadPanel() {
             <div
                 {...getRootProps()}
                 className={cn(
-                    "w-full max-w-lg aspect-square border-3 border-dashed rounded-none transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-foreground/20",
+                    "w-full max-w-lg aspect-square border-3 border-dashed rounded-none transition-transform transition-shadow duration-300 flex flex-col items-center justify-center text-center cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-foreground/20",
                     isDragActive
                         ? "border-foreground bg-foreground/5 scale-[1.02] shadow-[4px_4px_0_var(--foreground)]"
                         : "border-foreground/40 hover:border-foreground hover:bg-foreground/5 hover:shadow-[4px_4px_0_var(--foreground)] hover:-translate-y-1"

@@ -116,6 +116,19 @@ export function ImageUploadZone() {
         ? (file.name.toLowerCase().endsWith(".heif") ? "heif" : "heic")
         : undefined
 
+      // Get dimensions
+      let width: number | undefined
+      let height: number | undefined
+      try {
+        const bitmap = await createImageBitmap(file)
+        width = bitmap.width
+        height = bitmap.height
+        bitmap.close()
+      } catch (e) {
+        // ignore
+      }
+
+
       // Decode HEIC/HEIF files to a standard format before processing
       const decodedFile = await ensureDecodable(file)
       // Convert Blob to File if needed
@@ -161,7 +174,9 @@ export function ImageUploadZone() {
         analysis: result.analysis,
         resizeApplied: result.resizeApplied,
         targetSizeMet: result.targetSizeMet,
-        generation: image.generation
+        generation: image.generation,
+        width,
+        height
       }
 
       dispatch({ type: "UPDATE_IMAGE", payload: completedImage })
@@ -409,6 +424,8 @@ export function ImageUploadZone() {
                   <label className="block text-xs text-muted-foreground mb-1">Width (px)</label>
                   <input
                     type="number"
+                    name="resizeWidth"
+                    autoComplete="off"
                     value={targetWidth || ''}
                     onChange={(e) => setTargetWidth(e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="Auto"
@@ -420,6 +437,8 @@ export function ImageUploadZone() {
                   <label className="block text-xs text-muted-foreground mb-1">Height (px)</label>
                   <input
                     type="number"
+                    name="resizeHeight"
+                    autoComplete="off"
                     value={targetHeight || ''}
                     onChange={(e) => setTargetHeight(e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="Auto"
@@ -452,6 +471,8 @@ export function ImageUploadZone() {
               <div className="ml-6">
                 <input
                   type="number"
+                  name="targetSize"
+                  autoComplete="off"
                   value={targetSizeKb || ''}
                   onChange={(e) => setTargetSizeKb(e.target.value ? parseInt(e.target.value) : undefined)}
                   placeholder="Size in KB"
@@ -469,7 +490,7 @@ export function ImageUploadZone() {
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         className={cn(
-          "relative group cursor-pointer rounded-3xl border-2 border-dashed transition-all duration-500 ease-out overflow-hidden",
+          "relative group cursor-pointer rounded-3xl border-2 border-dashed transition-transform transition-colors transition-shadow duration-500 ease-out overflow-hidden",
           isDragActive
             ? "border-primary bg-primary/5 scale-[1.02] shadow-2xl"
             : isHovering
@@ -510,7 +531,7 @@ export function ImageUploadZone() {
           <Button
             size="lg"
             className={cn(
-              "rounded-full px-8 h-12 text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl",
+              "rounded-full px-8 h-12 text-base font-medium transition-transform transition-colors transition-shadow duration-300 shadow-lg hover:shadow-xl",
               (isHovering || isDragActive) ? "bg-primary text-primary-foreground scale-105" : "bg-primary text-primary-foreground"
             )}
           >

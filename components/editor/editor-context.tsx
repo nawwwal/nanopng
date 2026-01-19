@@ -60,6 +60,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
                         ? { ...img, status: action.payload.status, progress: action.payload.progress, error: action.payload.error }
                         : img
                 ),
+                // Set isProcessing to true if we're queuing an image
+                isProcessing: action.payload.status === "queued" ? true : state.isProcessing,
             }
         case "UPDATE_IMAGE":
             return {
@@ -197,8 +199,23 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 targetHeight: preset.maxHeight,
                 targetSizeKb: preset.targetSizeKb,
             })
+            
+            // Re-queue completed images for reprocessing
+            const imagesToReprocess = imagesRef.current.filter(img =>
+                img.status === "completed" ||
+                img.status === "already-optimized" ||
+                img.status === "error"
+            )
+            if (imagesToReprocess.length > 0) {
+                imagesToReprocess.forEach(img => {
+                    dispatch({
+                        type: "UPDATE_STATUS",
+                        payload: { id: img.id, status: "queued", progress: 0 }
+                    })
+                })
+            }
         }
-    }, [])
+    }, [state.isProcessing])
 
     const setCompressionOptions = useCallback((options: Partial<CompressionOptions>) => {
         setCompressionOptionsState(prev => {
@@ -268,6 +285,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 id: image.id,
                 originalName: file.name,
                 originalSize: file.size,
+                originalWidth: result.originalWidth,
+                originalHeight: result.originalHeight,
                 compressedSize: compressedSize,
                 compressedBlob: result.blob,
                 blobUrl: result.blob ? URL.createObjectURL(result.blob) : undefined,
@@ -278,6 +297,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 status,
                 analysis: result.analysis,
                 generation: image.generation || 0,
+                width: result.width,
+                height: result.height,
             }
 
             dispatch({ type: "UPDATE_IMAGE", payload: completedImage })

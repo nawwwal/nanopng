@@ -38,7 +38,11 @@ export class CompressionOrchestrator {
       format: imageServiceResult.format,
       analysis: imageServiceResult.analysis!,
       resizeApplied: !!(options.targetWidth || options.targetHeight),
-      targetSizeMet: true
+      targetSizeMet: true,
+      originalWidth: imageServiceResult.originalWidth,
+      originalHeight: imageServiceResult.originalHeight,
+      width: imageServiceResult.width,
+      height: imageServiceResult.height,
     }
   }
 }

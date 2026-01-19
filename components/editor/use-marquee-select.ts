@@ -29,7 +29,10 @@ interface UseMarqueeSelectResult {
     getSelectedIds: (itemRects: Map<string, DOMRect>) => string[]
 }
 
-export function useMarqueeSelect(containerRef: React.RefObject<HTMLElement | null>): UseMarqueeSelectResult {
+export function useMarqueeSelect(
+    containerRef: React.RefObject<HTMLElement | null>,
+    onSelect?: (rect: Rect) => void
+): UseMarqueeSelectResult {
     const [state, setState] = useState<MarqueeState>({
         isSelecting: false,
         startX: 0,
@@ -78,8 +81,19 @@ export function useMarqueeSelect(containerRef: React.RefObject<HTMLElement | nul
     }, [state.isSelecting, containerRef])
 
     const onMouseUp = useCallback(() => {
+        if (state.isSelecting) {
+            const rect = {
+                x: Math.min(state.startX, state.currentX),
+                y: Math.min(state.startY, state.currentY),
+                width: Math.abs(state.currentX - state.startX),
+                height: Math.abs(state.currentY - state.startY),
+            }
+            if (rect.width > 5 && rect.height > 5) {
+                onSelect?.(rect)
+            }
+        }
         setState(prev => ({ ...prev, isSelecting: false }))
-    }, [])
+    }, [state, onSelect])
 
     const onMouseLeave = useCallback(() => {
         setState(prev => ({ ...prev, isSelecting: false }))

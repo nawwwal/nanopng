@@ -18,6 +18,10 @@ export interface CompressionResult {
   analysis: ImageAnalysis
   resizeApplied: boolean
   targetSizeMet: boolean
+  originalWidth?: number
+  originalHeight?: number
+  width?: number
+  height?: number
 }
 
 export { type CompressedImage, type ImageAnalysis }

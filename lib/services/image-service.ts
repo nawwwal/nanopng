@@ -2,6 +2,7 @@ import { CompressedImage, ImageAnalysis, ImageFormat } from "@/types/image"
 import { canEncodeAvif } from "@/lib/core/format-capabilities"
 import { copyMetadata } from "@/lib/core/metadata"
 import { CompressionJob, CompressionResult } from "@/lib/workers/image-processor.worker"
+import * as exifr from "exifr"
 
 export class ImageService {
   /**
@@ -209,30 +210,64 @@ export class ImageService {
       const url = URL.createObjectURL(file)
       img.onload = async () => {
         try {
+          const orientation = (await exifr.orientation(file).catch(() => 1)) || 1
+
           // Calculate dimensions with optional resize
           let drawWidth = img.width
           let drawHeight = img.height
 
           if (targetWidth || targetHeight) {
-            if (targetWidth && targetHeight) {
-              drawWidth = targetWidth
-              drawHeight = targetHeight
-            } else if (targetWidth) {
-              drawWidth = targetWidth
-              drawHeight = Math.round(img.height * (targetWidth / img.width))
-            } else if (targetHeight) {
-              drawHeight = targetHeight
-              drawWidth = Math.round(img.width * (targetHeight / img.height))
-            }
+            const maxW = targetWidth ?? img.width
+            const maxH = targetHeight ?? img.height
+            const scale = Math.min(maxW / img.width, maxH / img.height, 1)
+            drawWidth = Math.max(1, Math.round(img.width * scale))
+            drawHeight = Math.max(1, Math.round(img.height * scale))
           }
 
           const cvs = document.createElement("canvas")
-          cvs.width = drawWidth
-          cvs.height = drawHeight
+          const needsSwap = orientation >= 5 && orientation <= 8
+          cvs.width = needsSwap ? drawHeight : drawWidth
+          cvs.height = needsSwap ? drawWidth : drawHeight
           const ctx = cvs.getContext("2d", { willReadFrequently: true })!
           ctx.imageSmoothingEnabled = true
           ctx.imageSmoothingQuality = "high"
+          ctx.save()
+          // Apply EXIF orientation (normalize into pixel data so output has correct orientation)
+          switch (orientation) {
+            case 2: // flip X
+              ctx.translate(cvs.width, 0)
+              ctx.scale(-1, 1)
+              break
+            case 3: // rotate 180
+              ctx.translate(cvs.width, cvs.height)
+              ctx.rotate(Math.PI)
+              break
+            case 4: // flip Y
+              ctx.translate(0, cvs.height)
+              ctx.scale(1, -1)
+              break
+            case 5: // transpose
+              ctx.rotate(0.5 * Math.PI)
+              ctx.scale(1, -1)
+              break
+            case 6: // rotate 90
+              ctx.translate(cvs.width, 0)
+              ctx.rotate(0.5 * Math.PI)
+              break
+            case 7: // transverse
+              ctx.translate(cvs.width, cvs.height)
+              ctx.rotate(0.5 * Math.PI)
+              ctx.scale(-1, 1)
+              break
+            case 8: // rotate 270
+              ctx.translate(0, cvs.height)
+              ctx.rotate(-0.5 * Math.PI)
+              break
+            default:
+              break
+          }
           ctx.drawImage(img, 0, 0, drawWidth, drawHeight)
+          ctx.restore()
 
           const rawFormat = originalFormat || file.type.split("/")[1] || "png"
           const normFormat = rawFormat === "jpg" ? "jpeg" : rawFormat.toLowerCase()
@@ -274,18 +309,20 @@ export class ImageService {
             }
           }
 
-          // Try PNG (Quantized) if graphics OR if explicit PNG requested
-          // We force quantization for PNG output to ensure file size savings 
-          // even if it's a photo, as standard Canvas PNG is very bloated.
+          // Try PNG if graphics OR if explicit PNG requested
+          // Use lossless (colors=0) when quality is 100%, otherwise quantize for size savings
           if (shouldQuantize || finalizedFormat === "png") {
             const imageData = ctx.getImageData(0, 0, cvs.width, cvs.height)
+            
+            // colors=0 means lossless, colors=256 means lossy quantization
+            const pngColors = q >= 1 ? 0 : 256
 
             // Use Worker
             const result = await this.runWorker({
               width: imageData.width,
               height: imageData.height,
               data: imageData.data.buffer, // Transfer the buffer
-              options: { format: "png", quality: 1, colors: 256, dithering: true }
+              options: { format: "png", quality: 1, colors: pngColors, dithering: q < 1 }
             })
 
             if (result.success && result.data) {
@@ -338,6 +375,8 @@ export class ImageService {
             id,
             originalName: file.name,
             originalSize,
+            originalWidth: img.width,
+            originalHeight: img.height,
             compressedSize: bestSize,
             compressedBlob: blobWithMeta,
             blobUrl: URL.createObjectURL(blobWithMeta),
@@ -347,7 +386,9 @@ export class ImageService {
             originalFormat: (originalFormat || normFormat) as any,
             status: savings < 1 ? "already-optimized" : "completed",
             analysis: imgAnalysis,
-            generation
+            generation,
+            width: cvs.width,
+            height: cvs.height,
           })
 
         } catch (e) { URL.revokeObjectURL(url); reject(e) }
@@ -371,15 +412,16 @@ export class ImageService {
           ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high"
           ctx.drawImage(img, 0, 0)
 
-          // Quantize if needed (for all PNG outputs to save size)
-          if (targetFormat === "png" && ((imgAnalysis && imgAnalysis.uniqueColors > 256) || true)) {
+          // PNG: Use lossless compression (colors=0) for explicit PNG format requests
+          // Users who explicitly choose PNG typically want quality preservation
+          if (targetFormat === "png") {
             const imageData = ctx.getImageData(0, 0, cvs.width, cvs.height)
 
             const res = await this.runWorker({
               width: imageData.width,
               height: imageData.height,
               data: imageData.data.buffer,
-              options: { format: "png", quality: 1, colors: 256, dithering: true }
+              options: { format: "png", quality: 1, colors: 0, dithering: false }
             })
 
             // For PNG, worker returns the encoded file directly
@@ -400,7 +442,11 @@ export class ImageService {
                   id, originalName: name, originalSize: origSize, compressedSize: origSize, compressedBlob: file as Blob,
                   blobUrl: URL.createObjectURL(file as Blob), originalBlobUrl: URL.createObjectURL(file),
                   savings: 0, format: targetFormat, status: "already-optimized",
-                  analysis: imgAnalysis || undefined, formatPreference: targetFormat, generation
+                  analysis: imgAnalysis || undefined, formatPreference: targetFormat, generation,
+                  originalWidth: img.width,
+                  originalHeight: img.height,
+                  width: img.width,
+                  height: img.height,
                 })
                 URL.revokeObjectURL(url)
                 return
@@ -414,7 +460,11 @@ export class ImageService {
                 savings: Math.max(0, savings), format: targetFormat,
                 status: savings < 2 ? "already-optimized" : "completed",
                 analysis: imgAnalysis || undefined, formatPreference: targetFormat,
-                generation
+                generation,
+                originalWidth: img.width,
+                originalHeight: img.height,
+                width: img.width,
+                height: img.height,
               })
               return
             }
@@ -458,7 +508,11 @@ export class ImageService {
             savings: size >= origSize ? 0 : savings, format: targetFormat,
             status: finalStatus,
             analysis: imgAnalysis || undefined, formatPreference: targetFormat,
-            generation
+            generation,
+            originalWidth: img.width,
+            originalHeight: img.height,
+            width: img.width,
+            height: img.height,
           })
         } catch (e) { URL.revokeObjectURL(url); reject(e) }
       }

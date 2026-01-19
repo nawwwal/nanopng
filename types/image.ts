@@ -14,6 +14,8 @@ export interface CompressedImage {
   id: string
   originalName: string
   originalSize: number
+  originalWidth?: number
+  originalHeight?: number
   compressedSize: number
   compressedBlob?: Blob | File
   blobUrl?: string
@@ -35,6 +37,7 @@ export interface CompressedImage {
   previewUrl?: string
   /** SHA-256 Hash of original file */
   hash?: string
+  /** Output image dimensions (after resize/transcode) */
   width?: number
   height?: number
 }

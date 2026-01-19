@@ -38,7 +38,7 @@ export const COMPRESSION_PRESETS: CompressionPreset[] = [
     {
         id: "print",
         name: "Print Ready",
-        description: "Maximum quality, lossless",
+        description: "Lossless PNG, optimized compression",
         icon: "🖨️",
         format: "png",
         quality: 100,

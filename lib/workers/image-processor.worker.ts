@@ -35,8 +35,14 @@ self.onmessage = async (e: MessageEvent<CompressionJob>) => {
         let resultBuffer: Uint8Array | null = null;
         const inputUint8 = new Uint8ClampedArray(data);
 
-        if (options.format === "png" && options.colors <= 256) {
-            // 1. QUANTIZATION (PNG)
+        if (options.format === "png" && options.colors === 0) {
+            // LOSSLESS PNG - No quantization, just optimized deflate compression
+            // UPNG.encode with colors=0 means lossless (no palette reduction)
+            const pngBuffer = UPNG.encode([inputUint8], width, height, 0);
+            resultBuffer = new Uint8Array(pngBuffer);
+
+        } else if (options.format === "png" && options.colors <= 256) {
+            // LOSSY PNG - Quantize to N colors for smaller file size
             const inPointContainer = iq.utils.PointContainer.fromUint8Array(
                 inputUint8,
                 width,
@@ -45,7 +51,7 @@ self.onmessage = async (e: MessageEvent<CompressionJob>) => {
 
             // Palette generation
             const distanceCalculator = new iq.distance.Euclidean();
-            const paletteQuantizer = new iq.palette.NeuQuant(distanceCalculator, 256);
+            const paletteQuantizer = new iq.palette.NeuQuant(distanceCalculator, options.colors);
             paletteQuantizer.sample(inPointContainer);
             const palette = paletteQuantizer.quantizeSync();
 
@@ -59,13 +65,9 @@ self.onmessage = async (e: MessageEvent<CompressionJob>) => {
             const outPointContainer = imageQuantizer.quantizeSync(inPointContainer, palette);
             resultBuffer = outPointContainer.toUint8Array();
 
-            // 2. ENCODING (Indexed PNG)
-            // Use UPNG to encode the quantized 8-bit image to an actual PNG file buffer.
-            // UPNG.encode expects array of buffers (for frames), width, height, color count.
-            // Since resultBuffer is already quantized to 256 colors by image-q, 
-            // UPNG will detect this and create an efficient palette.
-            const pngBuffer = UPNG.encode([resultBuffer], width, height, 256);
-            resultBuffer = new Uint8Array(pngBuffer); // Result is now a PNG FILE, not raw pixels!
+            // Encode as indexed PNG
+            const pngBuffer = UPNG.encode([resultBuffer], width, height, options.colors);
+            resultBuffer = new Uint8Array(pngBuffer);
 
         } else {
             // No quantization, just pass through (copy)

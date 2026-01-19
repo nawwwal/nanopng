@@ -16,6 +16,10 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
 
     const isComplete = image.status === "completed" || image.status === "already-optimized"
     const currentUrl = image.blobUrl || image.originalBlobUrl
+    const isShowingCompressed = !!image.blobUrl && currentUrl === image.blobUrl
+
+    const displayWidth = isShowingCompressed ? image.width : image.originalWidth
+    const displayHeight = isShowingCompressed ? image.height : image.originalHeight
 
     const formatSize = (bytes: number) => {
         if (bytes < 1024) return `${bytes} B`
@@ -26,11 +30,11 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
     return (
         <div className="h-full flex flex-col bg-background">
             {/* Header */}
-            <div className="p-4 border-b-2 border-foreground flex items-center justify-between">
+            <div className="p-4 border-b border-foreground flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 border-2 border-foreground flex items-center justify-center hover:bg-foreground hover:text-background transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1"
+                        className="w-8 h-8 border border-foreground flex items-center justify-center hover:bg-foreground hover:text-background transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-1"
                         aria-label="Back to grid"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,7 +56,7 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                             removeImage(image.id)
                             onClose()
                         }}
-                        className="w-8 h-8 border-2 border-destructive/50 text-destructive flex items-center justify-center hover:bg-destructive hover:text-background hover:border-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-1"
+                        className="w-8 h-8 border border-destructive/50 text-destructive flex items-center justify-center hover:bg-destructive hover:text-background hover:border-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-1"
                         aria-label="Remove image"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,8 +72,10 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                     <BeforeAfterSlider
                         beforeImage={image.originalBlobUrl}
                         afterImage={image.blobUrl}
-                        width={image.width}
-                        height={image.height}
+                        beforeWidth={image.originalWidth}
+                        beforeHeight={image.originalHeight}
+                        afterWidth={image.width}
+                        afterHeight={image.height}
                         className="h-full"
                         objectFit="contain"
                     />
@@ -77,8 +83,8 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                     <img
                         src={currentUrl}
                         alt={image.originalName}
-                        width={image.width}
-                        height={image.height}
+                        width={displayWidth}
+                        height={displayHeight}
                         className="max-w-full max-h-full object-contain"
                     />
                 ) : (
@@ -88,7 +94,7 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
 
             {/* Footer with comparison controls */}
             {isComplete && image.originalBlobUrl && image.blobUrl && (
-                <div className="p-4 border-t-2 border-foreground">
+                <div className="p-4 border-t border-foreground">
 
 
                     {/* Stats */}

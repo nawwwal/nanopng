@@ -59,6 +59,7 @@ async function decodeHeic(file: File): Promise<Blob> {
 
   try {
     // Dynamic import to avoid bundling and SSR issues
+    // @ts-ignore - libheif-wasm has no type declarations
     const libheif = await import("libheif-wasm");
 
     // Read file as ArrayBuffer

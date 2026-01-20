@@ -5,7 +5,7 @@ export type CompressionStatus = "queued" | "analyzing" | "compressing" | "comple
 export type OutputFormat = "auto" | "png" | "jpeg" | "webp" | "avif"
 
 // Basic types
-export type ImageFormat = "jpeg" | "png" | "webp" | "avif"
+export type ImageFormat = "jpeg" | "jpg" | "png" | "webp" | "avif"
 
 export interface CompressionOptions {
   format: ImageFormat | "auto"

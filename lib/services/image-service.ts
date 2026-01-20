@@ -126,7 +126,7 @@ export class ImageService {
       }
 
       // 4. Handle Result
-      const blob = new Blob([result.data], { type: `image/${format === 'jpg' ? 'jpeg' : format}` });
+      const blob = new Blob([new Uint8Array(result.data)], { type: `image/${format === 'jpg' ? 'jpeg' : format}` });
 
       // Metadata copy handled by Orchestrator or here?
       // Before it was here.

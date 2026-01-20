@@ -199,7 +199,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 targetHeight: preset.maxHeight,
                 targetSizeKb: preset.targetSizeKb,
             })
-            
+
             // Re-queue completed images for reprocessing
             const imagesToReprocess = imagesRef.current.filter(img =>
                 img.status === "completed" ||
@@ -288,7 +288,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 originalWidth: result.originalWidth,
                 originalHeight: result.originalHeight,
                 compressedSize: compressedSize,
-                compressedBlob: result.blob,
+                compressedBlob: result.blob ?? undefined,
                 blobUrl: result.blob ? URL.createObjectURL(result.blob) : undefined,
                 originalBlobUrl: URL.createObjectURL(file),
                 savings: Math.max(0, savings),

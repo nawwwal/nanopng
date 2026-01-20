@@ -53,7 +53,7 @@ async function initWasm() {
         // Let's decided to output build to `lib/wasm-pkg`? No, stick to `public`.
 
         // Current workaround: use `importScripts` or dynamic import of the glue JS.
-        // Since it's a module worker:
+        // @ts-ignore - Wasm module loaded at runtime from public folder
         const wasm = await import("/wasm/nanopng_core.js" /* webpackIgnore: true */);
         await wasm.default("/wasm/nanopng_core_bg.wasm");
         wasmModule = wasm;

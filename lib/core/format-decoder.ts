@@ -28,7 +28,7 @@ export async function isHeicFile(file: File): Promise<boolean> {
   try {
     const buffer = await file.slice(0, 12).arrayBuffer()
     const view = new Uint8Array(buffer)
-    
+
     // Check for ftyp box (bytes 4-8 should be "ftyp")
     if (view.length >= 12) {
       const ftyp = String.fromCharCode(view[4], view[5], view[6], view[7])
@@ -49,8 +49,8 @@ export async function isHeicFile(file: File): Promise<boolean> {
 }
 
 /**
- * Decode HEIC/HEIF file to a standard format (PNG or JPEG)
- * Preserves transparency by converting to PNG, otherwise uses JPEG
+ * Decode HEIC/HEIF file to a standard format (PNG)
+ * Uses libheif-wasm for decoding
  */
 async function decodeHeic(file: File): Promise<Blob> {
   if (typeof window === "undefined") {
@@ -58,20 +58,18 @@ async function decodeHeic(file: File): Promise<Blob> {
   }
 
   try {
-    // Dynamic import to avoid bundling
+    // Dynamic import to avoid bundling and SSR issues
     const libheif = await import("libheif-wasm");
 
-    // Initialize the decoder
-    const decoder = new libheif.HeifDecoder();
-    
     // Read file as ArrayBuffer
     const buffer = await file.arrayBuffer();
-    
-    // Decode data
-    const data = decoder.decode(buffer);
-    
+
+    // Initialize decoder and decode
+    const decoder = new libheif.HeifDecoder();
+    const data = decoder.decode(new Uint8Array(buffer));
+
     if (!data || data.length === 0) {
-       throw new Error("No image data found in HEIC file");
+      throw new Error("No image data found in HEIC file");
     }
 
     // Get primary image
@@ -79,61 +77,34 @@ async function decodeHeic(file: File): Promise<Blob> {
     const width = image.get_width();
     const height = image.get_height();
 
-    // Decode to RGBA
-    const resultBuffer = new Uint8Array(width * height * 4);
-    await image.display(new libheif.HeifDecoder.ImageData(resultBuffer, width, height), (x: any) => x); // Callback unused?
-    
-    // Wait, libheif-wasm API might be simpler or different?
-    // Checking standard usage typically involves:
-    // ... decode(buffer) -> returns array of images
-    // image.display(imageData, ...)
-    
-    // Actually, `libheif-wasm` documentation example:
-    // const decoder = new libheif.HeifDecoder();
-    // const data = decoder.decode(buffer);
-    // const image = data[0];
-    // const w = image.get_width();
-    // const h = image.get_height();
-    // const imageData = new ImageData(w, h);
-    // await image.display(imageData, display_image_data);
-    
-    // We need to return a Blob.
-    // So we put this into an OffscreenCanvas or regular Canvas and toBlob.
-    
+    // Create canvas and context
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error("Canvas context init failed");
-    
-    // We need to create an ImageData object from the raw pixels if handled manually,
-    // or use the display feature.
-    // `image.display` takes an object {data: Uint8ClampedArray, width, height}.
-    
-    const clamped = new Uint8ClampedArray(width * height * 4);
-    // Mocking the behavior since I cannot run `image.display` logic blindly without correct types.
-    // But `libheif-wasm` essentially fills a buffer.
-    
-    // Assuming `image.display` fills the buffer we pass
+    if (!ctx) throw new Error("Canvas context initialization failed");
+
+    // Create ImageData for the decoded pixels
+    const imageData = ctx.createImageData(width, height);
+
+    // libheif-wasm's display() fills the provided ImageData buffer
     await new Promise<void>((resolve, reject) => {
-         image.display({data: clamped, width, height}, (res: any) => {
-             // Verify result if needed
-             resolve();
-         }).catch(reject);
+      try {
+        image.display(imageData, (displayImageData: ImageData) => {
+          ctx.putImageData(displayImageData, 0, 0);
+          resolve();
+        });
+      } catch (e) {
+        reject(e);
+      }
     });
 
-    const imageData = new ImageData(clamped, width, height);
-    ctx.putImageData(imageData, 0, 0);
-    
-    // Cleanup memory
-    image.free();
-    decoder.free();
-
+    // Convert canvas to blob
     return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Canvas to Blob failed"));
-        }, "image/png");
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("Canvas to Blob conversion failed"));
+      }, "image/png");
     });
 
   } catch (error) {
@@ -147,7 +118,7 @@ async function decodeHeic(file: File): Promise<Blob> {
  */
 export async function ensureDecodable(file: File): Promise<File | Blob> {
   const isHeic = await isHeicFile(file)
-  
+
   if (isHeic) {
     const decodedBlob = await decodeHeic(file)
     // Create a new File-like object with proper name and type

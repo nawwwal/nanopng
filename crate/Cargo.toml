@@ -23,8 +23,6 @@ rgb = "0.8"
 # AVIF (pure Rust)
 ravif = { version = "0.11", default-features = false }
 
-# WebP (pure Rust - Wasm compatible, lossless only)
-image-webp = "0.2"
 
 # Resizing (pure Rust)
 fast_image_resize = { version = "4.0", default-features = false }

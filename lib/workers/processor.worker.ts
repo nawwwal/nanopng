@@ -18,6 +18,16 @@ export interface ProcessorAPI {
 
 let wasmModule: any = null;
 
+// Lazy load WebP encoder
+let webpEncoder: typeof import('@/lib/codecs/webp-encoder') | null = null;
+
+async function getWebPEncoder() {
+    if (!webpEncoder) {
+        webpEncoder = await import('@/lib/codecs/webp-encoder');
+    }
+    return webpEncoder;
+}
+
 async function initWasm() {
     if (wasmModule) return;
 
@@ -32,18 +42,65 @@ async function initWasm() {
     }
 }
 
+async function processWebP(
+    data: Uint8Array,
+    width: number,
+    height: number,
+    opt: CompressionOptions
+): Promise<{ success: boolean; data?: Uint8Array; error?: string }> {
+    try {
+        let pixelData = data;
+        let currentWidth = width;
+        let currentHeight = height;
+
+        // Handle resize using Rust WASM if needed
+        if (opt.targetWidth && opt.targetHeight) {
+            await initWasm();
+            const resized = wasmModule.resize_only(
+                data,
+                width,
+                height,
+                opt.targetWidth,
+                opt.targetHeight,
+                "Lanczos3"
+            );
+            pixelData = resized;
+            currentWidth = opt.targetWidth;
+            currentHeight = opt.targetHeight;
+        }
+
+        const encoder = await getWebPEncoder();
+        const quality = Math.round((opt.quality || 0.8) * 100);
+        const result = await encoder.encodeToWebP(pixelData, currentWidth, currentHeight, {
+            quality,
+            lossless: opt.lossless || false
+        });
+
+        return { success: true, data: result };
+    } catch (err) {
+        return {
+            success: false,
+            error: err instanceof Error ? err.message : String(err)
+        };
+    }
+}
+
 const api: ProcessorAPI = {
     async processImage(id, width, height, opt, sharedBuffer) {
+        const data = new Uint8Array(sharedBuffer);
+
+        // Route WebP to JS encoder, others to Rust WASM
+        if (opt.format === 'webp') {
+            return processWebP(data, width, height, opt);
+        }
+
         await initWasm();
 
         try {
-            const data = new Uint8Array(sharedBuffer);
-
             const config = {
                 format: opt.format === 'jpg' ? 'Jpeg' :
                     opt.format === 'png' ? 'Png' :
-                        opt.format === 'avif' ? 'Avif' :
-                            opt.format === 'webp' ? 'WebP' : 'Jpeg',
+                        opt.format === 'avif' ? 'Avif' : 'Jpeg',
                 quality: Math.round((opt.quality || 0.8) * 100),
                 transparent: true,
                 lossless: opt.lossless || false,

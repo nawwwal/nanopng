@@ -5,11 +5,14 @@ export function init_panic_hook(): void;
 
 export function process_image(data_mut: Uint8Array, width: number, height: number, config_val: any): Uint8Array;
 
+export function resize_only(data_mut: Uint8Array, width: number, height: number, target_width: number, target_height: number, filter: string): Uint8Array;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly process_image: (a: number, b: number, c: any, d: number, e: number, f: any) => [number, number, number, number];
+    readonly resize_only: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number, number];
     readonly init_panic_hook: () => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

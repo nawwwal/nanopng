@@ -8,7 +8,6 @@ mod resize;
 pub enum Format {
     Jpeg,
     Png,
-    WebP,
     Avif,
 }
 
@@ -96,13 +95,18 @@ pub fn process_image(
             4,
         )
         .map_err(|e| JsValue::from_str(&e)),
-        Format::WebP => codecs::webp::encode_webp(
-            &current_data,
-            current_width,
-            current_height,
-            config.quality,
-            config.lossless,
-        )
-        .map_err(|e| JsValue::from_str(&e)),
     }
+}
+
+#[wasm_bindgen]
+pub fn resize_only(
+    data_mut: &mut [u8],
+    width: u32,
+    height: u32,
+    target_width: u32,
+    target_height: u32,
+    filter: &str,
+) -> Result<Vec<u8>, JsValue> {
+    resize::resize_image(data_mut, width, height, target_width, target_height, filter)
+        .map_err(|e| JsValue::from_str(&e))
 }

@@ -30,7 +30,10 @@ export class CompressionOrchestrator {
       targetFormat,
       quality,
       options.targetWidth,
-      options.targetHeight
+      options.targetHeight,
+      options.dithering,
+      options.chromaSubsampling,
+      options.lossless
     )
 
     return {

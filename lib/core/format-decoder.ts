@@ -59,46 +59,53 @@ async function decodeHeic(file: File): Promise<Blob> {
 
   try {
     // Dynamic import to avoid bundling and SSR issues
-    // @ts-ignore - libheif-wasm has no type declarations
-    const libheif = await import("libheif-wasm");
+    // Note: `libheif-wasm`'s package entrypoints are misconfigured (no root index.js),
+    // so we import the actual built file from `dist/`.
+    // @ts-ignore - libheif-wasm types are not wired into this project
+    const { decode } = await import("libheif-wasm/dist/index.mjs")
 
     // Read file as ArrayBuffer
-    const buffer = await file.arrayBuffer();
+    const buffer = await file.arrayBuffer()
 
-    // Initialize decoder and decode
-    const decoder = new libheif.HeifDecoder();
-    const data = decoder.decode(new Uint8Array(buffer));
+    // Decode HEIC → raw pixels
+    const decoded = await decode(new Uint8Array(buffer), { needAlpha: true })
 
-    if (!data || data.length === 0) {
-      throw new Error("No image data found in HEIC file");
+    if (!decoded?.data?.length || !decoded.width || !decoded.height) {
+      throw new Error("No image data found in HEIC file")
     }
 
-    // Get primary image
-    const image = data[0];
-    const width = image.get_width();
-    const height = image.get_height();
+    const width = decoded.width
+    const height = decoded.height
 
     // Create canvas and context
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error("Canvas context initialization failed");
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw new Error("Canvas context initialization failed")
 
-    // Create ImageData for the decoded pixels
-    const imageData = ctx.createImageData(width, height);
+    // Create ImageData for the decoded pixels (must be RGBA for canvas)
+    const imageData = ctx.createImageData(width, height)
 
-    // libheif-wasm's display() fills the provided ImageData buffer
-    await new Promise<void>((resolve, reject) => {
-      try {
-        image.display(imageData, (displayImageData: ImageData) => {
-          ctx.putImageData(displayImageData, 0, 0);
-          resolve();
-        });
-      } catch (e) {
-        reject(e);
+    const channel = decoded.channel
+    const src = decoded.data
+    const dst = imageData.data
+
+    if (channel === 4) {
+      dst.set(src)
+    } else if (channel === 3) {
+      // Expand RGB → RGBA
+      for (let i = 0, j = 0; i < src.length; i += 3, j += 4) {
+        dst[j] = src[i]
+        dst[j + 1] = src[i + 1]
+        dst[j + 2] = src[i + 2]
+        dst[j + 3] = 255
       }
-    });
+    } else {
+      throw new Error(`Unsupported HEIC decode channel count: ${channel}`)
+    }
+
+    ctx.putImageData(imageData, 0, 0)
 
     // Convert canvas to blob
     return new Promise((resolve, reject) => {

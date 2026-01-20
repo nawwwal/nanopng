@@ -14,7 +14,6 @@ export function useWorkerPool() {
     const [workers, setWorkers] = useState<WorkerInstance[]>([]);
 
     useEffect(() => {
-        // Initialize pool
         const pool: WorkerInstance[] = [];
 
         for (let i = 0; i < MAX_WORKERS; i++) {
@@ -33,15 +32,13 @@ export function useWorkerPool() {
     }, []);
 
     const execute = useCallback(async <T>(task: (api: Comlink.Remote<ProcessorAPI>) => Promise<T>): Promise<T> => {
-        // Simple round-robin or first available
         let available = workers.find(w => !w.busy);
 
         if (!available) {
-            // If all busy, pick random (or queue? Simplification: Pick random)
             available = workers[Math.floor(Math.random() * workers.length)];
         }
 
-        if (!available) throw new Error("No workers available"); // Should happen only on init
+        if (!available) throw new Error("No workers available");
 
         available.busy = true;
         try {

@@ -1,16 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
-// Since format-decoder.ts imports libheif-wasm dynamically at runtime,
-// we need to test only the synchronous exported functions without triggering
-// the module resolution. We test isHeicFile directly without importing ensureDecodable
-// which chains to the HEIC decode path.
-
-// Create a minimal test that doesn't trigger the libheif import path
 describe('FormatDecoder', () => {
     describe('isHeicFile', () => {
-        // We'll test the HEIC detection logic by reimplementing the checks
-        // since the actual function would pull in the libheif dependency chain
-
         const isHeicByMimeOrExt = (file: File): boolean => {
             const mimeType = file.type.toLowerCase();
             if (mimeType === "image/heic" || mimeType === "image/heif") {

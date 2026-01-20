@@ -99,7 +99,7 @@ export async function copyMetadata(source: Blob, target: Blob): Promise<Blob> {
     const metadata = extractMetadata(sourceBuf);
     const newBuf = injectMetadata(targetBuf, metadata);
 
-    return new Blob([newBuf as any], { type: 'image/png' });
+    return new Blob([newBuf], { type: 'image/png' });
   }
   // TODO: Handle JPEG/WebP metadata if needed (using exifr/piexif)
   // For now, focus on PNG as that's the main breakage

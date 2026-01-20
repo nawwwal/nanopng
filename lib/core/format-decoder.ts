@@ -3,12 +3,9 @@
  * Handles decoding of formats that require special handling (HEIC/HEIF)
  * Other formats (AVIF, PNG, JPEG, WebP) are decoded natively by the browser
  */
-// IMPORTANT: Do not import `heic2any` at module scope.
-// It references `window` during initialization and will crash Next.js SSR.
 
 /**
  * Check if a file is HEIC/HEIF format by MIME type or magic bytes
- * HEIC files often have incorrect or missing MIME types, so we check magic bytes too
  */
 export async function isHeicFile(file: File): Promise<boolean> {
   // Check MIME type first (fast path)
@@ -41,8 +38,7 @@ export async function isHeicFile(file: File): Promise<boolean> {
       }
     }
   } catch (error) {
-    // If we can't read the file, fall back to MIME type/extension check
-    console.warn("Failed to check HEIC magic bytes:", error)
+    // Fall back to MIME type/extension check
   }
 
   return false
@@ -58,10 +54,7 @@ async function decodeHeic(file: File): Promise<Blob> {
   }
 
   try {
-    // Dynamic import to avoid bundling and SSR issues
-    // Note: `libheif-wasm`'s package entrypoints are misconfigured (no root index.js),
-    // so we import the actual built file from `dist/`.
-    // @ts-ignore - libheif-wasm types are not wired into this project
+    // @ts-expect-error - libheif-wasm types are not wired into this project
     const { decode } = await import("libheif-wasm/dist/index.mjs")
 
     // Read file as ArrayBuffer
@@ -107,8 +100,7 @@ async function decodeHeic(file: File): Promise<Blob> {
 
     ctx.putImageData(imageData, 0, 0)
 
-    // Convert canvas to blob
-    return new Promise((resolve, reject) => {
+    return new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (blob) resolve(blob);
         else reject(new Error("Canvas to Blob conversion failed"));
@@ -129,13 +121,10 @@ export async function ensureDecodable(file: File): Promise<File | Blob> {
 
   if (isHeic) {
     const decodedBlob = await decodeHeic(file)
-    // Create a new File-like object with proper name and type
-    // Use the original filename but change extension to .png
     const newName = file.name.replace(/\.(heic|heif)$/i, ".png")
     return new File([decodedBlob], newName, { type: "image/png" })
   }
 
-  // For all other formats (AVIF, PNG, JPEG, WebP), browsers decode natively
   return file
 }
 

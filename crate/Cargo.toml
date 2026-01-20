@@ -22,7 +22,6 @@ rgb = "0.8"
 
 # AVIF
 ravif = { version = "0.11", default-features = false }
-rgb = "0.8"
 imgref = "1.10"
 
 # Resizing

@@ -111,8 +111,65 @@ export function AdvancedSettings() {
                             </div>
                         </div>
 
+
                         {/* Quality Preview Table */}
                         <QualityPreview />
+
+                        {/* Advanced Codec Features */}
+                        <div className="pt-4 border-t border-foreground/10 space-y-4">
+                            {/* JPEG Features */}
+                            {(compressionOptions.format === 'jpeg' || compressionOptions.format === 'jpg' || compressionOptions.format === 'auto') && (
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        High Detail (4:4:4)
+                                    </label>
+                                    <input
+                                        type="checkbox"
+                                        checked={compressionOptions.chromaSubsampling === false}
+                                        onChange={(e) => setCompressionOptions({ chromaSubsampling: !e.target.checked })}
+                                        className="w-4 h-4 accent-foreground"
+                                    />
+                                </div>
+                            )}
+
+                            {/* PNG/WebP Features */}
+                            {(compressionOptions.format === 'png' || compressionOptions.format === 'webp') && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                            Lossless
+                                        </label>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!compressionOptions.lossless}
+                                            onChange={(e) => setCompressionOptions({ lossless: e.target.checked })}
+                                            className="w-4 h-4 accent-foreground"
+                                        />
+                                    </div>
+
+                                    {!compressionOptions.lossless && (
+                                        <div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                                    Dithering
+                                                </label>
+                                                <span className="text-xs font-mono font-bold">
+                                                    {Math.round((compressionOptions.dithering ?? 1) * 100)}%
+                                                </span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="100"
+                                                value={Math.round((compressionOptions.dithering ?? 1) * 100)}
+                                                onChange={(e) => setCompressionOptions({ dithering: parseInt(e.target.value) / 100 })}
+                                                className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Resize & Constraints */}

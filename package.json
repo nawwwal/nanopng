@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "test": "vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "latest",
@@ -76,9 +77,12 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "^5.1.2",
+    "jsdom": "^27.4.0",
     "postcss": "latest",
     "tailwindcss": "^4.0.0-beta.9",
     "tw-animate-css": "latest",
-    "typescript": "latest"
+    "typescript": "latest",
+    "vitest": "^4.0.17"
   }
 }

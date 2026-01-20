@@ -1,0 +1,32 @@
+[package]
+name = "nanopng-core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+console_error_panic_hook = "0.1"
+
+# JPEG
+mozjpeg = "0.10"
+
+# PNG
+imagequant = "4.0"
+oxipng = "9.0"
+rgb = "0.8"
+
+# AVIF
+ravif = { version = "0.11", default-features = false }
+rgb = "0.8"
+imgref = "1.10"
+
+# Resizing
+fast_image_resize = "4.0"
+
+# Utilities
+lodepng = "3.10"

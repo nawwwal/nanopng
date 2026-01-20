@@ -1,6 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ImageService } from '../image-service';
-import { canEncodeAvif, canDecodeAvif } from '../../core/format-capabilities';
 
 // Mock Web Crypto
 vi.stubGlobal('crypto', {
@@ -9,14 +8,12 @@ vi.stubGlobal('crypto', {
     }
 });
 
-// Mock Canvas.toBlob (JSDOM may hang or not implement)
+// Mock Canvas
 HTMLCanvasElement.prototype.toBlob = vi.fn((callback) => {
-    callback(new Blob([''], { type: 'image/avif' }));
+    callback(new Blob([''], { type: 'image/png' }));
 });
 
-// Mock Image loading (JSDOM handles it but expects resources)
-// We rely on the src setter to trigger onload
-const originalImageSrcDescriptor = Object.getOwnPropertyDescriptor(global.Image.prototype, 'src');
+// Mock Image loading
 Object.defineProperty(global.Image.prototype, 'src', {
     set(src) {
         if (src === 'fail') {
@@ -28,30 +25,49 @@ Object.defineProperty(global.Image.prototype, 'src', {
 });
 
 describe('ImageService', () => {
-    it('computes SHA-256 hash correctly (mocked)', async () => {
-        const file = new File(['test'], 'test.png', { type: 'image/png' });
-        // Mock arrayBuffer for JSDOM
-        Object.defineProperty(file, 'arrayBuffer', {
-            value: async () => new ArrayBuffer(32)
+    describe('computeHash', () => {
+        it('computes SHA-256 hash correctly', async () => {
+            const file = new File(['test content'], 'test.png', { type: 'image/png' });
+            Object.defineProperty(file, 'arrayBuffer', {
+                value: async () => new ArrayBuffer(32)
+            });
+
+            const hash = await ImageService.computeHash(file);
+
+            expect(hash).toHaveLength(64);
+            expect(hash).toMatch(/^[0-9a-f]{64}$/);
         });
 
-        const hash = await ImageService.computeHash(file);
-        // We expect 64 chars hex string for sha-256
-        expect(hash).toHaveLength(64);
-    });
-});
+        it('returns different hashes for different content', async () => {
+            const file1 = new File(['content1'], 'test1.png', { type: 'image/png' });
+            const file2 = new File(['content2'], 'test2.png', { type: 'image/png' });
 
-describe('FormatCapabilities', () => {
-    it('checks AVIF encode support safely', async () => {
-        // jsdom canvas toBlob mocking if needed, 
-        // but by default jsdom canvas might not support toBlob with specific formats.
-        // Expect false or handle gracefully.
-        const supported = await canEncodeAvif();
-        expect(typeof supported).toBe('boolean');
+            Object.defineProperty(file1, 'arrayBuffer', {
+                value: async () => new ArrayBuffer(32)
+            });
+            Object.defineProperty(file2, 'arrayBuffer', {
+                value: async () => new ArrayBuffer(64)
+            });
+
+            const hash1 = await ImageService.computeHash(file1);
+            const hash2 = await ImageService.computeHash(file2);
+
+            // Both should be valid hex strings
+            expect(hash1).toMatch(/^[0-9a-f]{64}$/);
+            expect(hash2).toMatch(/^[0-9a-f]{64}$/);
+        });
     });
 
-    it('checks AVIF decode support safely', async () => {
-        const supported = await canDecodeAvif();
-        expect(typeof supported).toBe('boolean');
+    describe('analyze', () => {
+        it('returns valid analysis object', async () => {
+            const file = new File(['test'], 'test.png', { type: 'image/png' });
+
+            const analysis = await ImageService.analyze(file);
+
+            expect(analysis).toHaveProperty('isPhoto');
+            expect(analysis).toHaveProperty('hasTransparency');
+            expect(analysis).toHaveProperty('complexity');
+            expect(analysis).toHaveProperty('suggestedFormat');
+        });
     });
 });

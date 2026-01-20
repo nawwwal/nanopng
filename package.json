@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "npm run wasm:build && next build",
-    "wasm:build": "cd crate && ~/.cargo/bin/wasm-pack build --target web --out-dir ../public/wasm",
+    "build": "npm run wasm:prepare && next build",
+    "wasm:prepare": "node scripts/prepare-wasm.mjs",
+    "wasm:build": "cd crate && wasm-pack build --target web --out-dir ../lib/wasm/nanopng-core/pkg",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
@@ -71,7 +72,6 @@
     "sonner": "latest",
     "tailwind-merge": "latest",
     "vaul": "latest",
-    "wasm-pack": "^0.0.0",
     "zod": "latest"
   },
   "devDependencies": {

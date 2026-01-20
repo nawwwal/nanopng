@@ -31,17 +31,17 @@ cd nanopng
 npm install
 ```
 
-### 2. Build Wasm Module
+### 2. Build Wasm Module (if Rust crate changed)
 
 ```bash
-cd crate
-wasm-pack build --target web --out-dir ../public/wasm
-cd ..
+npm run wasm:build
 ```
 
-This generates:
-- `public/wasm/nanopng_core.js` (JS glue code)
-- `public/wasm/nanopng_core_bg.wasm` (Wasm binary)
+This generates WASM artifacts in `lib/wasm/nanopng-core/pkg/`:
+- `nanopng_core.js` (JS glue code)
+- `nanopng_core_bg.wasm` (Wasm binary)
+
+**Note**: These artifacts are committed to the repo. You only need to rebuild if you modify the Rust crate (`crate/src/`).
 
 ### 3. Start Development Server
 
@@ -68,8 +68,9 @@ npx tsc --noEmit
 ### Full Build Command
 
 ```bash
-# 1. Build Wasm
-cd crate && wasm-pack build --target web --out-dir ../public/wasm && cd ..
+# 1. Prepare WASM (copies prebuilt artifacts to public/wasm/)
+# This happens automatically during npm run build, but you can run it separately:
+npm run wasm:prepare
 
 # 2. Build Next.js
 npm run build
@@ -77,6 +78,8 @@ npm run build
 # 3. Start production server (local testing)
 npm run start
 ```
+
+**Note**: The build process copies prebuilt WASM artifacts from `lib/wasm/nanopng-core/pkg/` to `public/wasm/`. If you've modified the Rust crate, rebuild it first with `npm run wasm:build` and commit the updated artifacts.
 
 ---
 
@@ -100,16 +103,21 @@ vercel
 
 ### Build Configuration
 
-Create `vercel.json` in project root:
+The `vercel.json` file is configured to use the standard Next.js build:
 
 ```json
 {
-  "buildCommand": "cd crate && wasm-pack build --target web --out-dir ../public/wasm && cd .. && npm run build",
-  "installCommand": "curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh && npm install"
+  "buildCommand": "npm run build"
 }
 ```
 
-> **Note**: Vercel's build environment includes Rust. The custom install command adds wasm-pack.
+**How it works**:
+- Vercel runs `npm install` (standard Next.js install)
+- Then runs `npm run build`, which:
+  1. Copies prebuilt WASM artifacts from `lib/wasm/nanopng-core/pkg/` to `public/wasm/` via `wasm:prepare`
+  2. Builds the Next.js application
+
+**Important**: WASM artifacts are **prebuilt and committed** to the repo. Vercel does **not** compile Rust during deployment. If you modify the Rust crate (`crate/src/`), rebuild locally with `npm run wasm:build` and commit the updated artifacts in `lib/wasm/nanopng-core/pkg/`.
 
 ### Environment Variables
 
@@ -127,23 +135,31 @@ These enable `SharedArrayBuffer` for multithreading.
 
 ## Troubleshooting
 
-### "wasm-pack: command not found"
+### "Missing WASM artifact" error during build
+This means the prebuilt WASM files are missing from `lib/wasm/nanopng-core/pkg/`. Rebuild them:
+
 ```bash
-cargo install wasm-pack
+npm run wasm:build
 ```
+
+Then commit the updated artifacts and redeploy.
 
 ### Wasm module fails to load in browser
 1. Check `public/wasm/` contains both `.js` and `.wasm` files
 2. Verify dev server is running
 3. Check browser console for CORS errors
+4. Ensure `npm run wasm:prepare` ran successfully (it's part of `npm run build`)
 
 ### SharedArrayBuffer not available
 - Ensure COOP/COEP headers are being served
 - Check Network tab for header presence
 - Note: These headers may break third-party embeds
 
-### Slow first Wasm compilation
-Normal for first build (2-5 mins). Subsequent builds are cached (~30s).
+### Vercel build fails with "failed to find Rust installation"
+This should no longer happen with the updated configuration. If it does, ensure:
+- `vercel.json` only contains `{"buildCommand": "npm run build"}`
+- No custom `installCommand` is set
+- WASM artifacts exist in `lib/wasm/nanopng-core/pkg/`
 
 ---
 
@@ -168,7 +184,8 @@ Vercel automatically runs on push to main.
 | Task | Command |
 |------|---------|
 | Dev server | `npm run dev` |
-| Build Wasm | `cd crate && wasm-pack build --target web --out-dir ../public/wasm` |
+| Build Wasm (Rust crate) | `npm run wasm:build` |
+| Prepare WASM (copy to public) | `npm run wasm:prepare` |
 | Prod build | `npm run build` |
 | Run tests | `npm test` |
 | Type check | `npx tsc --noEmit` |

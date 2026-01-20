@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "npm run wasm:build && next build",
-    "wasm:build": "cd crate && wasm-pack build --target web --out-dir ../public/wasm",
+    "wasm:build": "cd crate && ~/.cargo/bin/wasm-pack build --target web --out-dir ../public/wasm",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",

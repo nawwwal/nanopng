@@ -1,0 +1,4 @@
+{
+    "buildCommand": "cd crate && ~/.cargo/bin/wasm-pack build --target web --out-dir ../public/wasm && cd .. && npm run build",
+    "installCommand": "curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh && npm install"
+}

@@ -69,6 +69,7 @@
     "sonner": "latest",
     "tailwind-merge": "latest",
     "vaul": "latest",
+    "wasm-pack": "^0.0.0",
     "zod": "latest"
   },
   "devDependencies": {

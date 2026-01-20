@@ -15,17 +15,17 @@ console_error_panic_hook = "0.1"
 # JPEG (pure Rust - Wasm compatible)
 jpeg-encoder = "0.6"
 
-# PNG
+# PNG (pure Rust - Wasm compatible)
+png = "0.17"
 imagequant = "4.0"
-oxipng = "9.0"
 rgb = "0.8"
 
-# AVIF
+# AVIF (pure Rust)
 ravif = { version = "0.11", default-features = false }
 imgref = "1.10"
 
-# Resizing
-fast_image_resize = "4.0"
+# Resizing (pure Rust)
+fast_image_resize = { version = "4.0", default-features = false }
 
-# Utilities
-lodepng = "3.10"
+# Compression (pure Rust)
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }

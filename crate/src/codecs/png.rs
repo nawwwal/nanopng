@@ -1,6 +1,8 @@
-use oxipng::{Options, RawImage, InFile, OutFile};
+use png::{BitDepth, ColorType, Encoder, Compression};
 use imagequant::Attributes;
-use lodepng::{Encoder, ColorType, BitDepth};
+use flate2::write::ZlibEncoder;
+use flate2::Compression as ZlibCompression;
+use std::io::Write;
 
 pub fn encode_png(
     data: &[u8], 
@@ -17,31 +19,28 @@ pub fn encode_png(
 }
 
 fn encode_lossless(data: &[u8], width: u32, height: u32) -> Result<Vec<u8>, String> {
-    let mut options = Options::default();
-    // High compression for lossless
-    options.deflate = oxipng::DeflateEncoding::Rnp; // Rnp is good but slow, maybe default to Libdeflater which is standard in oxipng 9?
-    // Let's stick to default which balances speed/ratio or max it out?
-    // User wants "production-grade".
-    options.optimize_alpha = true;
-
-    // Oxipng 9.0+ RawImage API
-    let raw = RawImage::new(width, height, oxipng::ColorType::RGBA, oxipng::BitDepth::Eight, Vec::from(data))
-        .map_err(|e| format!("Failed to create raw image: {:?}", e))?;
-
-    let out = raw.create_optimized_png(&options)
-        .map_err(|e| format!("Oxipng optimization failed: {:?}", e))?;
-
-    Ok(out)
+    let mut output = Vec::new();
+    
+    {
+        let mut encoder = Encoder::new(&mut output, width, height);
+        encoder.set_color(ColorType::Rgba);
+        encoder.set_depth(BitDepth::Eight);
+        encoder.set_compression(Compression::Best);
+        
+        let mut writer = encoder.write_header()
+            .map_err(|e| format!("PNG header write failed: {:?}", e))?;
+        
+        writer.write_image_data(data)
+            .map_err(|e| format!("PNG data write failed: {:?}", e))?;
+    }
+    
+    Ok(output)
 }
 
 fn encode_lossy(data: &[u8], width: u32, height: u32, dithering_level: f32) -> Result<Vec<u8>, String> {
     // 1. Quantize with libimagequant
     let mut attr = Attributes::new();
     attr.set_speed(5); // Balance between speed/quality
-    
-    // imagequant crate uses 0.0-1.0 for quality, but dithering is separate
-    // Actually set_quality takes min/max (0-100).
-    // We assume we want max quality visualization.
     attr.set_quality(0, 100).map_err(|e| format!("Failed to set LIQ quality: {:?}", e))?;
 
     let mut img = attr.new_image(data.to_vec(), width as usize, height as usize, 0.0)
@@ -56,32 +55,35 @@ fn encode_lossy(data: &[u8], width: u32, height: u32, dithering_level: f32) -> R
     let (palette, pixels) = res.remapped(&mut img)
         .map_err(|e| format!("Remapping failed: {:?}", e))?;
 
-    // 2. Encode to uncompressed PNG using lodepng (fast)
-    // We need to construct the palette for lodepng
-    // imagequant palette is RGBA8888
-    let mut state = lodepng::State::new();
-    state.info_png.color.colortype = ColorType::PALETTE;
-    state.info_png.color.bitdepth = BitDepth::Eight;
-    state.info_raw.colortype = ColorType::PALETTE;
-    state.info_raw.bitdepth = BitDepth::Eight;
-    state.encoder.auto_convert = false; // We provided exact palette data
-
-    for px in palette {
-         state.info_png.color.palette_add(px.r, px.g, px.b, px.a)
-             .map_err(|e| format!("Failed to add palette: {:?}", e))?;
-         state.info_raw.color.palette_add(px.r, px.g, px.b, px.a)
-             .map_err(|e| format!("Failed to add palette raw: {:?}", e))?;
-    }
-
-    let png_buffer = state.encode(&pixels, width as usize, height as usize)
-        .map_err(|e| format!("Lodepng encoding failed: {:?}", e))?;
-
-    // 3. Optimize that PNG with oxipng
-    let mut options = Options::default();
-    options.optimize_alpha = true; // Still useful for palette transparency?
+    // 2. Encode to PNG with palette using the `png` crate
+    let mut output = Vec::new();
     
-    let optimized = oxipng::optimize_from_memory(&png_buffer, &options)
-        .map_err(|e| format!("Oxipng optimization failed: {:?}", e))?;
-
-    Ok(optimized)
+    {
+        let mut encoder = Encoder::new(&mut output, width, height);
+        encoder.set_color(ColorType::Indexed);
+        encoder.set_depth(BitDepth::Eight);
+        encoder.set_compression(Compression::Best);
+        
+        // Build palette (RGB) and transparency (tRNS) chunks
+        let mut rgb_palette: Vec<u8> = Vec::with_capacity(palette.len() * 3);
+        let mut trns: Vec<u8> = Vec::with_capacity(palette.len());
+        
+        for px in &palette {
+            rgb_palette.push(px.r);
+            rgb_palette.push(px.g);
+            rgb_palette.push(px.b);
+            trns.push(px.a);
+        }
+        
+        encoder.set_palette(rgb_palette);
+        encoder.set_trns(trns);
+        
+        let mut writer = encoder.write_header()
+            .map_err(|e| format!("PNG header write failed: {:?}", e))?;
+        
+        writer.write_image_data(&pixels)
+            .map_err(|e| format!("PNG data write failed: {:?}", e))?;
+    }
+    
+    Ok(output)
 }

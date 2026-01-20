@@ -165,7 +165,7 @@ export function useEditor() {
 export function EditorProvider({ children }: { children: ReactNode }) {
     const [state, dispatch] = useReducer(editorReducer, {
         images: [],
-        selectedIds: new Set(),
+        selectedIds: new Set<string>(),
         previewImageId: null,
         isProcessing: false,
         queueIndex: 0,

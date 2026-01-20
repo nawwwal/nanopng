@@ -106,9 +106,13 @@ pub fn process_image(
             4,
         )
         .map_err(|e| JsValue::from_str(&e)),
-        _ => {
-            console_log!("Format not implemented, returning resized raw buffer");
-            Ok(current_data)
-        }
+        Format::WebP => codecs::webp::encode_webp(
+            &current_data,
+            current_width,
+            current_height,
+            config.quality,
+            config.lossless,
+        )
+        .map_err(|e| JsValue::from_str(&e)),
     }
 }

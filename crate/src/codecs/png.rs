@@ -55,7 +55,8 @@ fn encode_lossy(
 
     // 2. Quantize with libimagequant
     let mut attr = Attributes::new();
-    attr.set_speed(5); // Balance between speed/quality
+    attr.set_speed(5) // Balance between speed/quality
+        .map_err(|e| format!("Failed to set LIQ speed: {:?}", e))?;
     attr.set_quality(0, 100)
         .map_err(|e| format!("Failed to set LIQ quality: {:?}", e))?;
 

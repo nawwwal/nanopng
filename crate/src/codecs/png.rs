@@ -1,8 +1,5 @@
 use png::{BitDepth, ColorType, Encoder, Compression};
 use imagequant::Attributes;
-use flate2::write::ZlibEncoder;
-use flate2::Compression as ZlibCompression;
-use std::io::Write;
 
 pub fn encode_png(
     data: &[u8], 

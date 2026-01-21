@@ -194,7 +194,14 @@ export class CompressionOrchestrator {
       // Auto-select lossless vs lossy for PNG based on image type
       // Photos: use lossless (better quality preservation)
       // Graphics: use lossy (palette reduction works great)
-      effectiveLossless = imageAnalysis.type === 'photo' || imageAnalysis.type === 'mixed'
+      // Mixed: use transparency to decide (lossy artifacts visible in semi-transparent areas)
+      if (imageAnalysis.type === 'photo') {
+        effectiveLossless = true
+      } else if (imageAnalysis.type === 'mixed') {
+        effectiveLossless = imageAnalysis.hasSignificantTransparency
+      } else {
+        effectiveLossless = false
+      }
     }
 
     if (imageAnalysis && effectiveFormat === 'jpeg') {

@@ -12,7 +12,10 @@ import JSZip from "jszip"
 // Constants
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 const MAX_FILES = 100
-const CONCURRENT_PROCESSING = 3
+// Dynamic concurrency based on CPU cores (75%, min 2, max 6)
+const CONCURRENT_PROCESSING = typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+    ? Math.max(2, Math.min(6, Math.floor(navigator.hardwareConcurrency * 0.75)))
+    : 3
 
 const ACCEPTED_FORMATS = {
     "image/png": [".png"],

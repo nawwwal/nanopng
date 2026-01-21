@@ -82,6 +82,7 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
 
             {/* Image display */}
             <motion.div
+                layoutId={`preview-container-${image.id}`}
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
@@ -97,11 +98,9 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                         afterHeight={image.height}
                         className="h-full"
                         objectFit="contain"
-                        imageId={image.id}
                     />
                 ) : currentUrl ? (
-                    <motion.img
-                        layoutId={`image-${image.id}`}
+                    <img
                         src={currentUrl}
                         alt={image.originalName}
                         width={displayWidth}

@@ -36,7 +36,7 @@ export function UploadPanel() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.15 }}
-                        className="h-full flex flex-col"
+                        className="h-full flex flex-col relative"
                     >
                         {/* Header with add more button */}
                         <div className="px-4 py-2 border-b border-foreground flex items-center justify-between bg-secondary shrink-0 h-14">

@@ -15,7 +15,6 @@ interface BeforeAfterSliderProps {
   beforeHeight?: number
   afterWidth?: number
   afterHeight?: number
-  imageId?: string
 }
 
 export function BeforeAfterSlider({
@@ -28,8 +27,7 @@ export function BeforeAfterSlider({
   beforeWidth,
   beforeHeight,
   afterWidth,
-  afterHeight,
-  imageId
+  afterHeight
 }: BeforeAfterSliderProps) {
   const [sliderPosition, setSliderPosition] = useState(50)
   const [isDragging, setIsDragging] = useState(false)
@@ -124,8 +122,7 @@ export function BeforeAfterSlider({
     >
       {/* After Image (Compressed) - Full width */}
       <div className="absolute inset-0">
-        <motion.img
-          layoutId={imageId ? `image-${imageId}` : undefined}
+        <img
           src={afterImage || "/placeholder.svg"}
           alt={afterLabel}
           width={afterWidth}

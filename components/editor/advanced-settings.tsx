@@ -120,63 +120,51 @@ export function AdvancedSettings() {
                         <QualityPreview />
                     </div>
 
-                    {/* Format Options - Conditional based on format */}
-                    {((compressionOptions.format === 'jpeg' || compressionOptions.format === 'jpg' || compressionOptions.format === 'auto') ||
-                      (compressionOptions.format === 'png' || compressionOptions.format === 'webp')) && (
-                        <div className="px-4 pb-4 space-y-3">
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 border-t border-foreground/10 pt-4">
-                                Format Options
-                            </div>
-
-                            {/* JPEG Features */}
-                            {(compressionOptions.format === 'jpeg' || compressionOptions.format === 'jpg' || compressionOptions.format === 'auto') && (
-                                <SettingHint label="High Detail (4:4:4)" hint={SETTING_HINTS.highDetail}>
-                                    <div className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            checked={compressionOptions.chromaSubsampling === false}
-                                            onChange={(e) => setCompressionOptions({ chromaSubsampling: !e.target.checked })}
-                                            className="w-4 h-4 accent-foreground"
-                                        />
-                                    </div>
-                                </SettingHint>
-                            )}
-
-                            {/* PNG/WebP Features */}
-                            {(compressionOptions.format === 'png' || compressionOptions.format === 'webp') && (
-                                <>
-                                    <SettingHint label="Lossless" hint={SETTING_HINTS.lossless}>
-                                        <div className="flex items-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={!!compressionOptions.lossless}
-                                                onChange={(e) => setCompressionOptions({ lossless: e.target.checked })}
-                                                className="w-4 h-4 accent-foreground"
-                                            />
-                                        </div>
-                                    </SettingHint>
-
-                                    {!compressionOptions.lossless && (
-                                        <SettingHint label="Dithering" hint={SETTING_HINTS.dithering}>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-xs font-mono font-bold">
-                                                    {Math.round((compressionOptions.dithering ?? 1) * 100)}%
-                                                </span>
-                                            </div>
-                                            <input
-                                                type="range"
-                                                min="0"
-                                                max="100"
-                                                value={Math.round((compressionOptions.dithering ?? 1) * 100)}
-                                                onChange={(e) => setCompressionOptions({ dithering: parseInt(e.target.value) / 100 })}
-                                                className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
-                                            />
-                                        </SettingHint>
-                                    )}
-                                </>
-                            )}
+                    {/* Format Options */}
+                    <div className="px-4 pb-4 space-y-3">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 border-t border-foreground/10 pt-4">
+                            Format Options
                         </div>
-                    )}
+
+                        {/* High Detail and Lossless side-by-side */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <SettingHint label="High Detail" hint={SETTING_HINTS.highDetail} inline>
+                                <input
+                                    type="checkbox"
+                                    checked={compressionOptions.chromaSubsampling === false}
+                                    onChange={(e) => setCompressionOptions({ chromaSubsampling: !e.target.checked })}
+                                    className="w-4 h-4 accent-foreground"
+                                />
+                            </SettingHint>
+                            <SettingHint label="Lossless" hint={SETTING_HINTS.lossless} inline>
+                                <input
+                                    type="checkbox"
+                                    checked={!!compressionOptions.lossless}
+                                    onChange={(e) => setCompressionOptions({ lossless: e.target.checked })}
+                                    className="w-4 h-4 accent-foreground"
+                                />
+                            </SettingHint>
+                        </div>
+
+                        {/* Dithering - only for lossy PNG/WebP */}
+                        {(compressionOptions.format === 'png' || compressionOptions.format === 'webp') && !compressionOptions.lossless && (
+                            <SettingHint label="Dithering" hint={SETTING_HINTS.dithering}>
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-mono font-bold">
+                                        {Math.round((compressionOptions.dithering ?? 1) * 100)}%
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={Math.round((compressionOptions.dithering ?? 1) * 100)}
+                                    onChange={(e) => setCompressionOptions({ dithering: parseInt(e.target.value) / 100 })}
+                                    className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                />
+                            </SettingHint>
+                        )}
+                    </div>
 
                     {/* Resize & Constraints */}
                     <div className="p-4 border-t border-foreground/10 space-y-4">

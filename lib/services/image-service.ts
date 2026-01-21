@@ -2,8 +2,7 @@ import { CompressedImage, ImageAnalysis, ImageFormat } from "@/types/image"
 import { canEncodeAvif } from "@/lib/core/format-capabilities"
 import { copyMetadata } from "@/lib/core/metadata"
 import * as exifr from "exifr"
-import * as Comlink from "comlink";
-import type { ProcessorAPI } from "@/lib/workers/processor.worker";
+import { getWorkerPool } from "@/lib/workers/worker-pool"
 import { CompressionOptions } from "@/lib/types/compression";
 
 export class ImageService {
@@ -59,11 +58,12 @@ export class ImageService {
     ctx.drawImage(img, 0, 0);
     const imageData = ctx.getImageData(0, 0, oriWidth, oriHeight);
     dataView.set(imageData.data);
-    const worker = new Worker(new URL("../workers/processor.worker.ts", import.meta.url), { type: "module" });
-    const api = Comlink.wrap<ProcessorAPI>(worker);
 
-    try {
-      const result = await api.processImage(
+    // Use worker pool for better performance
+    const workerPool = getWorkerPool();
+
+    const result = await workerPool.execute(async (api) => {
+      return api.processImage(
         id,
         oriWidth,
         oriHeight,
@@ -78,67 +78,61 @@ export class ImageService {
         },
         sab
       );
+    });
 
-      if (!result.success || !result.data) {
-        throw new Error(result.error || "Unknown Wasm error");
-      }
-
-      const resolvedFormat = format === "auto" ? "jpeg" : (format || "jpeg");
-      const actualFormat = (resolvedFormat as string) === "jpg" ? "jpeg" : resolvedFormat;
-      const blob = new Blob([new Uint8Array(result.data)], { type: `image/${actualFormat}` });
-
-      let finalBlob = blob;
-      if (file.type === "image/jpeg" && (actualFormat === "jpeg")) {
-        try {
-          finalBlob = await copyMetadata(file, blob);
-        } catch (e) { console.warn("Metadata copy failed", e); }
-      }
-
-      const savings = Math.max(0, (originalSize - finalBlob.size) / originalSize * 100);
-
-      worker.terminate();
-
-      // Calculate output dimensions (fit within bounds, preserve aspect ratio)
-      let outputWidth = oriWidth;
-      let outputHeight = oriHeight;
-
-      if (targetWidth || targetHeight) {
-        const effectiveMaxWidth = targetWidth || oriWidth;
-        const effectiveMaxHeight = targetHeight || oriHeight;
-
-        // Only resize if image exceeds bounds
-        if (oriWidth > effectiveMaxWidth || oriHeight > effectiveMaxHeight) {
-          const scaleX = effectiveMaxWidth / oriWidth;
-          const scaleY = effectiveMaxHeight / oriHeight;
-          const scale = Math.min(scaleX, scaleY);
-          outputWidth = Math.max(1, Math.round(oriWidth * scale));
-          outputHeight = Math.max(1, Math.round(oriHeight * scale));
-        }
-      }
-
-      return {
-        id,
-        originalName: file.name,
-        originalSize,
-        originalWidth: oriWidth,
-        originalHeight: oriHeight,
-        compressedSize: finalBlob.size,
-        compressedBlob: finalBlob,
-        blobUrl: URL.createObjectURL(finalBlob),
-        originalBlobUrl: URL.createObjectURL(file),
-        savings,
-        format: ((format === "auto" ? "jpeg" : format) || "jpeg") as ImageFormat,
-        originalFormat: "png",
-        status: savings < 1 ? "already-optimized" : "completed",
-        analysis: analysis || { isPhoto: true, hasTransparency: false, complexity: 0.5, uniqueColors: 10000, suggestedFormat: "webp" },
-        generation,
-        width: outputWidth,
-        height: outputHeight
-      };
-
-    } catch (e) {
-      worker.terminate();
-      throw e;
+    if (!result.success || !result.data) {
+      throw new Error(result.error || "Unknown Wasm error");
     }
+
+    const resolvedFormat = format === "auto" ? "jpeg" : (format || "jpeg");
+    const actualFormat = (resolvedFormat as string) === "jpg" ? "jpeg" : resolvedFormat;
+    const blob = new Blob([new Uint8Array(result.data)], { type: `image/${actualFormat}` });
+
+    let finalBlob = blob;
+    if (file.type === "image/jpeg" && (actualFormat === "jpeg")) {
+      try {
+        finalBlob = await copyMetadata(file, blob);
+      } catch (e) { console.warn("Metadata copy failed", e); }
+    }
+
+    const savings = Math.max(0, (originalSize - finalBlob.size) / originalSize * 100);
+
+    // Calculate output dimensions (fit within bounds, preserve aspect ratio)
+    let outputWidth = oriWidth;
+    let outputHeight = oriHeight;
+
+    if (targetWidth || targetHeight) {
+      const effectiveMaxWidth = targetWidth || oriWidth;
+      const effectiveMaxHeight = targetHeight || oriHeight;
+
+      // Only resize if image exceeds bounds
+      if (oriWidth > effectiveMaxWidth || oriHeight > effectiveMaxHeight) {
+        const scaleX = effectiveMaxWidth / oriWidth;
+        const scaleY = effectiveMaxHeight / oriHeight;
+        const scale = Math.min(scaleX, scaleY);
+        outputWidth = Math.max(1, Math.round(oriWidth * scale));
+        outputHeight = Math.max(1, Math.round(oriHeight * scale));
+      }
+    }
+
+    return {
+      id,
+      originalName: file.name,
+      originalSize,
+      originalWidth: oriWidth,
+      originalHeight: oriHeight,
+      compressedSize: finalBlob.size,
+      compressedBlob: finalBlob,
+      blobUrl: URL.createObjectURL(finalBlob),
+      originalBlobUrl: URL.createObjectURL(file),
+      savings,
+      format: ((format === "auto" ? "jpeg" : format) || "jpeg") as ImageFormat,
+      originalFormat: "png",
+      status: savings < 1 ? "already-optimized" : "completed",
+      analysis: analysis || { isPhoto: true, hasTransparency: false, complexity: 0.5, uniqueColors: 10000, suggestedFormat: "webp" },
+      generation,
+      width: outputWidth,
+      height: outputHeight
+    };
   }
 }

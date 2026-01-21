@@ -29,6 +29,7 @@ export interface CompressionResult {
   originalHeight?: number
   width?: number
   height?: number
+  warning?: string
 }
 
 export { type CompressedImage, type ImageAnalysis }

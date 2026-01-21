@@ -45,6 +45,7 @@ function ImageThumbnail({
         <motion.div
             ref={elementRef}
             layout
+            layoutId={`preview-container-${image.id}`}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -70,8 +71,7 @@ function ImageThumbnail({
         >
             {/* Image */}
             {imageUrl ? (
-                <motion.img
-                    layoutId={`image-${image.id}`}
+                <img
                     src={imageUrl}
                     alt={image.originalName}
                     className="w-full h-full object-cover pointer-events-none select-none"

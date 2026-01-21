@@ -15,7 +15,7 @@ export function ActionBar() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 20, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
-            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 border border-foreground bg-background/95 backdrop-blur-sm shadow-[4px_4px_0_var(--foreground)] py-3 px-4"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 border border-foreground bg-background/95 backdrop-blur-sm shadow-[4px_4px_0_var(--foreground)] py-3 px-4"
         >
             <div className="inline-flex items-center gap-3">
                     {/* Toggle Selection Mode / Select All */}

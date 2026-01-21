@@ -3,6 +3,16 @@ import type { CompressionOptions } from "@/lib/types/compression";
 
 // Define the API exposed by the worker
 export interface ProcessorAPI {
+    /**
+     * Process and compress an image with the given options.
+     * @param id - Unique identifier for the image
+     * @param width - Width of the input image in pixels
+     * @param height - Height of the input image in pixels
+     * @param opt - Compression options
+     * @param opt.quality - Quality level from 0.0 to 1.0
+     * @param sharedBuffer - SharedArrayBuffer containing input pixel data (RGBA)
+     * @returns Promise with success status and compressed data or error
+     */
     processImage(
         id: string,
         width: number,
@@ -90,8 +100,12 @@ const webpDefaultOptions = {
 };
 
 // Helper to get absolute URL for worker context
-function getAbsoluteUrl(path: string): string {
-    return new URL(path, self.location.origin).href;
+function getAbsoluteUrl(relativePath: string): string {
+    // Fallback for worker contexts where location.origin may not exist
+    const origin = typeof self !== 'undefined' && self.location?.origin
+        ? self.location.origin
+        : ''
+    return `${origin}${relativePath}`
 }
 
 async function initWebPEncoder() {

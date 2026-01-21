@@ -30,3 +30,6 @@ next-env.d.ts
 /crate/target/
 /crate/.cargo/
 /public/wasm/
+
+# worktrees
+.worktrees/

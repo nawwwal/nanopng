@@ -86,14 +86,21 @@ export class CompressionOrchestrator {
       const probeSize = probeResult.compressedBlob?.size || originalSize
       const probeTimeMs = performance.now() - startTime
 
-      // Estimate full compression savings
-      // Compression ratio tends to be similar across resolutions
-      // Scale up probe result to estimate full-size result
-      const scaledProbeOriginal = originalSize * scaleFactor * scaleFactor
-      const probeSavingsRatio = 1 - (probeSize / scaledProbeOriginal)
+      // Calculate probe's original size (before compression) at probe dimensions
+      // This is an estimate based on pixel ratio
+      const probePixels = probeWidth * probeHeight
+      const originalPixels = oriWidth * oriHeight
 
-      // Estimate full savings - probe typically underestimates by ~15%
-      const estimatedSavings = Math.max(0, probeSavingsRatio * 100 * 1.15)
+      // Probe compression ratio: how much did the probe compress?
+      // Use the probe's own input size estimate, not the original file size
+      const estimatedProbeInputSize = (probePixels / originalPixels) * originalSize
+      const probeCompressionRatio = probeSize / estimatedProbeInputSize
+
+      // Apply same compression ratio to full-size image
+      const estimatedFullCompressedSize = originalSize * probeCompressionRatio
+
+      // Calculate savings as percentage
+      const estimatedSavings = Math.max(0, ((originalSize - estimatedFullCompressedSize) / originalSize) * 100)
 
       // Skip if estimated savings below threshold
       const shouldSkip = estimatedSavings < CompressionOrchestrator.SKIP_THRESHOLD_PERCENT

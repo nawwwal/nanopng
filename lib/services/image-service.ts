@@ -7,6 +7,14 @@ import { CompressionOptions } from "@/lib/types/compression";
 
 export class ImageService {
 
+  private static detectFormat(mimeType: string): ImageFormat {
+    if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'jpeg'
+    if (mimeType.includes('png')) return 'png'
+    if (mimeType.includes('webp')) return 'webp'
+    if (mimeType.includes('avif')) return 'avif'
+    return 'jpeg' // default
+  }
+
   static async computeHash(file: File): Promise<string> {
     const buffer = await file.arrayBuffer()
     const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
@@ -130,7 +138,7 @@ export class ImageService {
       originalBlobUrl: URL.createObjectURL(file),
       savings,
       format: ((format === "auto" ? "jpeg" : format) || "jpeg") as ImageFormat,
-      originalFormat: "png",
+      originalFormat: ImageService.detectFormat(file.type),
       status: savings < 1 ? "already-optimized" : "completed",
       analysis: analysis || { isPhoto: true, hasTransparency: false, complexity: 0.5, uniqueColors: 10000, suggestedFormat: "webp" },
       generation,

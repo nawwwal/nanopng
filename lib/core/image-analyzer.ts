@@ -11,6 +11,7 @@ export interface ImageAnalysisResult {
   hasHardEdges: boolean
   hasSmoothGradients: boolean
   hasTransparency: boolean
+  hasSignificantTransparency: boolean
   solidRegionRatio: number
 }
 
@@ -37,6 +38,7 @@ export function analyzeImageType(
   // Sample pixels for analysis (max 10,000 for performance)
   const sampleSize = Math.min(10000, totalPixels)
   const sampleStep = Math.max(1, Math.floor(totalPixels / sampleSize))
+  const actualSampledPixels = Math.ceil(totalPixels / sampleStep)
 
   // Track unique colors using a Set (hash RGB values)
   const colorSet = new Set<number>()
@@ -44,6 +46,9 @@ export function analyzeImageType(
 
   for (let i = 0; i < totalPixels; i += sampleStep) {
     const idx = i * 4
+    // Defensive bounds check
+    if (idx + 3 >= data.length) break
+
     const r = data[idx]
     const g = data[idx + 1]
     const b = data[idx + 2]
@@ -58,8 +63,27 @@ export function analyzeImageType(
     colorSet.add(colorHash)
   }
 
-  const uniqueColors = colorSet.size
-  const hasTransparency = transparentPixels > (sampleSize * 0.01) // >1% transparent
+  const rawUniqueColors = colorSet.size
+
+  // Logarithmic scaling: estimate total unique colors from sample
+  // Uses diminishing returns model - early samples find many colors, later fewer
+  let uniqueColors: number
+  if (actualSampledPixels >= totalPixels) {
+    // All pixels sampled, use raw count
+    uniqueColors = rawUniqueColors
+  } else {
+    // Scale up using log ratio
+    const saturationFactor = Math.log(totalPixels) / Math.log(actualSampledPixels)
+    uniqueColors = Math.min(
+      Math.round(rawUniqueColors * saturationFactor),
+      totalPixels // cap at theoretical max
+    )
+  }
+
+  // Fix transparency ratio denominator
+  const transparencyRatio = transparentPixels / actualSampledPixels
+  const hasTransparency = transparencyRatio > 0.01 // >1% transparent
+  const hasSignificantTransparency = transparencyRatio > 0.05 // >5% transparent
 
   // Calculate solid region ratio and edge characteristics
   const { solidRegionRatio, hasHardEdges, hasSmoothGradients } =
@@ -85,6 +109,7 @@ export function analyzeImageType(
     hasHardEdges,
     hasSmoothGradients,
     hasTransparency,
+    hasSignificantTransparency,
     solidRegionRatio
   }
 }
@@ -103,9 +128,13 @@ function analyzeTexture(
   let hardEdgeCount = 0
   let smoothTransitionCount = 0
 
+  // Clamp to valid range for block analysis
+  const maxY = Math.max(0, height - blockSize)
+  const maxX = Math.max(0, width - blockSize)
+
   // Analyze 4x4 blocks for solid regions
-  for (let y = 0; y < height - blockSize; y += blockSize) {
-    for (let x = 0; x < width - blockSize; x += blockSize) {
+  for (let y = 0; y < maxY; y += blockSize) {
+    for (let x = 0; x < maxX; x += blockSize) {
       totalBlocks++
 
       let minR = 255, maxR = 0
@@ -115,6 +144,9 @@ function analyzeTexture(
       for (let by = 0; by < blockSize; by++) {
         for (let bx = 0; bx < blockSize; bx++) {
           const idx = ((y + by) * width + (x + bx)) * 4
+          // Bounds check
+          if (idx + 2 >= data.length) continue
+
           const r = data[idx]
           const g = data[idx + 1]
           const b = data[idx + 2]
@@ -140,8 +172,12 @@ function analyzeTexture(
   const edgeSampleStep = Math.max(1, Math.floor(height / 100))
 
   for (let y = 0; y < height; y += edgeSampleStep) {
+    // Stop at width - 2 to ensure nextIdx is valid
     for (let x = 1; x < width - 1; x++) {
       const idx = (y * width + x) * 4
+      // Bounds check for idx + 2 and nextIdx + 2
+      if (idx + 6 >= data.length) continue
+
       const prevIdx = idx - 4
       const nextIdx = idx + 4
 
@@ -167,8 +203,12 @@ function analyzeTexture(
   const solidRegionRatio = totalBlocks > 0 ? solidBlocks / totalBlocks : 0
 
   // Heuristics for edge/gradient classification
-  const edgeRatio = hardEdgeCount / (width * (height / edgeSampleStep))
-  const smoothRatio = smoothTransitionCount / (width * (height / edgeSampleStep))
+  const sampledWidth = Math.max(1, width - 2)
+  const sampledRows = Math.max(1, Math.ceil(height / edgeSampleStep))
+  const totalEdgeSamples = sampledWidth * sampledRows
+
+  const edgeRatio = hardEdgeCount / totalEdgeSamples
+  const smoothRatio = smoothTransitionCount / totalEdgeSamples
 
   const hasHardEdges = edgeRatio > 0.05 // >5% hard edges
   const hasSmoothGradients = smoothRatio > 0.6 // >60% smooth transitions
@@ -177,35 +217,5 @@ function analyzeTexture(
     solidRegionRatio,
     hasHardEdges,
     hasSmoothGradients
-  }
-}
-
-/**
- * Fast probe to estimate if full compression is worthwhile.
- * Uses reduced resolution and fast presets to quickly estimate savings.
- *
- * @param originalSize - Original file size in bytes
- * @param probeResult - Size after quick probe compression
- * @param scaleFactor - How much the image was scaled down for probe
- * @returns Estimated savings percentage if full compression were applied
- */
-export function estimateSavings(
-  originalSize: number,
-  probeResult: number,
-  scaleFactor: number = 0.5
-): { estimatedSavings: number; shouldSkip: boolean } {
-  // Probe was at reduced resolution, scale back
-  // Compression ratio tends to be similar across resolutions for same image
-  const probeSavings = (1 - (probeResult / (originalSize * scaleFactor * scaleFactor))) * 100
-
-  // Estimate full savings - typically probe underestimates by ~10-20%
-  const estimatedSavings = probeSavings * 1.15
-
-  // Skip if estimated savings < 3%
-  const shouldSkip = estimatedSavings < 3
-
-  return {
-    estimatedSavings: Math.max(0, estimatedSavings),
-    shouldSkip
   }
 }

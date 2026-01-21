@@ -86,14 +86,21 @@ export class CompressionOrchestrator {
       const probeSize = probeResult.compressedBlob?.size || originalSize
       const probeTimeMs = performance.now() - startTime
 
-      // Estimate full compression savings
-      // Compression ratio tends to be similar across resolutions
-      // Scale up probe result to estimate full-size result
-      const scaledProbeOriginal = originalSize * scaleFactor * scaleFactor
-      const probeSavingsRatio = 1 - (probeSize / scaledProbeOriginal)
+      // Calculate probe's original size (before compression) at probe dimensions
+      // This is an estimate based on pixel ratio
+      const probePixels = probeWidth * probeHeight
+      const originalPixels = oriWidth * oriHeight
 
-      // Estimate full savings - probe typically underestimates by ~15%
-      const estimatedSavings = Math.max(0, probeSavingsRatio * 100 * 1.15)
+      // Probe compression ratio: how much did the probe compress?
+      // Use the probe's own input size estimate, not the original file size
+      const estimatedProbeInputSize = (probePixels / originalPixels) * originalSize
+      const probeCompressionRatio = probeSize / estimatedProbeInputSize
+
+      // Apply same compression ratio to full-size image
+      const estimatedFullCompressedSize = originalSize * probeCompressionRatio
+
+      // Calculate savings as percentage
+      const estimatedSavings = Math.max(0, ((originalSize - estimatedFullCompressedSize) / originalSize) * 100)
 
       // Skip if estimated savings below threshold
       const shouldSkip = estimatedSavings < CompressionOrchestrator.SKIP_THRESHOLD_PERCENT
@@ -187,7 +194,14 @@ export class CompressionOrchestrator {
       // Auto-select lossless vs lossy for PNG based on image type
       // Photos: use lossless (better quality preservation)
       // Graphics: use lossy (palette reduction works great)
-      effectiveLossless = imageAnalysis.type === 'photo' || imageAnalysis.type === 'mixed'
+      // Mixed: use transparency to decide (lossy artifacts visible in semi-transparent areas)
+      if (imageAnalysis.type === 'photo') {
+        effectiveLossless = true
+      } else if (imageAnalysis.type === 'mixed') {
+        effectiveLossless = imageAnalysis.hasSignificantTransparency
+      } else {
+        effectiveLossless = false
+      }
     }
 
     if (imageAnalysis && effectiveFormat === 'jpeg') {
@@ -225,7 +239,8 @@ export class CompressionOrchestrator {
       currentHeight,
       options.dithering,
       options.chromaSubsampling,
-      effectiveLossless
+      effectiveLossless,
+      options.speedMode
     )
 
     // If target size is specified and exceeded, iterate with binary search
@@ -247,7 +262,8 @@ export class CompressionOrchestrator {
           currentHeight,
           options.dithering,
           options.chromaSubsampling,
-          effectiveLossless
+          effectiveLossless,
+          options.speedMode
         )
 
         const currentSize = imageServiceResult.compressedBlob?.size || 0
@@ -303,7 +319,8 @@ export class CompressionOrchestrator {
             currentHeight,
             options.dithering,
             options.chromaSubsampling,
-            effectiveLossless
+            effectiveLossless,
+            options.speedMode
           )
 
           currentSize = imageServiceResult.compressedBlob?.size || 0

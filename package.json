@@ -6,7 +6,7 @@
     "build": "npm run wasm:prepare && next build",
     "wasm:prepare": "node scripts/prepare-wasm.mjs",
     "wasm:build": "cd crate && wasm-pack build --target web --out-dir ../lib/wasm/nanopng-core/pkg",
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "lint": "eslint .",
     "start": "next start",
     "test": "vitest run",

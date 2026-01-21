@@ -89,24 +89,29 @@ const webpDefaultOptions = {
     use_sharp_yuv: 0,
 };
 
+// Helper to get absolute URL for worker context
+function getAbsoluteUrl(path: string): string {
+    return new URL(path, self.location.origin).href;
+}
+
 async function initWebPEncoder() {
     if (webpModule) return webpModule;
 
     try {
-        // Load wasm-feature-detect at runtime (bypassing Webpack)
-        // @ts-expect-error - Runtime dynamic import bypasses Webpack
-        const wasmFeatureDetect = await import(/* webpackIgnore: true */ "/wasm/wasm-feature-detect.js");
+        // Load wasm-feature-detect at runtime (bypassing bundler)
+        // @ts-expect-error - Runtime dynamic import bypasses bundler
+        const wasmFeatureDetect = await import(/* webpackIgnore: true */ /* @vite-ignore */ getAbsoluteUrl("/wasm/wasm-feature-detect.js"));
         const hasSIMD = await wasmFeatureDetect.simd();
 
         // Load appropriate encoder based on SIMD support
         const encoderPath = hasSIMD ? "/wasm/webp_enc_simd.js" : "/wasm/webp_enc.js";
-        // @ts-expect-error - Runtime dynamic import bypasses Webpack
-        const encoder = await import(/* webpackIgnore: true */ encoderPath);
+        // @ts-expect-error - Runtime dynamic import bypasses bundler
+        const encoder = await import(/* webpackIgnore: true */ /* @vite-ignore */ getAbsoluteUrl(encoderPath));
 
         // Initialize Emscripten module with locateFile for WASM loading
         webpModule = await encoder.default({
             noInitialRun: true,
-            locateFile: (file: string) => `/wasm/${file}`,
+            locateFile: (file: string) => getAbsoluteUrl(`/wasm/${file}`),
         });
 
         return webpModule;
@@ -120,9 +125,9 @@ async function initWasm() {
     if (wasmModule) return;
 
     try {
-        // @ts-expect-error - Runtime dynamic import bypasses Webpack
-        const wasm = await import(/* webpackIgnore: true */ "/wasm/nanopng_core.js");
-        await wasm.default("/wasm/nanopng_core_bg.wasm");
+        // @ts-expect-error - Runtime dynamic import bypasses bundler
+        const wasm = await import(/* webpackIgnore: true */ /* @vite-ignore */ getAbsoluteUrl("/wasm/nanopng_core.js"));
+        await wasm.default(getAbsoluteUrl("/wasm/nanopng_core_bg.wasm"));
         wasmModule = wasm;
     } catch (e) {
         console.error("Failed to init Wasm:", e);

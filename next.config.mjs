@@ -6,6 +6,15 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  turbopack: {
+    rules: {
+      '*.wasm': {
+        loaders: [],
+        as: '*.webassembly',
+      },
+    },
+  },
+  // Webpack config (used for production builds)
   webpack: (config) => {
     config.experiments = {
       asyncWebAssembly: true,

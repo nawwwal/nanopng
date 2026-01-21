@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useEditor } from "./editor-context"
 import { useMarqueeSelect } from "./use-marquee-select"
 import { cn } from "@/lib/utils"
@@ -41,10 +42,15 @@ function ImageThumbnail({
     }, [image.id, onRegisterRect])
 
     return (
-        <div
+        <motion.div
             ref={elementRef}
+            layout
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
             className={cn(
-                "relative aspect-square border cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-foreground focus-visible:ring-opacity-50",
+                "relative aspect-square border cursor-pointer group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-foreground focus-visible:ring-opacity-50",
                 isSelected
                     ? "border-foreground shadow-[4px_4px_0_var(--foreground)] -translate-y-1"
                     : "border-foreground/30 hover:border-foreground hover:-translate-y-1 hover:shadow-[4px_4px_0_var(--foreground)]"
@@ -59,10 +65,13 @@ function ImageThumbnail({
                     toggleSelect(image.id)
                 }
             }}
+            whileHover={{ y: -4 }}
+            whileTap={{ scale: 0.98 }}
         >
             {/* Image */}
             {imageUrl ? (
-                <img
+                <motion.img
+                    layoutId={`image-${image.id}`}
                     src={imageUrl}
                     alt={image.originalName}
                     className="w-full h-full object-cover pointer-events-none select-none"
@@ -127,7 +136,12 @@ function ImageThumbnail({
 
             {/* Bottom info bar */}
             {isComplete && (
-                <div className="absolute bottom-0 left-0 right-0 bg-foreground text-background px-2 py-1.5 pointer-events-none z-20">
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.2 }}
+                    className="absolute bottom-0 left-0 right-0 bg-foreground text-background px-2 py-1.5 pointer-events-none z-20"
+                >
                     <div className="flex items-center justify-between text-xs font-bold leading-none">
                         <span className="truncate opacity-70">{image.format.toUpperCase()}</span>
                         <div className="flex items-center gap-2">
@@ -141,9 +155,9 @@ function ImageThumbnail({
                             )}
                         </div>
                     </div>
-                </div>
+                </motion.div>
             )}
-        </div>
+        </motion.div>
     )
 }
 
@@ -202,15 +216,28 @@ export function ImageGrid() {
             className="relative select-none cursor-crosshair"
             {...handlers}
         >
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {images.map(image => (
-                    <ImageThumbnail
-                        key={image.id}
-                        image={image}
-                        onRegisterRect={handleRegisterRect}
-                    />
-                ))}
-            </div>
+            <motion.div
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                    visible: {
+                        transition: {
+                            staggerChildren: 0.03
+                        }
+                    }
+                }}
+            >
+                <AnimatePresence mode="popLayout">
+                    {images.map(image => (
+                        <ImageThumbnail
+                            key={image.id}
+                            image={image}
+                            onRegisterRect={handleRegisterRect}
+                        />
+                    ))}
+                </AnimatePresence>
+            </motion.div>
 
             {/* Marquee selection rectangle */}
             {isSelecting && selectionRect && selectionRect.width > 5 && selectionRect.height > 5 && (

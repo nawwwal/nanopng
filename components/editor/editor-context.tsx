@@ -2,9 +2,11 @@
 
 import { createContext, useContext, useReducer, useCallback, useRef, useState, useEffect, ReactNode } from "react"
 import { CompressionOrchestrator } from "@/lib/services/compression-orchestrator"
+import { ImageService } from "@/lib/services/image-service"
 import { ensureDecodable, isHeicFile } from "@/lib/core/format-decoder"
 import { PresetId, getPresetById, COMPRESSION_PRESETS } from "@/lib/types/presets"
 import type { CompressedImage, CompressionStatus, CompressionOptions, OutputFormat } from "@/lib/types/compression"
+import { toast } from "sonner"
 import JSZip from "jszip"
 
 // Constants
@@ -378,13 +380,33 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         return () => window.removeEventListener("paste", handlePaste, true)
     }, [])
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
         if (acceptedFiles.length > MAX_FILES) {
             alert(`Maximum ${MAX_FILES} images allowed`)
             return
         }
 
-        const newImages: CompressedImage[] = acceptedFiles.map((file) => {
+        // Get existing hashes from current images
+        const existingHashes = new Set(
+            imagesRef.current
+                .filter(img => img.hash)
+                .map(img => img.hash)
+        )
+
+        // Process files and check for duplicates
+        const newImages: CompressedImage[] = []
+        const duplicateNames: string[] = []
+
+        for (const file of acceptedFiles) {
+            // Compute hash for duplicate detection
+            const hash = await ImageService.computeHash(file)
+
+            // Check for duplicates
+            if (existingHashes.has(hash) || newImages.some(img => img.hash === hash)) {
+                duplicateNames.push(file.name)
+                continue
+            }
+
             const typePart = file.type ? file.type.split("/")[1] : ""
             const nameExtPart = file.name.split(".").pop()?.toLowerCase() ?? ""
             let inferredFormat = (typePart || nameExtPart || "png").toLowerCase()
@@ -394,8 +416,11 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
             const id = Math.random().toString(36).substr(2, 9)
             fileMapRef.current.set(id, file)
-            return {
+            existingHashes.add(hash)
+
+            newImages.push({
                 id,
+                hash,
                 originalName: file.name,
                 originalSize: file.size,
                 compressedSize: 0,
@@ -404,8 +429,18 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 status: "queued" as const,
                 progress: 0,
                 generation: 0,
-            }
-        })
+            })
+        }
+
+        // Notify user of duplicates
+        if (duplicateNames.length > 0) {
+            const message = duplicateNames.length === 1
+                ? `"${duplicateNames[0]}" is already added`
+                : `${duplicateNames.length} duplicate image${duplicateNames.length > 1 ? 's' : ''} skipped`
+            toast.info(message)
+        }
+
+        if (newImages.length === 0) return
 
         dispatch({ type: "ADD_FILES", payload: newImages })
     }, [])

@@ -131,7 +131,7 @@ export function AdvancedSettings() {
                             {/* JPEG Features */}
                             {(compressionOptions.format === 'jpeg' || compressionOptions.format === 'jpg' || compressionOptions.format === 'auto') && (
                                 <SettingHint label="High Detail (4:4:4)" hint={SETTING_HINTS.highDetail}>
-                                    <div className="flex items-center justify-end">
+                                    <div className="flex items-center">
                                         <input
                                             type="checkbox"
                                             checked={compressionOptions.chromaSubsampling === false}
@@ -146,7 +146,7 @@ export function AdvancedSettings() {
                             {(compressionOptions.format === 'png' || compressionOptions.format === 'webp') && (
                                 <>
                                     <SettingHint label="Lossless" hint={SETTING_HINTS.lossless}>
-                                        <div className="flex items-center justify-end">
+                                        <div className="flex items-center">
                                             <input
                                                 type="checkbox"
                                                 checked={!!compressionOptions.lossless}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
+import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 interface BeforeAfterSliderProps {
@@ -14,6 +15,7 @@ interface BeforeAfterSliderProps {
   beforeHeight?: number
   afterWidth?: number
   afterHeight?: number
+  imageId?: string
 }
 
 export function BeforeAfterSlider({
@@ -26,7 +28,8 @@ export function BeforeAfterSlider({
   beforeWidth,
   beforeHeight,
   afterWidth,
-  afterHeight
+  afterHeight,
+  imageId
 }: BeforeAfterSliderProps) {
   const [sliderPosition, setSliderPosition] = useState(50)
   const [isDragging, setIsDragging] = useState(false)
@@ -121,7 +124,8 @@ export function BeforeAfterSlider({
     >
       {/* After Image (Compressed) - Full width */}
       <div className="absolute inset-0">
-        <img
+        <motion.img
+          layoutId={imageId ? `image-${imageId}` : undefined}
           src={afterImage || "/placeholder.svg"}
           alt={afterLabel}
           width={afterWidth}
@@ -132,9 +136,14 @@ export function BeforeAfterSlider({
           )}
           draggable={false}
         />
-        <div className="absolute top-4 right-4 bg-accent/90 text-accent-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10 pointer-events-none select-none">
+        <motion.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.2 }}
+          className="absolute top-4 right-4 bg-accent/90 text-accent-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10 pointer-events-none select-none"
+        >
           {afterLabel}
-        </div>
+        </motion.div>
       </div>
 
       {/* Before Image (Original) - Clipped */}
@@ -155,22 +164,34 @@ export function BeforeAfterSlider({
           )}
           draggable={false}
         />
-        <div className="absolute top-4 left-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10 pointer-events-none select-none">
+        <motion.div
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.2 }}
+          className="absolute top-4 left-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm z-10 pointer-events-none select-none"
+        >
           {beforeLabel}
-        </div>
+        </motion.div>
       </div>
 
       {/* Slider Handle */}
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.3, duration: 0.2, type: "spring", stiffness: 300, damping: 25 }}
         className="absolute top-0 bottom-0 w-1 bg-white shadow-lg pointer-events-none z-20"
         style={{ left: `${sliderPosition}%`, transform: "translateX(-50%)" }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center">
+        <motion.div
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing"
+        >
           <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
           </svg>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   )
 }

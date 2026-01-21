@@ -1,5 +1,6 @@
 "use client"
 
+import { motion, AnimatePresence } from "framer-motion"
 import { useEditor } from "./editor-context"
 import { cn } from "@/lib/utils"
 
@@ -9,11 +10,18 @@ export function ActionBar() {
     if (images.length === 0) return null
 
     return (
-        <div className="shrink-0 border-t border-foreground bg-background py-3 px-4">
-            <div className="flex justify-center">
-                <div className="inline-flex items-center gap-3 border border-foreground/30 bg-background px-2 py-2">
+        <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 border border-foreground bg-background/95 backdrop-blur-sm shadow-[4px_4px_0_var(--foreground)] py-3 px-4"
+        >
+            <div className="inline-flex items-center gap-3">
                     {/* Toggle Selection Mode / Select All */}
-                    <button
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={selectedCount === images.length ? deselectAll : selectAll}
                         className={cn(
                             "h-7 px-3 border text-[10px] font-bold uppercase transition-all flex items-center gap-2 rounded-sm",
@@ -44,10 +52,12 @@ export function ActionBar() {
                                 Select All
                             </>
                         )}
-                    </button>
+                    </motion.button>
 
                     {/* Delete / Clear Action */}
-                    <button
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => {
                             if (selectedCount > 0) {
                                 if (confirm(`Delete ${selectedCount} images?`)) {
@@ -80,9 +90,8 @@ export function ActionBar() {
                                 Clear All
                             </>
                         )}
-                    </button>
-                </div>
+                    </motion.button>
             </div>
-        </div>
+        </motion.div>
     )
 }

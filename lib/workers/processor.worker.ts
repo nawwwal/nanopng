@@ -18,14 +18,102 @@ export interface ProcessorAPI {
 
 let wasmModule: any = null;
 
-// Lazy load WebP encoder
-let webpEncoder: typeof import('@/lib/codecs/webp-encoder') | null = null;
+/**
+ * Calculate dimensions that fit within maxWidth x maxHeight while preserving aspect ratio.
+ * Only resizes if the image is larger than the bounds.
+ * Returns null if no resize is needed.
+ */
+function calculateFitDimensions(
+    srcWidth: number,
+    srcHeight: number,
+    maxWidth: number | undefined,
+    maxHeight: number | undefined
+): { width: number; height: number } | null {
+    // If no max dimensions specified, no resize needed
+    if (!maxWidth && !maxHeight) return null;
 
-async function getWebPEncoder() {
-    if (!webpEncoder) {
-        webpEncoder = await import('@/lib/codecs/webp-encoder');
+    // Use original dimensions as fallback for unspecified max
+    const effectiveMaxWidth = maxWidth || srcWidth;
+    const effectiveMaxHeight = maxHeight || srcHeight;
+
+    // If image already fits within bounds, no resize needed
+    if (srcWidth <= effectiveMaxWidth && srcHeight <= effectiveMaxHeight) {
+        return null;
     }
-    return webpEncoder;
+
+    // Calculate scale factors for each dimension
+    const scaleX = effectiveMaxWidth / srcWidth;
+    const scaleY = effectiveMaxHeight / srcHeight;
+
+    // Use the smaller scale to ensure image fits within both bounds
+    const scale = Math.min(scaleX, scaleY);
+
+    // Calculate new dimensions, ensuring at least 1px
+    const newWidth = Math.max(1, Math.round(srcWidth * scale));
+    const newHeight = Math.max(1, Math.round(srcHeight * scale));
+
+    return { width: newWidth, height: newHeight };
+}
+
+// WebP encoder module (loaded at runtime to bypass Webpack)
+let webpModule: any = null;
+
+// Default WebP encoding options (from @jsquash/webp/meta.js)
+const webpDefaultOptions = {
+    quality: 75,
+    target_size: 0,
+    target_PSNR: 0,
+    method: 4,
+    sns_strength: 50,
+    filter_strength: 60,
+    filter_sharpness: 0,
+    filter_type: 1,
+    partitions: 0,
+    segments: 4,
+    pass: 1,
+    show_compressed: 0,
+    preprocessing: 0,
+    autofilter: 0,
+    partition_limit: 0,
+    alpha_compression: 1,
+    alpha_filtering: 1,
+    alpha_quality: 100,
+    lossless: 0,
+    exact: 0,
+    image_hint: 0,
+    emulate_jpeg_size: 0,
+    thread_level: 0,
+    low_memory: 0,
+    near_lossless: 100,
+    use_delta_palette: 0,
+    use_sharp_yuv: 0,
+};
+
+async function initWebPEncoder() {
+    if (webpModule) return webpModule;
+
+    try {
+        // Load wasm-feature-detect at runtime (bypassing Webpack)
+        // @ts-expect-error - Runtime dynamic import bypasses Webpack
+        const wasmFeatureDetect = await import(/* webpackIgnore: true */ "/wasm/wasm-feature-detect.js");
+        const hasSIMD = await wasmFeatureDetect.simd();
+
+        // Load appropriate encoder based on SIMD support
+        const encoderPath = hasSIMD ? "/wasm/webp_enc_simd.js" : "/wasm/webp_enc.js";
+        // @ts-expect-error - Runtime dynamic import bypasses Webpack
+        const encoder = await import(/* webpackIgnore: true */ encoderPath);
+
+        // Initialize Emscripten module with locateFile for WASM loading
+        webpModule = await encoder.default({
+            noInitialRun: true,
+            locateFile: (file: string) => `/wasm/${file}`,
+        });
+
+        return webpModule;
+    } catch (e) {
+        console.error("Failed to init WebP encoder:", e);
+        throw e;
+    }
 }
 
 async function initWasm() {
@@ -53,30 +141,41 @@ async function processWebP(
         let currentWidth = width;
         let currentHeight = height;
 
-        // Handle resize using Rust WASM if needed
-        if (opt.targetWidth && opt.targetHeight) {
+        // Handle resize using Rust WASM if needed (fit within bounds, preserve aspect ratio)
+        const fitDimensions = calculateFitDimensions(width, height, opt.targetWidth, opt.targetHeight);
+        if (fitDimensions) {
             await initWasm();
             const resized = wasmModule.resize_only(
                 data,
                 width,
                 height,
-                opt.targetWidth,
-                opt.targetHeight,
+                fitDimensions.width,
+                fitDimensions.height,
                 "Lanczos3"
             );
             pixelData = resized;
-            currentWidth = opt.targetWidth;
-            currentHeight = opt.targetHeight;
+            currentWidth = fitDimensions.width;
+            currentHeight = fitDimensions.height;
         }
 
-        const encoder = await getWebPEncoder();
-        const quality = Math.round((opt.quality || 0.8) * 100);
-        const result = await encoder.encodeToWebP(pixelData, currentWidth, currentHeight, {
-            quality,
-            lossless: opt.lossless || false
-        });
+        // Initialize WebP encoder (runtime loaded)
+        const module = await initWebPEncoder();
 
-        return { success: true, data: result };
+        // Build encoding options
+        const quality = Math.round((opt.quality || 0.8) * 100);
+        const encodeOptions = {
+            ...webpDefaultOptions,
+            quality,
+            lossless: opt.lossless ? 1 : 0,
+        };
+
+        // Encode using the Emscripten module
+        const result = module.encode(pixelData, currentWidth, currentHeight, encodeOptions);
+        if (!result) {
+            throw new Error("WebP encoding failed");
+        }
+
+        return { success: true, data: new Uint8Array(result.buffer) };
     } catch (err) {
         return {
             success: false,
@@ -97,6 +196,9 @@ const api: ProcessorAPI = {
         await initWasm();
 
         try {
+            // Calculate aspect-ratio-preserving resize dimensions
+            const fitDimensions = calculateFitDimensions(width, height, opt.targetWidth, opt.targetHeight);
+
             const config = {
                 format: opt.format === 'jpg' ? 'Jpeg' :
                     opt.format === 'png' ? 'Png' :
@@ -105,9 +207,9 @@ const api: ProcessorAPI = {
                 transparent: true,
                 lossless: opt.lossless || false,
                 dithering: opt.dithering || 1.0,
-                resize: opt.targetWidth && opt.targetHeight ? {
-                    width: opt.targetWidth,
-                    height: opt.targetHeight,
+                resize: fitDimensions ? {
+                    width: fitDimensions.width,
+                    height: fitDimensions.height,
                     filter: "Lanczos3"
                 } : null,
                 chroma_subsampling: opt.chromaSubsampling !== false

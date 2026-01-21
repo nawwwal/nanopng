@@ -5,6 +5,7 @@ import { useDropzone } from "react-dropzone"
 import { useEditor, ACCEPTED_FORMATS } from "./editor-context"
 import { ImageGrid } from "@/components/editor/image-grid"
 import { ImagePreview } from "@/components/editor/image-preview"
+import { ActionBar } from "@/components/editor/action-bar"
 import { ExportButton } from "@/components/export-button"
 import { cn } from "@/lib/utils"
 
@@ -58,6 +59,9 @@ export function UploadPanel() {
                 <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 scrollbar-hide">
                     <ImageGrid />
                 </div>
+
+                {/* Action bar - fixed at bottom */}
+                <ActionBar />
             </div>
         )
     }

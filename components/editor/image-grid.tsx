@@ -148,7 +148,7 @@ function ImageThumbnail({
 }
 
 export function ImageGrid() {
-    const { images, selectedIds, selectedCount, selectImage, deselectAll, selectAll, clearAll, removeImage } = useEditor()
+    const { images, selectImage } = useEditor()
     const containerRef = useRef<HTMLDivElement>(null)
     const itemRectsRef = useRef<Map<string, DOMRect>>(new Map())
 
@@ -197,101 +197,33 @@ export function ImageGrid() {
     }, [])
 
     return (
-        <div className="flex min-h-full flex-col">
-            {/* Grid with marquee selection */}
-            <div
-                ref={containerRef}
-                className="relative select-none cursor-crosshair flex-1 min-h-0"
-                {...handlers}
-            >
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 h-full">
-                    {images.map(image => (
-                        <ImageThumbnail
-                            key={image.id}
-                            image={image}
-                            onRegisterRect={handleRegisterRect}
-                        />
-                    ))}
-                </div>
-
-                {/* Marquee selection rectangle */}
-                {isSelecting && selectionRect && selectionRect.width > 5 && selectionRect.height > 5 && (
-                    <div
-                        className="absolute border-2 border-accent bg-accent/20 pointer-events-none z-10"
-                        style={{
-                            left: selectionRect.x,
-                            top: selectionRect.y,
-                            width: selectionRect.width,
-                            height: selectionRect.height,
-                        }}
+        <div
+            ref={containerRef}
+            className="relative select-none cursor-crosshair"
+            {...handlers}
+        >
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {images.map(image => (
+                    <ImageThumbnail
+                        key={image.id}
+                        image={image}
+                        onRegisterRect={handleRegisterRect}
                     />
-                )}
+                ))}
             </div>
 
-            {/* Selection controls */}
-            <div className="mt-auto pt-5 flex justify-center">
-                <div className="inline-flex items-center gap-3 rounded-sm border border-foreground/30 bg-background px-2 py-2">
-                    {/* Toggle Selection Mode / Select All */}
-                    <button
-                        onClick={selectedCount === images.length ? deselectAll : selectAll}
-                        className={cn(
-                            "h-7 px-3 border text-[10px] font-bold uppercase transition-all flex items-center gap-2 rounded-sm",
-                            selectedCount > 0
-                                ? "border-foreground bg-accent text-accent-foreground shadow-[2px_2px_0_var(--foreground)]"
-                                : "border-foreground/30 bg-background hover:border-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-[2px_2px_0_var(--foreground)] active:border-foreground active:bg-accent active:text-accent-foreground active:shadow-[1px_1px_0_var(--foreground)]"
-                        )}
-                    >
-                        {selectedCount === images.length ? (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                Deselect All
-                            </>
-                        ) : selectedCount > 0 ? (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                <span className="tabular-nums">{selectedCount} selected</span>
-                            </>
-                        ) : (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                Select All
-                            </>
-                        )}
-                    </button>
-
-                    {/* Delete / Clear Action */}
-                    <button
-                        onClick={() => {
-                            if (selectedCount > 0) {
-                                if (confirm(`Delete ${selectedCount} images?`)) {
-                                    const ids = Array.from(selectedIds)
-                                    ids.forEach(id => removeImage(id))
-                                }
-                            } else {
-                                if (confirm("Clear all images?")) clearAll()
-                            }
-                        }}
-                        className={cn(
-                            "h-7 px-3 border text-[10px] font-bold uppercase transition-all flex items-center gap-2 rounded-sm hover:shadow-[2px_2px_0_var(--destructive)] active:shadow-[1px_1px_0_var(--destructive)]",
-                            selectedCount > 0
-                                ? "border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                                : "border-foreground/30 hover:border-destructive hover:text-destructive"
-                        )}
-                    >
-                        {selectedCount > 0 ? (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                Delete Selected
-                            </>
-                        ) : (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                Clear All
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
+            {/* Marquee selection rectangle */}
+            {isSelecting && selectionRect && selectionRect.width > 5 && selectionRect.height > 5 && (
+                <div
+                    className="absolute border-2 border-accent bg-accent/20 pointer-events-none z-10"
+                    style={{
+                        left: selectionRect.x,
+                        top: selectionRect.y,
+                        width: selectionRect.width,
+                        height: selectionRect.height,
+                    }}
+                />
+            )}
         </div>
     )
 }

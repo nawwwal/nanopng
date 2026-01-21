@@ -171,9 +171,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         queueIndex: 0,
     })
 
-    const [currentPreset, setCurrentPreset] = useState<PresetId>("web")
+    const [currentPreset, setCurrentPreset] = useState<PresetId>("photo")
     const [compressionOptions, setCompressionOptionsState] = useState<CompressionOptions>(() => {
-        const preset = getPresetById("web")
+        const preset = getPresetById("photo")
         return {
             quality: preset.quality,
             format: preset.format,
@@ -198,6 +198,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 targetWidth: preset.maxWidth,
                 targetHeight: preset.maxHeight,
                 targetSizeKb: preset.targetSizeKb,
+                // Graphic preset: no dithering for sharp edges, lossless for perfect quality
+                dithering: presetId === "graphic" ? 0 : 1,
+                lossless: presetId === "graphic",
             })
 
             // Re-queue completed images for reprocessing

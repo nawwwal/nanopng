@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { cn } from "@/lib/utils"
 
 interface BeforeAfterSliderProps {
@@ -31,6 +31,21 @@ export function BeforeAfterSlider({
   const [sliderPosition, setSliderPosition] = useState(50)
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Calculate unified aspect ratio for container when images have different dimensions
+  // Use the aspect ratio that fits both images (the wider one)
+  const containerAspectRatio = useMemo(() => {
+    const beforeAspect = beforeWidth && beforeHeight ? beforeWidth / beforeHeight : null
+    const afterAspect = afterWidth && afterHeight ? afterWidth / afterHeight : null
+
+    // If both are available, use the wider aspect ratio to ensure both fit
+    if (beforeAspect && afterAspect) {
+      // Use the aspect ratio closer to 16:9 for better display, or the wider one
+      return Math.max(beforeAspect, afterAspect)
+    }
+
+    return beforeAspect || afterAspect || null
+  }, [beforeWidth, beforeHeight, afterWidth, afterHeight])
 
   const handleMove = (clientX: number) => {
     if (!containerRef.current) return
@@ -70,15 +85,21 @@ export function BeforeAfterSlider({
     }
   }, [isDragging])
 
+  // Determine if we should use inline aspect ratio or CSS class
+  const hasExplicitHeight = className?.includes("h-")
+  const hasExplicitAspect = className?.includes("aspect-")
+  const useInlineAspect = !hasExplicitHeight && !hasExplicitAspect && containerAspectRatio
+
   return (
     <div
       ref={containerRef}
       className={cn(
         "relative w-full overflow-hidden cursor-col-resize select-none ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        // Default to aspect-video if no class provided, but allow override
-        !className?.includes("h-") && !className?.includes("aspect-") ? "aspect-video" : "",
+        // Only use aspect-video default if no explicit height, aspect class, or calculated ratio
+        !hasExplicitHeight && !hasExplicitAspect && !containerAspectRatio ? "aspect-video" : "",
         className
       )}
+      style={useInlineAspect ? { aspectRatio: containerAspectRatio } : undefined}
       onMouseDown={handleMouseDown}
       onTouchStart={handleMouseDown}
       role="slider"

@@ -98,6 +98,24 @@ export class ImageService {
 
       worker.terminate();
 
+      // Calculate output dimensions (fit within bounds, preserve aspect ratio)
+      let outputWidth = oriWidth;
+      let outputHeight = oriHeight;
+
+      if (targetWidth || targetHeight) {
+        const effectiveMaxWidth = targetWidth || oriWidth;
+        const effectiveMaxHeight = targetHeight || oriHeight;
+
+        // Only resize if image exceeds bounds
+        if (oriWidth > effectiveMaxWidth || oriHeight > effectiveMaxHeight) {
+          const scaleX = effectiveMaxWidth / oriWidth;
+          const scaleY = effectiveMaxHeight / oriHeight;
+          const scale = Math.min(scaleX, scaleY);
+          outputWidth = Math.max(1, Math.round(oriWidth * scale));
+          outputHeight = Math.max(1, Math.round(oriHeight * scale));
+        }
+      }
+
       return {
         id,
         originalName: file.name,
@@ -114,8 +132,8 @@ export class ImageService {
         status: savings < 1 ? "already-optimized" : "completed",
         analysis: analysis || { isPhoto: true, hasTransparency: false, complexity: 0.5, uniqueColors: 10000, suggestedFormat: "webp" },
         generation,
-        width: targetWidth || oriWidth,
-        height: targetHeight || oriHeight
+        width: outputWidth,
+        height: outputHeight
       };
 
     } catch (e) {

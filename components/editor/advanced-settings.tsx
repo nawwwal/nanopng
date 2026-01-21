@@ -4,6 +4,9 @@ import { useState, useEffect } from "react"
 import { useEditor } from "./editor-context"
 import { QualityPreview } from "./quality-preview"
 import { OutputFormat } from "@/lib/types/compression"
+import type { SvgOptimizationMode } from "@/lib/types/svg"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { SettingHint } from "@/components/ui/setting-hint"
@@ -24,10 +27,11 @@ const SETTING_HINTS = {
     dithering: "Simulates gradients. Turn off (0%) for sharp-edged graphics",
     maxDimensions: "Resize images exceeding these limits while keeping aspect ratio",
     targetSize: "Auto-adjusts quality to meet file size limit",
+    svgOptimization: "Safe preserves all details. Aggressive removes metadata for smaller files",
 }
 
 export function AdvancedSettings() {
-    const { currentPreset, compressionOptions, setCompressionOptions, images, selectedIds } = useEditor()
+    const { currentPreset, compressionOptions, setCompressionOptions, images, selectedIds, svgMode, setSvgMode } = useEditor()
     const [isExpanded, setIsExpanded] = useState(currentPreset === "custom")
     const [showProMode, setShowProMode] = useState(false)
 
@@ -164,6 +168,28 @@ export function AdvancedSettings() {
                                 />
                             </SettingHint>
                         )}
+
+                        {/* SVG Optimization Mode */}
+                        <SettingHint label="SVG Optimization" hint={SETTING_HINTS.svgOptimization}>
+                            <RadioGroup
+                                value={svgMode}
+                                onValueChange={(value) => setSvgMode(value as SvgOptimizationMode)}
+                                className="flex gap-4"
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="safe" id="svg-safe" />
+                                    <Label htmlFor="svg-safe" className="text-xs font-medium cursor-pointer">
+                                        Safe (lossless)
+                                    </Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="aggressive" id="svg-aggressive" />
+                                    <Label htmlFor="svg-aggressive" className="text-xs font-medium cursor-pointer">
+                                        Aggressive (smaller)
+                                    </Label>
+                                </div>
+                            </RadioGroup>
+                        </SettingHint>
                     </div>
 
                     {/* Resize & Constraints */}

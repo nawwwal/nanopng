@@ -3,7 +3,6 @@ import { canEncodeAvif } from "@/lib/core/format-capabilities"
 import { copyMetadata } from "@/lib/core/metadata"
 import * as exifr from "exifr"
 import { getWorkerPool } from "@/lib/workers/worker-pool"
-import { CompressionOptions } from "@/lib/types/compression";
 
 export class ImageService {
 
@@ -23,7 +22,7 @@ export class ImageService {
   }
 
   private static calculateSolidRegionRatio(data: Uint8ClampedArray, width: number, height: number): number {
-    const blockSize = 4, len = data.length; let solid = 0, total = 0;
+    const blockSize = 4; let solid = 0, total = 0;
     for (let y = 0; y < height - blockSize; y += blockSize) {
       for (let x = 0; x < width - blockSize; x += blockSize) {
         total++; let minR = 255, maxR = 0, minG = 255, maxG = 0, minB = 255, maxB = 0;

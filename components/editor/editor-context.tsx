@@ -3,6 +3,8 @@
 import { createContext, useContext, useReducer, useCallback, useRef, useState, useEffect, ReactNode } from "react"
 import { CompressionOrchestrator } from "@/lib/services/compression-orchestrator"
 import { ImageService } from "@/lib/services/image-service"
+import { SvgService } from "@/lib/services/svg-service"
+import type { SvgOptimizationMode } from "@/lib/types/svg"
 import { ensureDecodable, isHeicFile } from "@/lib/core/format-decoder"
 import { PresetId, getPresetById, COMPRESSION_PRESETS } from "@/lib/types/presets"
 import type { CompressedImage, CompressionStatus, CompressionOptions, ImageFormat } from "@/lib/types/compression"
@@ -24,6 +26,7 @@ const ACCEPTED_FORMATS = {
     "image/avif": [".avif"],
     "image/heic": [".heic"],
     "image/heif": [".heif"],
+    "image/svg+xml": [".svg"],
 }
 
 // State types
@@ -134,6 +137,8 @@ interface EditorContextValue {
     // Settings
     currentPreset: PresetId
     compressionOptions: CompressionOptions
+    svgMode: SvgOptimizationMode
+    setSvgMode: (mode: SvgOptimizationMode) => void
 
     // Actions
     setCurrentPreset: (preset: PresetId) => void
@@ -189,6 +194,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     })
 
     const [isCreatingZip, setIsCreatingZip] = useState(false)
+    const [svgMode, setSvgMode] = useState<SvgOptimizationMode>('safe')
     const fileMapRef = useRef<Map<string, File>>(new Map())
     const imagesRef = useRef<CompressedImage[]>([])
 
@@ -264,6 +270,38 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         try {
             dispatch({ type: "UPDATE_STATUS", payload: { id: image.id, status: "compressing" } })
 
+            // Handle SVG files separately
+            if (file.type === 'image/svg+xml' || image.format === 'svg') {
+                const svgService = SvgService.getInstance()
+                const result = await svgService.optimize(file, svgMode)
+
+                const compressedBlob = new Blob([result.optimizedSvg], { type: 'image/svg+xml' })
+                const savings = result.savings
+
+                let status: "completed" | "already-optimized" = "completed"
+                if (savings < 2 || result.optimizedSize >= result.originalSize) {
+                    status = "already-optimized"
+                }
+
+                const completedImage: CompressedImage = {
+                    id: image.id,
+                    originalName: file.name,
+                    originalSize: file.size,
+                    compressedSize: result.optimizedSize,
+                    compressedBlob,
+                    blobUrl: URL.createObjectURL(compressedBlob),
+                    originalBlobUrl: URL.createObjectURL(file),
+                    savings: Math.max(0, savings),
+                    format: "svg",
+                    originalFormat: "svg",
+                    status,
+                    generation: image.generation || 0,
+                }
+
+                dispatch({ type: "UPDATE_IMAGE", payload: completedImage })
+                return
+            }
+
             const isHeic = await isHeicFile(file)
             const originalFormat = isHeic
                 ? (file.name.toLowerCase().endsWith(".heif") ? "heif" : "heic")
@@ -324,7 +362,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 }
             })
         }
-    }, [compressionOptions])
+    }, [compressionOptions, svgMode])
 
     // Process queue
     useEffect(() => {
@@ -418,7 +456,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
             let inferredFormat = (typePart || nameExtPart || "png").toLowerCase()
 
             if (inferredFormat === "jpg") inferredFormat = "jpeg"
-            if (!["png", "jpeg", "webp", "avif"].includes(inferredFormat)) inferredFormat = "png"
+            if (inferredFormat === "svg+xml") inferredFormat = "svg"
+            if (!["png", "jpeg", "webp", "avif", "svg"].includes(inferredFormat)) inferredFormat = "png"
 
             const id = Math.random().toString(36).substr(2, 9)
             fileMapRef.current.set(id, file)
@@ -537,6 +576,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         isProcessing: state.isProcessing,
         currentPreset,
         compressionOptions,
+        svgMode,
+        setSvgMode,
         setCurrentPreset: handlePresetChange,
         setCompressionOptions,
         onDrop,

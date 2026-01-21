@@ -6,8 +6,8 @@ export type CompressionStatus =
   | "already-optimized"
   | "error"
 
-export type ImageFormat = "png" | "jpeg" | "webp" | "avif"
-export type OriginalFormat = "png" | "jpeg" | "webp" | "avif" | "heic" | "heif"
+export type ImageFormat = "png" | "jpeg" | "webp" | "avif" | "svg"
+export type OriginalFormat = "png" | "jpeg" | "webp" | "avif" | "heic" | "heif" | "svg"
 export type FormatPreference = "smart" | "keep" | ImageFormat
 
 export interface CompressedImage {

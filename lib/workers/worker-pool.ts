@@ -12,6 +12,7 @@ type Priority = 'low' | 'normal' | 'high'
 const BATCH_SIZE_THRESHOLD = 500 * 1024
 
 class WorkerPool {
+  private static readonly MAX_QUEUE_SIZE = 100
   private workers: Worker[] = []
   private apis: Comlink.Remote<ProcessorAPI>[] = []
   private available: Set<number> = new Set()
@@ -44,6 +45,10 @@ class WorkerPool {
           new URL("./processor.worker.ts", import.meta.url),
           { type: "module" }
         )
+        worker.onerror = (error) => {
+          console.error(`Worker ${i} crashed:`, error)
+          this.handleWorkerCrash(i)
+        }
         const api = Comlink.wrap<ProcessorAPI>(worker)
 
         this.workers.push(worker)
@@ -73,6 +78,11 @@ class WorkerPool {
           this.processQueue()
         }
       }
+    }
+
+    // Check if queue is full
+    if (this.getQueueLength() >= WorkerPool.MAX_QUEUE_SIZE) {
+      return Promise.reject(new Error('Worker queue is full'))
     }
 
     // No worker available, wait in queue
@@ -112,6 +122,23 @@ class WorkerPool {
     this.available.delete(index)
 
     task.resolve(this.apis[index]!)
+  }
+
+  private handleWorkerCrash(index: number): void {
+    this.available.delete(index)
+    // Recreate worker with same pattern as initialize()
+    const worker = new Worker(
+      new URL('./processor.worker.ts', import.meta.url),
+      { type: 'module' }
+    )
+    worker.onerror = (error) => {
+      console.error(`Worker ${index} crashed:`, error)
+      this.handleWorkerCrash(index)
+    }
+    this.workers[index] = worker
+    this.apis[index] = Comlink.wrap<ProcessorAPI>(worker)
+    this.available.add(index)
+    this.processQueue()
   }
 
   /**

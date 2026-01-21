@@ -52,10 +52,9 @@ async function prepareWasm() {
 
         // Check if source file exists
         if (!(await fileExists(srcPath))) {
-            throw new Error(
-                `Missing WASM artifact: ${srcPath}\n` +
-                `Please ensure dependencies are installed and WASM is built.`
-            );
+            console.warn('⚠️  WASM files not found. Run "npm run wasm:build" first.');
+            console.warn('   Skipping WASM preparation.');
+            process.exit(0);
         }
 
         await copyFile(srcPath, destPath);

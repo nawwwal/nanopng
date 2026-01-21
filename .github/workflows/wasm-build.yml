@@ -21,8 +21,13 @@ jobs:
         target: wasm32-unknown-unknown
         override: true
 
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: crate
+
     - name: Install wasm-pack
-      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      run: cargo install wasm-pack --version 0.12.1
 
     # 2. Build Wasm
     - name: Build Wasm CRATE

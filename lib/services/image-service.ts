@@ -43,7 +43,9 @@ export class ImageService {
     targetHeight?: number,
     dithering?: number,
     chromaSubsampling?: boolean,
-    lossless?: boolean
+    lossless?: boolean,
+    speedMode?: boolean,
+    priority: 'normal' | 'high' = 'normal'
   ): Promise<CompressedImage> {
     const originalSize = file.size;
     const img = await createImageBitmap(file);
@@ -74,11 +76,12 @@ export class ImageService {
           targetHeight,
           dithering,
           chromaSubsampling,
-          lossless
+          lossless,
+          speedMode
         },
         sab
       );
-    });
+    }, priority);
 
     if (!result.success || !result.data) {
       throw new Error(result.error || "Unknown Wasm error");

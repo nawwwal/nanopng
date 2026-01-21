@@ -1,4 +1,4 @@
-import { optimize, Config } from 'svgo'
+import { optimize, Config } from 'svgo/browser'
 import * as Comlink from 'comlink'
 
 const safeConfig: Config = {

@@ -27,6 +27,14 @@ pub struct Config {
     pub dithering: f32,    // 0.0 - 1.0 (for PNG/quantization)
     pub resize: Option<ResizeConfig>,
     pub chroma_subsampling: bool, // true = 4:2:0, false = 4:4:4
+    #[serde(default)]
+    pub speed_mode: bool, // true = fast encoding presets, false = quality presets
+    #[serde(default = "default_avif_speed")]
+    pub avif_speed: u8,   // AVIF encoder speed (0-10, higher = faster)
+}
+
+fn default_avif_speed() -> u8 {
+    6 // Default balanced speed
 }
 
 #[wasm_bindgen]
@@ -85,6 +93,7 @@ pub fn process_image(
             current_height,
             config.lossless,
             config.dithering,
+            config.speed_mode,
         )
         .map_err(|e| JsValue::from_str(&e)),
         Format::Avif => codecs::avif::encode_avif(
@@ -92,7 +101,7 @@ pub fn process_image(
             current_width,
             current_height,
             config.quality,
-            4,
+            config.avif_speed,
         )
         .map_err(|e| JsValue::from_str(&e)),
     }

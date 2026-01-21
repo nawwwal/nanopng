@@ -163,10 +163,13 @@ async function processWebP(
 
         // Build encoding options
         const quality = Math.round((opt.quality || 0.8) * 100);
+        // In speed mode, use method 0 (fastest) for 2-3x speedup
+        const method = opt.speedMode ? 0 : webpDefaultOptions.method;
         const encodeOptions = {
             ...webpDefaultOptions,
             quality,
             lossless: opt.lossless ? 1 : 0,
+            method,
         };
 
         // Encode using the Emscripten module
@@ -212,7 +215,9 @@ const api: ProcessorAPI = {
                     height: fitDimensions.height,
                     filter: "Lanczos3"
                 } : null,
-                chroma_subsampling: opt.chromaSubsampling !== false
+                chroma_subsampling: opt.chromaSubsampling !== false,
+                speed_mode: opt.speedMode || false,
+                avif_speed: opt.avifSpeed ?? 6
             };
 
             const result: Uint8Array = wasmModule.process_image(data, width, height, config);

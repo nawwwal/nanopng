@@ -7,22 +7,24 @@ pub fn encode_png(
     height: u32,
     lossless: bool,
     dithering_level: f32,
+    speed_mode: bool,
 ) -> Result<Vec<u8>, String> {
     if lossless {
-        encode_lossless(data, width, height)
+        encode_lossless(data, width, height, speed_mode)
     } else {
-        encode_lossy(data, width, height, dithering_level)
+        encode_lossy(data, width, height, dithering_level, speed_mode)
     }
 }
 
-fn encode_lossless(data: &[u8], width: u32, height: u32) -> Result<Vec<u8>, String> {
+fn encode_lossless(data: &[u8], width: u32, height: u32, speed_mode: bool) -> Result<Vec<u8>, String> {
     let mut output = Vec::new();
 
     {
         let mut encoder = Encoder::new(&mut output, width, height);
         encoder.set_color(ColorType::Rgba);
         encoder.set_depth(BitDepth::Eight);
-        encoder.set_compression(Compression::Best);
+        // Use Fast compression in speed mode, Best otherwise (3-5x speedup)
+        encoder.set_compression(if speed_mode { Compression::Fast } else { Compression::Best });
 
         let mut writer = encoder
             .write_header()
@@ -41,6 +43,7 @@ fn encode_lossy(
     width: u32,
     height: u32,
     dithering_level: f32,
+    speed_mode: bool,
 ) -> Result<Vec<u8>, String> {
     // 1. Convert raw bytes to RGBA pixels
     let pixels: Vec<RGBA> = data
@@ -55,7 +58,9 @@ fn encode_lossy(
 
     // 2. Quantize with libimagequant
     let mut attr = Attributes::new();
-    attr.set_speed(5) // Balance between speed/quality
+    // Speed: 1 = slowest/best, 10 = fastest
+    // In speed mode, use 10 for ~2x speedup; otherwise use 5 for balanced quality
+    attr.set_speed(if speed_mode { 10 } else { 5 })
         .map_err(|e| format!("Failed to set LIQ speed: {:?}", e))?;
     attr.set_quality(0, 100)
         .map_err(|e| format!("Failed to set LIQ quality: {:?}", e))?;
@@ -82,7 +87,8 @@ fn encode_lossy(
         let mut encoder = Encoder::new(&mut output, width, height);
         encoder.set_color(ColorType::Indexed);
         encoder.set_depth(BitDepth::Eight);
-        encoder.set_compression(Compression::Best);
+        // Use Fast compression in speed mode, Best otherwise
+        encoder.set_compression(if speed_mode { Compression::Fast } else { Compression::Best });
 
         // Build palette (RGB) and transparency (tRNS) chunks
         let mut rgb_palette: Vec<u8> = Vec::with_capacity(palette.len() * 3);

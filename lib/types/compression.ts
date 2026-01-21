@@ -17,6 +17,9 @@ export interface CompressionOptions {
   chromaSubsampling?: boolean // true = 4:2:0, false = 4:4:4 (for JPEG)
   lossless?: boolean // Force lossless (PNG/WebP)
   targetSizeKb?: number
+  // Speed optimization options
+  speedMode?: boolean // true = fast encoding presets for speed
+  avifSpeed?: number // AVIF encoder speed (0-10, higher = faster, default 6)
 }
 
 export interface CompressionResult {

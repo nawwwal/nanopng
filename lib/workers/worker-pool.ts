@@ -4,7 +4,11 @@ import type { ProcessorAPI } from "./processor.worker"
 interface QueuedTask {
   id: string
   resolve: (api: Comlink.Remote<ProcessorAPI>) => void
+  priority: 'normal' | 'high' // High priority for probes
 }
+
+/** Size threshold for batching small images (500KB) */
+const BATCH_SIZE_THRESHOLD = 500 * 1024
 
 class WorkerPool {
   private workers: Worker[] = []
@@ -14,12 +18,18 @@ class WorkerPool {
   private initialized = false
   private initializing: Promise<void> | null = null
   private poolSize: number
+  private maxPoolSize: number // Full CPU utilization for probes
 
   constructor() {
-    // Dynamic pool size based on CPU cores (75%, min 2, max 8)
-    this.poolSize = typeof navigator !== "undefined" && navigator.hardwareConcurrency
-      ? Math.max(2, Math.min(8, Math.floor(navigator.hardwareConcurrency * 0.75)))
+    const cores = typeof navigator !== "undefined" && navigator.hardwareConcurrency
+      ? navigator.hardwareConcurrency
       : 4
+
+    // Default pool size: 75% of cores (min 2, max 8) for full compression
+    this.poolSize = Math.max(2, Math.min(8, Math.floor(cores * 0.75)))
+
+    // Max pool size: 100% of cores for lightweight probe operations
+    this.maxPoolSize = Math.max(2, Math.min(12, cores))
   }
 
   private async initialize(): Promise<void> {
@@ -46,7 +56,7 @@ class WorkerPool {
     return this.initializing
   }
 
-  async acquire(): Promise<{ api: Comlink.Remote<ProcessorAPI>; release: () => void }> {
+  async acquire(priority: 'normal' | 'high' = 'normal'): Promise<{ api: Comlink.Remote<ProcessorAPI>; release: () => void }> {
     await this.initialize()
 
     // Check if any worker is available
@@ -65,8 +75,9 @@ class WorkerPool {
 
     // No worker available, wait in queue
     return new Promise((resolve) => {
-      this.queue.push({
+      const task: QueuedTask = {
         id: Math.random().toString(36).slice(2),
+        priority,
         resolve: (api) => {
           // Find which index this api belongs to
           const index = this.apis.indexOf(api)
@@ -78,30 +89,71 @@ class WorkerPool {
             }
           })
         }
-      })
+      }
+
+      // High priority tasks go to front of queue
+      if (priority === 'high') {
+        this.queue.unshift(task)
+      } else {
+        this.queue.push(task)
+      }
     })
   }
 
   private processQueue(): void {
     if (this.queue.length === 0 || this.available.size === 0) return
 
-    const task = this.queue.shift()!
+    // Process high priority tasks first
+    const highPriorityIndex = this.queue.findIndex(t => t.priority === 'high')
+    const taskIndex = highPriorityIndex >= 0 ? highPriorityIndex : 0
+    const task = this.queue.splice(taskIndex, 1)[0]!
+
     const index = this.available.values().next().value as number
     this.available.delete(index)
 
     task.resolve(this.apis[index]!)
   }
 
+  /**
+   * Execute a task on the worker pool.
+   * @param task - The task function to execute
+   * @param priority - Task priority ('high' for probes, 'normal' for full compression)
+   */
   async execute<T>(
-    task: (api: Comlink.Remote<ProcessorAPI>) => Promise<T>
+    task: (api: Comlink.Remote<ProcessorAPI>) => Promise<T>,
+    priority: 'normal' | 'high' = 'normal'
   ): Promise<T> {
-    const { api, release } = await this.acquire()
+    const { api, release } = await this.acquire(priority)
 
     try {
       return await task(api)
     } finally {
       release()
     }
+  }
+
+  /**
+   * Execute multiple tasks in parallel, useful for batching small images.
+   * Tasks are distributed across available workers for maximum throughput.
+   *
+   * @param tasks - Array of task functions to execute
+   * @param priority - Task priority
+   * @returns Array of results in the same order as input tasks
+   */
+  async executeBatch<T>(
+    tasks: Array<(api: Comlink.Remote<ProcessorAPI>) => Promise<T>>,
+    priority: 'normal' | 'high' = 'normal'
+  ): Promise<T[]> {
+    return Promise.all(tasks.map(task => this.execute(task, priority)))
+  }
+
+  /**
+   * Check if an image is small enough to benefit from batching.
+   * Small images (<500KB) have less compression overhead and benefit
+   * from reduced worker dispatch latency when batched together.
+   */
+  static shouldBatch(fileSize: number): boolean {
+    return fileSize < BATCH_SIZE_THRESHOLD
   }
 
   terminate(): void {
@@ -116,6 +168,28 @@ class WorkerPool {
 
   getPoolSize(): number {
     return this.poolSize
+  }
+
+  /**
+   * Get maximum pool size (100% CPU utilization).
+   * Used for lightweight probe operations that can safely use all cores.
+   */
+  getMaxPoolSize(): number {
+    return this.maxPoolSize
+  }
+
+  /**
+   * Get number of currently available workers.
+   */
+  getAvailableWorkers(): number {
+    return this.available.size
+  }
+
+  /**
+   * Get current queue length.
+   */
+  getQueueLength(): number {
+    return this.queue.length
   }
 }
 

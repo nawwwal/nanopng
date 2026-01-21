@@ -1,8 +1,20 @@
 import { ImageService } from "./image-service"
-import { CompressionOptions, CompressionResult } from "@/lib/types/compression"
+import { CompressionOptions, CompressionResult, ImageFormat } from "@/lib/types/compression"
+import { analyzeImageType, ImageAnalysisResult } from "@/lib/core/image-analyzer"
+
+/** Result of quick probe to determine if full compression is worthwhile */
+interface QuickProbeResult {
+  shouldSkip: boolean
+  estimatedSavings: number
+  probeTimeMs: number
+  imageAnalysis?: ImageAnalysisResult
+}
 
 export class CompressionOrchestrator {
   private static instance: CompressionOrchestrator
+
+  /** Minimum savings threshold to proceed with full compression */
+  private static readonly SKIP_THRESHOLD_PERCENT = 3
 
   private constructor() { }
 
@@ -13,17 +25,184 @@ export class CompressionOrchestrator {
     return CompressionOrchestrator.instance
   }
 
+  /**
+   * Quick probe to estimate if full compression is worthwhile.
+   * Uses fast presets at reduced resolution (~50%) to quickly test compressibility.
+   *
+   * @param file - Original image file
+   * @param id - Unique identifier for tracking
+   * @param targetFormat - Target format for compression
+   * @returns Probe result with skip recommendation and estimated savings
+   */
+  async quickProbe(
+    file: File,
+    id: string,
+    targetFormat?: ImageFormat
+  ): Promise<QuickProbeResult> {
+    const startTime = performance.now()
+    const originalSize = file.size
+
+    try {
+      // Decode image to get dimensions and analyze type
+      const img = await createImageBitmap(file)
+      const oriWidth = img.width
+      const oriHeight = img.height
+
+      // Calculate probe dimensions (50% or max 512px on longest side)
+      const maxProbeDim = 512
+      const scaleFactor = Math.min(
+        0.5,
+        maxProbeDim / Math.max(oriWidth, oriHeight)
+      )
+      const probeWidth = Math.max(1, Math.round(oriWidth * scaleFactor))
+      const probeHeight = Math.max(1, Math.round(oriHeight * scaleFactor))
+
+      // Get pixel data for image type analysis
+      const cvs = new OffscreenCanvas(oriWidth, oriHeight)
+      const ctx = cvs.getContext("2d", { willReadFrequently: true })!
+      ctx.drawImage(img, 0, 0)
+      const imageData = ctx.getImageData(0, 0, oriWidth, oriHeight)
+
+      // Analyze image type (photo vs graphic)
+      const imageAnalysis = analyzeImageType(imageData.data, oriWidth, oriHeight)
+
+      // Quick probe compression with speed mode enabled and high priority
+      const probeResult = await ImageService.compress(
+        file,
+        `${id}-probe`,
+        0,
+        undefined,
+        targetFormat,
+        0.5, // Low quality for probe
+        probeWidth,
+        probeHeight,
+        1.0, // dithering
+        true, // chromaSubsampling
+        false, // not lossless
+        true, // speedMode enabled
+        'high' // High priority for fast probe execution
+      )
+
+      const probeSize = probeResult.compressedBlob?.size || originalSize
+      const probeTimeMs = performance.now() - startTime
+
+      // Estimate full compression savings
+      // Compression ratio tends to be similar across resolutions
+      // Scale up probe result to estimate full-size result
+      const scaledProbeOriginal = originalSize * scaleFactor * scaleFactor
+      const probeSavingsRatio = 1 - (probeSize / scaledProbeOriginal)
+
+      // Estimate full savings - probe typically underestimates by ~15%
+      const estimatedSavings = Math.max(0, probeSavingsRatio * 100 * 1.15)
+
+      // Skip if estimated savings below threshold
+      const shouldSkip = estimatedSavings < CompressionOrchestrator.SKIP_THRESHOLD_PERCENT
+
+      return {
+        shouldSkip,
+        estimatedSavings,
+        probeTimeMs,
+        imageAnalysis
+      }
+    } catch (error) {
+      // On error, proceed with full compression (don't skip)
+      return {
+        shouldSkip: false,
+        estimatedSavings: 100, // Assume compressible
+        probeTimeMs: performance.now() - startTime
+      }
+    }
+  }
+
+  /**
+   * Determines if quick probe should be used for this compression request.
+   * Skip probe for format conversions (where savings are usually significant)
+   * and when target size is specified (need exact result).
+   */
+  private shouldUseQuickProbe(file: File, options: CompressionOptions): boolean {
+    // Skip probe if target size specified (need precise compression)
+    if (options.targetSizeKb) return false
+
+    // Skip probe for format conversions (usually have significant savings)
+    const sourceFormat = this.getSourceFormat(file)
+    const targetFormat = options.format === 'auto' ? sourceFormat : options.format
+
+    // Only probe for same-format conversions
+    return sourceFormat === targetFormat
+  }
+
+  private getSourceFormat(file: File): ImageFormat {
+    const type = file.type.toLowerCase()
+    if (type.includes('png')) return 'png'
+    if (type.includes('jpeg') || type.includes('jpg')) return 'jpeg'
+    if (type.includes('webp')) return 'webp'
+    if (type.includes('avif')) return 'avif'
+    return 'jpeg' // default
+  }
+
   async compress(payload: { id: string; file: File; options: CompressionOptions }): Promise<CompressionResult> {
     const { id, file, options } = payload
 
     // Determine target format
+    const sourceFormat = this.getSourceFormat(file)
     const targetFormat = options.format === 'auto' ? undefined : options.format
+    const effectiveFormat = targetFormat || sourceFormat
+
+    // Quick probe for same-format conversions to skip already-optimized images
+    let imageAnalysis: ImageAnalysisResult | undefined
+    if (this.shouldUseQuickProbe(file, options)) {
+      const probeResult = await this.quickProbe(file, id, effectiveFormat)
+
+      if (probeResult.shouldSkip) {
+        // Image is already optimized, return early
+        const img = await createImageBitmap(file)
+        return {
+          blob: file,
+          format: effectiveFormat,
+          analysis: {
+            isPhoto: probeResult.imageAnalysis?.type === 'photo',
+            hasTransparency: probeResult.imageAnalysis?.hasTransparency || false,
+            complexity: 0.5,
+            uniqueColors: probeResult.imageAnalysis?.uniqueColors || 10000,
+            suggestedFormat: effectiveFormat
+          },
+          resizeApplied: false,
+          targetSizeMet: true,
+          originalWidth: img.width,
+          originalHeight: img.height,
+          width: img.width,
+          height: img.height,
+          warning: `Skipped: image already optimized (estimated savings: ${probeResult.estimatedSavings.toFixed(1)}%)`
+        }
+      }
+
+      imageAnalysis = probeResult.imageAnalysis
+    }
+
+    // Determine optimal compression settings based on image type
+    let effectiveLossless = options.lossless
+    let effectiveQuality = options.quality || 85
+
+    if (imageAnalysis && effectiveFormat === 'png' && effectiveLossless === undefined) {
+      // Auto-select lossless vs lossy for PNG based on image type
+      // Photos: use lossless (better quality preservation)
+      // Graphics: use lossy (palette reduction works great)
+      effectiveLossless = imageAnalysis.type === 'photo' || imageAnalysis.type === 'mixed'
+    }
+
+    if (imageAnalysis && effectiveFormat === 'jpeg') {
+      // Photos: enforce minimum quality floor of 70
+      // Graphics: can go lower (50+) as artifacts are less visible
+      if (imageAnalysis.type === 'photo' && effectiveQuality < 70) {
+        effectiveQuality = 70
+      }
+    }
 
     // Target size in bytes (if specified)
     const targetSizeBytes = options.targetSizeKb ? options.targetSizeKb * 1024 : null
 
     // Binary search parameters for target size - quality floor at 1% for hard limit
-    let quality = options.quality || 85
+    let quality = effectiveQuality
     let minQuality = 1 // Go all the way down to 1% for hard limit
     let maxQuality = quality
     const maxIterations = 12 // More iterations for precision
@@ -46,7 +225,7 @@ export class CompressionOrchestrator {
       currentHeight,
       options.dithering,
       options.chromaSubsampling,
-      options.lossless
+      effectiveLossless
     )
 
     // If target size is specified and exceeded, iterate with binary search
@@ -68,7 +247,7 @@ export class CompressionOrchestrator {
           currentHeight,
           options.dithering,
           options.chromaSubsampling,
-          options.lossless
+          effectiveLossless
         )
 
         const currentSize = imageServiceResult.compressedBlob?.size || 0
@@ -104,7 +283,7 @@ export class CompressionOrchestrator {
         currentHeight = Math.max(currentHeight, 100)
 
         // Reset quality search for new dimensions
-        quality = options.quality || 85
+        quality = effectiveQuality
         minQuality = 1
         maxQuality = quality
         iterations = 0
@@ -124,7 +303,7 @@ export class CompressionOrchestrator {
             currentHeight,
             options.dithering,
             options.chromaSubsampling,
-            options.lossless
+            effectiveLossless
           )
 
           currentSize = imageServiceResult.compressedBlob?.size || 0

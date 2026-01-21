@@ -9,6 +9,26 @@ pub fn encode_png(
     dithering_level: f32,
     speed_mode: bool,
 ) -> Result<Vec<u8>, String> {
+    // Validate RGBA data length is a multiple of 4
+    if data.len() % 4 != 0 {
+        return Err(format!(
+            "Invalid RGBA data length {}: must be multiple of 4",
+            data.len()
+        ));
+    }
+
+    // Validate data length matches expected size for dimensions
+    let expected_len = (width as usize) * (height as usize) * 4;
+    if data.len() != expected_len {
+        return Err(format!(
+            "Data length {} doesn't match expected {} for {}x{} RGBA image",
+            data.len(),
+            expected_len,
+            width,
+            height
+        ));
+    }
+
     if lossless {
         encode_lossless(data, width, height, speed_mode)
     } else {

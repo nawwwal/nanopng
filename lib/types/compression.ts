@@ -2,10 +2,10 @@ import { CompressedImage, ImageAnalysis } from "@/types/image"
 
 export type CompressionStatus = "queued" | "analyzing" | "compressing" | "completed" | "error" | "already-optimized"
 
-export type OutputFormat = "auto" | "png" | "jpeg" | "webp" | "avif"
+export type OutputFormat = "auto" | "png" | "jpeg" | "webp" | "avif" | "svg"
 
 // Basic types
-export type ImageFormat = "jpeg" | "png" | "webp" | "avif"
+export type ImageFormat = "jpeg" | "png" | "webp" | "avif" | "svg"
 
 export interface CompressionOptions {
   format: ImageFormat | "auto"

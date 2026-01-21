@@ -37,6 +37,7 @@ export function analyzeImageType(
   // Sample pixels for analysis (max 10,000 for performance)
   const sampleSize = Math.min(10000, totalPixels)
   const sampleStep = Math.max(1, Math.floor(totalPixels / sampleSize))
+  const actualSampledPixels = Math.ceil(totalPixels / sampleStep)
 
   // Track unique colors using a Set (hash RGB values)
   const colorSet = new Set<number>()
@@ -44,6 +45,9 @@ export function analyzeImageType(
 
   for (let i = 0; i < totalPixels; i += sampleStep) {
     const idx = i * 4
+    // Defensive bounds check
+    if (idx + 3 >= data.length) break
+
     const r = data[idx]
     const g = data[idx + 1]
     const b = data[idx + 2]
@@ -58,8 +62,26 @@ export function analyzeImageType(
     colorSet.add(colorHash)
   }
 
-  const uniqueColors = colorSet.size
-  const hasTransparency = transparentPixels > (sampleSize * 0.01) // >1% transparent
+  const rawUniqueColors = colorSet.size
+
+  // Logarithmic scaling: estimate total unique colors from sample
+  // Uses diminishing returns model - early samples find many colors, later fewer
+  let uniqueColors: number
+  if (actualSampledPixels >= totalPixels) {
+    // All pixels sampled, use raw count
+    uniqueColors = rawUniqueColors
+  } else {
+    // Scale up using log ratio
+    const saturationFactor = Math.log(totalPixels) / Math.log(actualSampledPixels)
+    uniqueColors = Math.min(
+      Math.round(rawUniqueColors * saturationFactor),
+      totalPixels // cap at theoretical max
+    )
+  }
+
+  // Fix transparency ratio denominator
+  const transparencyRatio = transparentPixels / actualSampledPixels
+  const hasTransparency = transparencyRatio > 0.01 // >1% transparent
 
   // Calculate solid region ratio and edge characteristics
   const { solidRegionRatio, hasHardEdges, hasSmoothGradients } =

@@ -239,7 +239,8 @@ export class CompressionOrchestrator {
       currentHeight,
       options.dithering,
       options.chromaSubsampling,
-      effectiveLossless
+      effectiveLossless,
+      options.speedMode
     )
 
     // If target size is specified and exceeded, iterate with binary search
@@ -261,7 +262,8 @@ export class CompressionOrchestrator {
           currentHeight,
           options.dithering,
           options.chromaSubsampling,
-          effectiveLossless
+          effectiveLossless,
+          options.speedMode
         )
 
         const currentSize = imageServiceResult.compressedBlob?.size || 0
@@ -317,7 +319,8 @@ export class CompressionOrchestrator {
             currentHeight,
             options.dithering,
             options.chromaSubsampling,
-            effectiveLossless
+            effectiveLossless,
+            options.speedMode
           )
 
           currentSize = imageServiceResult.compressedBlob?.size || 0

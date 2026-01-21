@@ -183,7 +183,6 @@ class WorkerPool {
     }
 
     this.poolSize = this.workers.length
-    console.log(`Worker pool expanded to ${this.poolSize} workers`)
   }
 
   /**
@@ -203,30 +202,6 @@ class WorkerPool {
     }
 
     this.poolSize = this.workers.length
-    if (this.poolSize < this.maxPoolSize) {
-      console.log(`Worker pool shrunk to ${this.poolSize} workers`)
-    }
-  }
-
-  /**
-   * Execute a probe task with pool expansion for maximum throughput.
-   */
-  async executeProbe<T>(
-    task: (api: Comlink.Remote<ProcessorAPI>) => Promise<T>
-  ): Promise<T> {
-    // Expand pool for probe work if there's queued work
-    if (this.getQueueLength() > 0 && this.poolSize < this.maxPoolSize) {
-      await this.expandPool(this.maxPoolSize)
-    }
-
-    return this.execute(task, 'high')
-  }
-
-  /**
-   * Signal that probe phase is complete, pool can shrink.
-   */
-  probePhaseComplete(): void {
-    this.shrinkPool()
   }
 
   terminate(): void {

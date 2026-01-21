@@ -5,7 +5,9 @@
 NanoPNG is a secure, privacy-focused image compressor that rivals server-side solutions like TinyPNG, but runs entirely on your device. No images are ever uploaded to a server.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![TypeScript](https://img.shields.io/badge/Using-TypeScript-3178C6.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6.svg?logo=typescript&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-000000.svg?logo=rust&logoColor=white)
+![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0.svg?logo=webassembly&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-000000?logo=next.js&logoColor=white)
 
 ## 🚀 Vision
@@ -15,49 +17,55 @@ The goal of NanoPNG is to provide **server-grade image optimization without the 
 ## ✨ Key Features
 
 -   **Privacy First**: All processing happens locally. Your photos never leave your computer.
--   **Batch Processing**: Process up to 100 images simultaneously with 3 concurrent workers. No limits, no subscriptions.
--   **Smart Quantization**: Converts 32-bit RGBA images to efficient 8-bit Indexed PNGs using advanced dithering algorithms (Floyd-Steinberg via `image-q`).
+-   **Rust/WASM Backend**: High-performance image encoding powered by a custom Rust-based WebAssembly module (`nanopng-core`) for blazing fast compression.
+-   **Smart Compression**: Automatically detects photo vs. graphic content and applies optimal compression strategies. Quick probe skips already-optimized images.
+-   **Batch Processing**: Process up to 100 images simultaneously with parallel workers and O(1) priority queue scheduling. No limits, no subscriptions.
 -   **Intelligent Format Selection**: Automatically chooses the best format (AVIF → WebP → PNG) based on browser support and image characteristics.
 -   **Format Conversion**: Convert between PNG, JPEG, WebP, and AVIF formats with intelligent quality settings.
+-   **Target Size Compression**: Specify a target file size (e.g., "under 50KB") and the compressor will automatically adjust quality and dimensions.
 -   **Metadata Preservation**: Automatically preserves critical metadata (EXIF orientation, ICC Color Profiles) often lost by standard canvas exports.
--   **Image Analysis**: Advanced photo vs. graphic detection with complexity scoring to optimize compression strategies.
+-   **Image Analysis**: Advanced photo vs. graphic detection using color histogram analysis, edge detection, and texture variance scoring.
 -   **HEIC Support**: Convert HEIC/HEIF images (common on iOS) to web-friendly formats.
 -   **Before/After Comparison**: Interactive slider to compare original and compressed images side-by-side.
 -   **Bulk Download**: Download all optimized images as a ZIP archive.
--   **Performance**: Offloads heavy computational work to Web Workers, ensuring a smooth, non-blocking UI even with 4K+ images.
+-   **Performance**: Offloads heavy computational work to Web Workers with crash recovery, ensuring a smooth, non-blocking UI even with 4K+ images.
 -   **Brutalist UI**: Clean, bold interface with dark mode support.
 
 ## 🛠 Technical Architecture
 
-NanoPNG is built with **Next.js 14+** and **TypeScript**, designed for performance and extensibility.
+NanoPNG is built with **Next.js 14+**, **TypeScript**, and **Rust/WebAssembly**, designed for performance and extensibility.
 
 ### Core Technologies
 
 -   **Frontend**: React-based UI with Drag & Drop zones (Shadcn UI + Tailwind CSS).
--   **Concurrency**: Uses **Web Workers** (`lib/workers/image-processor.worker.ts`) to handle CPU-intensive quantization and PNG encoding.
--   **Image Processing Libraries**:
-    -   `image-q`: Advanced color quantization with Floyd-Steinberg dithering
-    -   `upng-js`: Efficient PNG encoding for quantized images
-    -   Canvas API: Native browser encoding for AVIF/WebP/JPEG
+-   **WASM Core**: `nanopng-core` - Custom Rust-based WebAssembly module providing high-performance codecs:
+    -   PNG encoding with lossy quantization (imagequant) and lossless compression
+    -   JPEG encoding with quality optimization
+    -   AVIF encoding via `ravif` crate
+    -   WebP encoding via `webp` crate
+-   **Worker Pool**: Parallel processing with O(1) priority queue scheduling, crash recovery, and queue size limits.
+-   **Smart Compression**: Orchestration layer with quick probe to skip already-optimized images and auto-detection of photo vs. graphic content.
+-   **Supporting Libraries**:
     -   `exifr`: EXIF metadata extraction
     -   `heic2any`: HEIC/HEIF format conversion
--   **WASM Module**: `nanopng-core` Rust-based WASM module (prepared for future migration).
+    -   `comlink`: Worker communication
 
 ### Processing Pipeline
 
-1.  **Format Detection & Decoding**: Supports PNG, JPEG, WebP, AVIF, HEIC/HEIF. Converts HEIC to decodable format if needed.
-2.  **Analysis**: Determines image complexity (Photo vs. Graphic) using:
-    -   Solid region ratio
-    -   Edge sharpness detection
-    -   Color histogram spread
-    -   Texture variance scoring
-3.  **Decoding**: Uses HTML5 Canvas to extract raw RGBA pixel data.
-4.  **Processing**:
-    -   **PNG**: Quantization + Dithering in Web Worker → Encoded via UPNG
-    -   **AVIF/WebP**: Native Canvas API encoding with quality optimization
-    -   **JPEG**: Canvas API with photo-optimized quality settings
-5.  **Metadata Injection**: Extracts EXIF/ICC chunks from source and injects them into the optimized Blob.
-6.  **Size Validation**: Ensures compressed output is smaller than original; reverts if not.
+1.  **Quick Probe**: Estimates compressibility at reduced resolution. Skips already-optimized images (< 3% savings).
+2.  **Image Analysis**: Classifies as Photo, Graphic, or Mixed using:
+    -   Unique color count with logarithmic scaling
+    -   Solid region ratio detection
+    -   Edge sharpness analysis
+    -   Transparency detection
+3.  **Format Detection & Decoding**: Supports PNG, JPEG, WebP, AVIF, HEIC/HEIF. Converts HEIC to decodable format if needed.
+4.  **Compression** (via Rust/WASM):
+    -   **PNG**: Lossy (imagequant palette reduction) or lossless with optimal filtering
+    -   **JPEG**: Quality-optimized encoding with dimension validation
+    -   **WebP/AVIF**: Modern format encoding with quality tuning
+5.  **Target Size Loop**: Binary search quality adjustment with resize fallback for target size constraints.
+6.  **Metadata Injection**: Extracts EXIF/ICC chunks from source and injects them into the optimized Blob.
+7.  **Size Validation**: Ensures compressed output is smaller than original; reverts if not.
 
 ### Format Selection Strategy
 
@@ -69,23 +77,44 @@ NanoPNG is built with **Next.js 14+** and **TypeScript**, designed for performan
 
 We are actively working on pushing the boundaries of in-browser compression.
 
--   [ ] **Rust Core Integration**: Fully integrate the existing `nanopng-core` WASM module to replace TypeScript quantization logic for blazing fast performance and smaller memory footprint.
--   [ ] **Smart Resizing**: Add high-quality resizing (Lanczos3) and "Compress to Target Size" (e.g., "Make this under 50KB").
+### Completed ✅
+
+-   [x] **Rust/WASM Backend**: Full integration of `nanopng-core` for PNG, JPEG, WebP, and AVIF encoding.
+-   [x] **Smart Compression**: Auto-detection of photo vs. graphic content with optimized compression strategies.
+-   [x] **Target Size Compression**: Binary search quality adjustment with resize fallback.
+-   [x] **Worker Pool Improvements**: O(1) priority queue, crash recovery, and queue size limits.
+
+### In Progress 🚧
+
 -   [ ] **PWA Support**: Full offline capabilities with service worker caching.
 -   [ ] **Advanced Compression Options**: Fine-tune quantization levels, dithering intensity, and quality presets.
+
+### Future 🔮
+
+-   [ ] **CLI Tool**: Command-line interface for batch processing.
 -   [ ] **Image Optimization API**: Programmatic API for developers to integrate compression into their workflows.
+-   [ ] **Video Frame Extraction**: Extract and optimize frames from video files.
 
 ## 🚀 Getting Started
+
+### Prerequisites
+
+-   **Node.js** 18+ and npm
+-   **Rust** toolchain (for building WASM module)
+-   **wasm-pack** (`cargo install wasm-pack`)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/nanopng.git
+git clone https://github.com/nawwwal/nanopng.git
 cd nanopng
 
 # Install dependencies
 npm install
+
+# Build the Rust/WASM module
+npm run wasm:build
 
 # Run development server
 npm run dev
@@ -96,9 +125,22 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### Building for Production
 
 ```bash
+# Build WASM and Next.js app
+npm run wasm:build
 npm run build
 npm start
 ```
+
+### Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run wasm:build` | Build Rust/WASM module |
+| `npm run wasm:dev` | Build WASM in dev mode |
+| `npm test` | Run test suite (33 tests) |
+| `npm run lint` | Run ESLint |
 
 ## 🤝 Contribution Guidelines
 
@@ -116,14 +158,17 @@ We welcome contributions! Here's how to get started:
 
 ### Code Standards
 
--   Use **TypeScript** for strict type safety.
+-   Use **TypeScript** for strict type safety (no `any`, no `@ts-ignore`).
+-   Use **Rust** for performance-critical encoding in `crate/`.
 -   Ensure **Linting** passes (`npm run lint`).
--   Keep heavy computational logic inside `lib/workers` or `lib/core`.
+-   Ensure **Tests** pass (`npm test` - 33 tests).
+-   Keep heavy computational logic inside `lib/workers` or `crate/`.
 -   Follow the existing architecture patterns:
+    -   Rust codecs in `crate/src/codecs/`
     -   Services in `lib/services/`
     -   Core algorithms in `lib/core/`
     -   UI components in `components/`
-    -   Types in `lib/types/` and `types/`
+    -   Types in `lib/types/`
 
 ### Project Structure
 
@@ -132,14 +177,20 @@ nanopng/
 ├── app/                    # Next.js app directory
 ├── components/             # React components
 │   ├── ui/                # Shadcn UI components
-│   └── ...                # Feature components
+│   └── editor/            # Image editor components
+├── crate/                  # Rust/WASM source code
+│   ├── src/
+│   │   ├── lib.rs         # WASM entry point
+│   │   └── codecs/        # PNG, JPEG, WebP, AVIF encoders
+│   └── Cargo.toml         # Rust dependencies
 ├── lib/
-│   ├── core/              # Core algorithms (quantization, dithering, etc.)
-│   ├── services/          # Business logic services
+│   ├── core/              # Core algorithms (image analysis, format detection)
+│   ├── services/          # Business logic (compression orchestrator, image service)
 │   ├── types/             # TypeScript type definitions
-│   ├── utils.ts           # Utility functions
-│   ├── wasm/              # WebAssembly modules
-│   └── workers/           # Web Worker scripts
+│   ├── hooks/             # React hooks (useWorkerPool)
+│   ├── wasm/              # Compiled WASM modules (generated)
+│   └── workers/           # Web Worker scripts (processor, pool)
+├── scripts/               # Build scripts (prepare-wasm.mjs)
 └── public/                # Static assets
 ```
 

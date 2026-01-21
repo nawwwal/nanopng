@@ -4,8 +4,9 @@ import type { ProcessorAPI } from "./processor.worker"
 interface QueuedTask {
   id: string
   resolve: (api: Comlink.Remote<ProcessorAPI>) => void
-  priority: 'normal' | 'high' // High priority for probes
 }
+
+type Priority = 'low' | 'normal' | 'high'
 
 /** Size threshold for batching small images (500KB) */
 const BATCH_SIZE_THRESHOLD = 500 * 1024
@@ -14,10 +15,16 @@ class WorkerPool {
   private workers: Worker[] = []
   private apis: Comlink.Remote<ProcessorAPI>[] = []
   private available: Set<number> = new Set()
-  private queue: QueuedTask[] = []
+  // O(1) priority queues - separate queue per priority level
+  private queues: Record<Priority, QueuedTask[]> = {
+    high: [],
+    normal: [],
+    low: []
+  }
   private initialized = false
   private initializing: Promise<void> | null = null
   private poolSize: number
+  private normalPoolSize: number
   private maxPoolSize: number // Full CPU utilization for probes
 
   constructor() {
@@ -26,7 +33,8 @@ class WorkerPool {
       : 4
 
     // Default pool size: 75% of cores (min 2, max 8) for full compression
-    this.poolSize = Math.max(2, Math.min(8, Math.floor(cores * 0.75)))
+    this.normalPoolSize = Math.max(2, Math.min(8, Math.floor(cores * 0.75)))
+    this.poolSize = this.normalPoolSize
 
     // Max pool size: 100% of cores for lightweight probe operations
     this.maxPoolSize = Math.max(2, Math.min(12, cores))
@@ -56,7 +64,7 @@ class WorkerPool {
     return this.initializing
   }
 
-  async acquire(priority: 'normal' | 'high' = 'normal'): Promise<{ api: Comlink.Remote<ProcessorAPI>; release: () => void }> {
+  async acquire(priority: Priority = 'normal'): Promise<{ api: Comlink.Remote<ProcessorAPI>; release: () => void }> {
     await this.initialize()
 
     // Check if any worker is available
@@ -77,7 +85,6 @@ class WorkerPool {
     return new Promise((resolve) => {
       const task: QueuedTask = {
         id: Math.random().toString(36).slice(2),
-        priority,
         resolve: (api) => {
           // Find which index this api belongs to
           const index = this.apis.indexOf(api)
@@ -91,22 +98,21 @@ class WorkerPool {
         }
       }
 
-      // High priority tasks go to front of queue
-      if (priority === 'high') {
-        this.queue.unshift(task)
-      } else {
-        this.queue.push(task)
-      }
+      // O(1) enqueue to appropriate priority queue
+      this.queues[priority].push(task)
     })
   }
 
   private processQueue(): void {
-    if (this.queue.length === 0 || this.available.size === 0) return
+    if (this.available.size === 0) return
 
-    // Process high priority tasks first
-    const highPriorityIndex = this.queue.findIndex(t => t.priority === 'high')
-    const taskIndex = highPriorityIndex >= 0 ? highPriorityIndex : 0
-    const task = this.queue.splice(taskIndex, 1)[0]!
+    // O(1) dequeue: check queues in priority order
+    const task =
+      this.queues.high.shift() ||
+      this.queues.normal.shift() ||
+      this.queues.low.shift()
+
+    if (!task) return
 
     const index = this.available.values().next().value as number
     this.available.delete(index)
@@ -117,11 +123,11 @@ class WorkerPool {
   /**
    * Execute a task on the worker pool.
    * @param task - The task function to execute
-   * @param priority - Task priority ('high' for probes, 'normal' for full compression)
+   * @param priority - Task priority ('high' for probes, 'normal' for full compression, 'low' for background tasks)
    */
   async execute<T>(
     task: (api: Comlink.Remote<ProcessorAPI>) => Promise<T>,
-    priority: 'normal' | 'high' = 'normal'
+    priority: Priority = 'normal'
   ): Promise<T> {
     const { api, release } = await this.acquire(priority)
 
@@ -142,7 +148,7 @@ class WorkerPool {
    */
   async executeBatch<T>(
     tasks: Array<(api: Comlink.Remote<ProcessorAPI>) => Promise<T>>,
-    priority: 'normal' | 'high' = 'normal'
+    priority: Priority = 'normal'
   ): Promise<T[]> {
     return Promise.all(tasks.map(task => this.execute(task, priority)))
   }
@@ -161,7 +167,7 @@ class WorkerPool {
     this.workers = []
     this.apis = []
     this.available.clear()
-    this.queue = []
+    this.queues = { high: [], normal: [], low: [] }
     this.initialized = false
     this.initializing = null
   }
@@ -189,7 +195,7 @@ class WorkerPool {
    * Get current queue length.
    */
   getQueueLength(): number {
-    return this.queue.length
+    return this.queues.high.length + this.queues.normal.length + this.queues.low.length
   }
 }
 

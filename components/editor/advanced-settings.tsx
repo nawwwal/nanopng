@@ -6,14 +6,25 @@ import { QualityPreview } from "./quality-preview"
 import { OutputFormat } from "@/lib/types/compression"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { SettingHint } from "@/components/ui/setting-hint"
 
 const FORMAT_OPTIONS: { value: OutputFormat; label: string; desc: string }[] = [
-    { value: "auto", label: "Auto", desc: "Best for each image" },
-    { value: "webp", label: "WebP", desc: "Great compression" },
-    { value: "avif", label: "AVIF", desc: "Best compression" },
-    { value: "jpeg", label: "JPEG", desc: "Universal" },
-    { value: "png", label: "PNG", desc: "Lossless" },
+    { value: "auto", label: "Auto", desc: "Analyzes image to choose optimal format" },
+    { value: "webp", label: "WebP", desc: "Modern format, 30% smaller than JPEG" },
+    { value: "avif", label: "AVIF", desc: "Newest format, 50% smaller, limited support" },
+    { value: "jpeg", label: "JPEG", desc: "Universal, best for photos" },
+    { value: "png", label: "PNG", desc: "Lossless, best for graphics with transparency" },
 ]
+
+const SETTING_HINTS = {
+    format: "Auto picks the best format based on image content",
+    quality: "Lower = smaller files. 80-85% is usually indistinguishable from original",
+    highDetail: "Preserves color detail in fine patterns and text",
+    lossless: "No quality loss but larger files. Use for pixel-perfect accuracy",
+    dithering: "Simulates gradients. Turn off (0%) for sharp-edged graphics",
+    maxDimensions: "Resize images exceeding these limits while keeping aspect ratio",
+    targetSize: "Auto-adjusts quality to meet file size limit",
+}
 
 export function AdvancedSettings() {
     const { currentPreset, compressionOptions, setCompressionOptions, images, selectedIds } = useEditor()
@@ -57,14 +68,11 @@ export function AdvancedSettings() {
             </CollapsibleTrigger>
 
             <CollapsibleContent className="data-[state=open]:animate-radix-slide-down data-[state=closed]:animate-radix-slide-up overflow-hidden">
-                <div className="border-t border-foreground/20 space-y-4">
-                    {/* Level 2: Basic Advanced Settings */}
+                <div className="border-t border-foreground/20">
+                    {/* Core Settings */}
                     <div className="p-4 space-y-4">
                         {/* Output Format */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                                Output Format
-                            </label>
+                        <SettingHint label="Output Format" hint={SETTING_HINTS.format}>
                             <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Output Format">
                                 {FORMAT_OPTIONS.map(opt => (
                                     <button
@@ -84,14 +92,11 @@ export function AdvancedSettings() {
                                     </button>
                                 ))}
                             </div>
-                        </div>
+                        </SettingHint>
 
                         {/* Quality Slider */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Quality
-                                </label>
+                        <SettingHint label="Quality" hint={SETTING_HINTS.quality}>
+                            <div className="flex items-center justify-between mb-1">
                                 <span className="text-sm font-mono font-bold">
                                     {compressionOptions.quality}%
                                 </span>
@@ -109,62 +114,104 @@ export function AdvancedSettings() {
                                 <span>Smaller</span>
                                 <span>Higher quality</span>
                             </div>
-                        </div>
+                        </SettingHint>
 
                         {/* Quality Preview Table */}
                         <QualityPreview />
                     </div>
 
-                    {/* Resize & Constraints */}
-                    <div className="p-4 border-t border-foreground/10 space-y-4">
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                            Resize & Constraints
-                        </label>
-
-                        {/* Max Dimensions */}
-                        <div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <input
-                                        type="number"
-                                        name="maxWidth"
-                                        autoComplete="off"
-                                        placeholder="Max Width"
-                                        min="1"
-                                        value={compressionOptions.targetWidth || ""}
-                                        onChange={(e) => setCompressionOptions({
-                                            targetWidth: e.target.value ? parseInt(e.target.value) : undefined
-                                        })}
-                                        className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
-                                        aria-label="Max Width"
-                                    />
-                                </div>
-                                <div>
-                                    <input
-                                        type="number"
-                                        name="maxHeight"
-                                        autoComplete="off"
-                                        placeholder="Max Height"
-                                        min="1"
-                                        value={compressionOptions.targetHeight || ""}
-                                        onChange={(e) => setCompressionOptions({
-                                            targetHeight: e.target.value ? parseInt(e.target.value) : undefined
-                                        })}
-                                        className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
-                                        aria-label="Max Height"
-                                    />
-                                </div>
-                            </div>
+                    {/* Format Options */}
+                    <div className="px-4 pb-4 space-y-3">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 border-t border-foreground/10 pt-4">
+                            Format Options
                         </div>
 
+                        {/* High Detail and Lossless side-by-side */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <SettingHint label="High Detail" hint={SETTING_HINTS.highDetail} inline>
+                                <input
+                                    type="checkbox"
+                                    checked={compressionOptions.chromaSubsampling === false}
+                                    onChange={(e) => setCompressionOptions({ chromaSubsampling: !e.target.checked })}
+                                    className="w-4 h-4 accent-foreground"
+                                />
+                            </SettingHint>
+                            <SettingHint label="Lossless" hint={SETTING_HINTS.lossless} inline>
+                                <input
+                                    type="checkbox"
+                                    checked={!!compressionOptions.lossless}
+                                    onChange={(e) => setCompressionOptions({ lossless: e.target.checked })}
+                                    className="w-4 h-4 accent-foreground"
+                                />
+                            </SettingHint>
+                        </div>
+
+                        {/* Dithering - only for lossy PNG/WebP */}
+                        {(compressionOptions.format === 'png' || compressionOptions.format === 'webp') && !compressionOptions.lossless && (
+                            <SettingHint label="Dithering" hint={SETTING_HINTS.dithering}>
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-mono font-bold">
+                                        {Math.round((compressionOptions.dithering ?? 1) * 100)}%
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={Math.round((compressionOptions.dithering ?? 1) * 100)}
+                                    onChange={(e) => setCompressionOptions({ dithering: parseInt(e.target.value) / 100 })}
+                                    className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                />
+                            </SettingHint>
+                        )}
+                    </div>
+
+                    {/* Resize & Constraints */}
+                    <div className="p-4 border-t border-foreground/10 space-y-4">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                            Resize & Constraints
+                        </div>
+
+                        {/* Max Dimensions */}
+                        <SettingHint label="Max Dimensions" hint={SETTING_HINTS.maxDimensions}>
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    type="number"
+                                    name="maxWidth"
+                                    autoComplete="off"
+                                    placeholder="Width"
+                                    min="1"
+                                    value={compressionOptions.targetWidth || ""}
+                                    onChange={(e) => setCompressionOptions({
+                                        targetWidth: e.target.value ? parseInt(e.target.value) : undefined
+                                    })}
+                                    className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                    aria-label="Max Width"
+                                />
+                                <input
+                                    type="number"
+                                    name="maxHeight"
+                                    autoComplete="off"
+                                    placeholder="Height"
+                                    min="1"
+                                    value={compressionOptions.targetHeight || ""}
+                                    onChange={(e) => setCompressionOptions({
+                                        targetHeight: e.target.value ? parseInt(e.target.value) : undefined
+                                    })}
+                                    className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                    aria-label="Max Height"
+                                />
+                            </div>
+                        </SettingHint>
+
                         {/* Target Size */}
-                        <div>
+                        <SettingHint label="Target Size" hint={SETTING_HINTS.targetSize}>
                             <div className="flex items-center gap-2">
                                 <input
                                     type="number"
                                     name="targetSize"
                                     autoComplete="off"
-                                    placeholder="Target Size (e.g., 500)"
+                                    placeholder="e.g., 500"
                                     min="1"
                                     value={compressionOptions.targetSizeKb || ""}
                                     onChange={(e) => setCompressionOptions({
@@ -175,7 +222,7 @@ export function AdvancedSettings() {
                                 />
                                 <span className="text-xs font-bold uppercase text-muted-foreground">KB</span>
                             </div>
-                        </div>
+                        </SettingHint>
                     </div>
                 </div>
             </CollapsibleContent>

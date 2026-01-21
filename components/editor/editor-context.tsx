@@ -2,15 +2,20 @@
 
 import { createContext, useContext, useReducer, useCallback, useRef, useState, useEffect, ReactNode } from "react"
 import { CompressionOrchestrator } from "@/lib/services/compression-orchestrator"
+import { ImageService } from "@/lib/services/image-service"
 import { ensureDecodable, isHeicFile } from "@/lib/core/format-decoder"
 import { PresetId, getPresetById, COMPRESSION_PRESETS } from "@/lib/types/presets"
-import type { CompressedImage, CompressionStatus, CompressionOptions, OutputFormat } from "@/lib/types/compression"
+import type { CompressedImage, CompressionStatus, CompressionOptions, ImageFormat } from "@/lib/types/compression"
+import { toast } from "sonner"
 import JSZip from "jszip"
 
 // Constants
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 const MAX_FILES = 100
-const CONCURRENT_PROCESSING = 3
+// Dynamic concurrency based on CPU cores (75%, min 2, max 6)
+const CONCURRENT_PROCESSING = typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+    ? Math.max(2, Math.min(6, Math.floor(navigator.hardwareConcurrency * 0.75)))
+    : 3
 
 const ACCEPTED_FORMATS = {
     "image/png": [".png"],
@@ -165,15 +170,15 @@ export function useEditor() {
 export function EditorProvider({ children }: { children: ReactNode }) {
     const [state, dispatch] = useReducer(editorReducer, {
         images: [],
-        selectedIds: new Set(),
+        selectedIds: new Set<string>(),
         previewImageId: null,
         isProcessing: false,
         queueIndex: 0,
     })
 
-    const [currentPreset, setCurrentPreset] = useState<PresetId>("web")
+    const [currentPreset, setCurrentPreset] = useState<PresetId>("photo")
     const [compressionOptions, setCompressionOptionsState] = useState<CompressionOptions>(() => {
-        const preset = getPresetById("web")
+        const preset = getPresetById("photo")
         return {
             quality: preset.quality,
             format: preset.format,
@@ -198,8 +203,11 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 targetWidth: preset.maxWidth,
                 targetHeight: preset.maxHeight,
                 targetSizeKb: preset.targetSizeKb,
+                // Graphic preset: no dithering for sharp edges, lossless for perfect quality
+                dithering: presetId === "graphic" ? 0 : 1,
+                lossless: presetId === "graphic",
             })
-            
+
             // Re-queue completed images for reprocessing
             const imagesToReprocess = imagesRef.current.filter(img =>
                 img.status === "completed" ||
@@ -281,6 +289,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 status = "already-optimized"
             }
 
+            const originalFormatRaw = originalFormat || file.type.split("/")[1] || "png"
+            const normalizedOriginalFormat = originalFormatRaw === "jpg" ? "jpeg" : originalFormatRaw
+
             const completedImage: CompressedImage = {
                 id: image.id,
                 originalName: file.name,
@@ -288,12 +299,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 originalWidth: result.originalWidth,
                 originalHeight: result.originalHeight,
                 compressedSize: compressedSize,
-                compressedBlob: result.blob,
+                compressedBlob: result.blob ?? undefined,
                 blobUrl: result.blob ? URL.createObjectURL(result.blob) : undefined,
                 originalBlobUrl: URL.createObjectURL(file),
                 savings: Math.max(0, savings),
                 format: (result.format as "png" | "jpeg" | "webp" | "avif") || "png",
-                originalFormat: (originalFormat || file.type.split("/")[1] || "png") as any,
+                originalFormat: normalizedOriginalFormat as "png" | "jpeg" | "webp" | "avif" | "heic" | "heif",
                 status,
                 analysis: result.analysis,
                 generation: image.generation || 0,
@@ -375,13 +386,33 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         return () => window.removeEventListener("paste", handlePaste, true)
     }, [])
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
         if (acceptedFiles.length > MAX_FILES) {
             alert(`Maximum ${MAX_FILES} images allowed`)
             return
         }
 
-        const newImages: CompressedImage[] = acceptedFiles.map((file) => {
+        // Get existing hashes from current images
+        const existingHashes = new Set(
+            imagesRef.current
+                .filter(img => img.hash)
+                .map(img => img.hash)
+        )
+
+        // Process files and check for duplicates
+        const newImages: CompressedImage[] = []
+        const duplicateNames: string[] = []
+
+        for (const file of acceptedFiles) {
+            // Compute hash for duplicate detection
+            const hash = await ImageService.computeHash(file)
+
+            // Check for duplicates
+            if (existingHashes.has(hash) || newImages.some(img => img.hash === hash)) {
+                duplicateNames.push(file.name)
+                continue
+            }
+
             const typePart = file.type ? file.type.split("/")[1] : ""
             const nameExtPart = file.name.split(".").pop()?.toLowerCase() ?? ""
             let inferredFormat = (typePart || nameExtPart || "png").toLowerCase()
@@ -391,18 +422,31 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
             const id = Math.random().toString(36).substr(2, 9)
             fileMapRef.current.set(id, file)
-            return {
+            existingHashes.add(hash)
+
+            newImages.push({
                 id,
+                hash,
                 originalName: file.name,
                 originalSize: file.size,
                 compressedSize: 0,
                 savings: 0,
-                format: inferredFormat as any,
+                format: inferredFormat as ImageFormat,
                 status: "queued" as const,
                 progress: 0,
                 generation: 0,
-            }
-        })
+            })
+        }
+
+        // Notify user of duplicates
+        if (duplicateNames.length > 0) {
+            const message = duplicateNames.length === 1
+                ? `"${duplicateNames[0]}" is already added`
+                : `${duplicateNames.length} duplicate image${duplicateNames.length > 1 ? 's' : ''} skipped`
+            toast.info(message)
+        }
+
+        if (newImages.length === 0) return
 
         dispatch({ type: "ADD_FILES", payload: newImages })
     }, [])

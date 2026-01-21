@@ -1,5 +1,6 @@
 "use client"
 
+import { motion } from "framer-motion"
 import { BeforeAfterSlider } from "@/components/before-after-slider"
 import { useEditor } from "./editor-context"
 import type { CompressedImage } from "@/lib/types/compression"
@@ -28,9 +29,20 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
     }
 
     return (
-        <div className="h-full flex flex-col bg-background">
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="h-full flex flex-col bg-background"
+        >
             {/* Header */}
-            <div className="p-4 border-b border-foreground flex items-center justify-between">
+            <motion.div
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.05, duration: 0.2 }}
+                className="p-4 border-b border-foreground flex items-center justify-between"
+            >
                 <div className="flex items-center gap-3 min-w-0">
                     <button
                         onClick={onClose}
@@ -51,7 +63,9 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 shrink-0">
-                    <button
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => {
                             removeImage(image.id)
                             onClose()
@@ -62,12 +76,18 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
-                    </button>
+                    </motion.button>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Image display */}
-            <div className="flex-1 relative overflow-hidden bg-secondary/30 flex items-center justify-center p-4">
+            <motion.div
+                layoutId={`preview-container-${image.id}`}
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+                className="flex-1 relative overflow-hidden bg-secondary/30 flex items-center justify-center p-4"
+            >
                 {isComplete && image.originalBlobUrl && image.blobUrl ? (
                     <BeforeAfterSlider
                         beforeImage={image.originalBlobUrl}
@@ -90,13 +110,16 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                 ) : (
                     <div role="status" aria-label="Loading image" className="w-16 h-16 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
                 )}
-            </div>
+            </motion.div>
 
             {/* Footer with comparison controls */}
             {isComplete && image.originalBlobUrl && image.blobUrl && (
-                <div className="p-4 border-t border-foreground">
-
-
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.2 }}
+                    className="p-4 border-t border-foreground"
+                >
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-4 text-center">
                         <div>
@@ -117,8 +140,8 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
                             </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
             )}
-        </div>
+        </motion.div>
     )
 }

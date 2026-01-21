@@ -1,6 +1,6 @@
 import { OutputFormat } from "@/lib/types/compression"
 
-export type PresetId = "web" | "social" | "print" | "email" | "custom"
+export type PresetId = "photo" | "graphic" | "social" | "custom"
 
 export interface CompressionPreset {
     id: PresetId
@@ -16,41 +16,32 @@ export interface CompressionPreset {
 
 export const COMPRESSION_PRESETS: CompressionPreset[] = [
     {
-        id: "web",
-        name: "Web Optimized",
-        description: "Best balance of size and quality",
-        icon: "🌐",
+        id: "photo",
+        name: "Photo",
+        description: "Best for photographs with smooth gradients",
+        icon: "📷",
         format: "webp",
-        quality: 82,
-        maxWidth: 1920,
-        maxHeight: 1080,
+        quality: 85,
+        maxWidth: 2560,
+        maxHeight: 1440,
+    },
+    {
+        id: "graphic",
+        name: "Graphic / Logo",
+        description: "Sharp edges, flat colors, illustrations",
+        icon: "🎨",
+        format: "png",
+        quality: 100,
     },
     {
         id: "social",
         name: "Social Media",
-        description: "Optimized for Instagram, Twitter",
+        description: "Optimized for Instagram, Twitter, Facebook",
         icon: "📱",
         format: "jpeg",
         quality: 85,
         maxWidth: 1200,
         maxHeight: 1200,
-    },
-    {
-        id: "print",
-        name: "Print Ready",
-        description: "Lossless PNG, optimized compression",
-        icon: "🖨️",
-        format: "png",
-        quality: 100,
-    },
-    {
-        id: "email",
-        name: "Email Friendly",
-        description: "Fast load, under 500KB",
-        icon: "✉️",
-        format: "jpeg",
-        quality: 72,
-        targetSizeKb: 500,
     },
     {
         id: "custom",

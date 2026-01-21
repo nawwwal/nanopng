@@ -1,15 +1,25 @@
-import { CompressedImage, ImageAnalysis, ImageFormat } from "@/types/image"
+import { CompressedImage, ImageAnalysis } from "@/types/image"
 
 export type CompressionStatus = "queued" | "analyzing" | "compressing" | "completed" | "error" | "already-optimized"
 
 export type OutputFormat = "auto" | "png" | "jpeg" | "webp" | "avif"
 
+// Basic types
+export type ImageFormat = "jpeg" | "png" | "webp" | "avif"
+
 export interface CompressionOptions {
-  quality: number
-  format: OutputFormat
+  format: ImageFormat | "auto"
+  quality: number // 0-100
   targetWidth?: number
   targetHeight?: number
+  // Advanced options
+  dithering?: number // 0.0 - 1.0 (for PNG)
+  chromaSubsampling?: boolean // true = 4:2:0, false = 4:4:4 (for JPEG)
+  lossless?: boolean // Force lossless (PNG/WebP)
   targetSizeKb?: number
+  // Speed optimization options
+  speedMode?: boolean // true = fast encoding presets for speed
+  avifSpeed?: number // AVIF encoder speed (0-10, higher = faster, default 6)
 }
 
 export interface CompressionResult {
@@ -22,6 +32,7 @@ export interface CompressionResult {
   originalHeight?: number
   width?: number
   height?: number
+  warning?: string
 }
 
 export { type CompressedImage, type ImageAnalysis }

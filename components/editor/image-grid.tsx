@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useEditor } from "./editor-context"
 import { useMarqueeSelect } from "./use-marquee-select"
 import { cn } from "@/lib/utils"
@@ -41,10 +42,16 @@ function ImageThumbnail({
     }, [image.id, onRegisterRect])
 
     return (
-        <div
+        <motion.div
             ref={elementRef}
+            layout
+            layoutId={`preview-container-${image.id}`}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
             className={cn(
-                "relative aspect-square border cursor-pointer transition-all duration-200 group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-foreground focus-visible:ring-opacity-50",
+                "relative aspect-square border cursor-pointer group overflow-hidden focus:outline-none focus-visible:ring-4 focus-visible:ring-foreground focus-visible:ring-opacity-50",
                 isSelected
                     ? "border-foreground shadow-[4px_4px_0_var(--foreground)] -translate-y-1"
                     : "border-foreground/30 hover:border-foreground hover:-translate-y-1 hover:shadow-[4px_4px_0_var(--foreground)]"
@@ -59,6 +66,8 @@ function ImageThumbnail({
                     toggleSelect(image.id)
                 }
             }}
+            whileHover={{ y: -4 }}
+            whileTap={{ scale: 0.98 }}
         >
             {/* Image */}
             {imageUrl ? (
@@ -127,7 +136,12 @@ function ImageThumbnail({
 
             {/* Bottom info bar */}
             {isComplete && (
-                <div className="absolute bottom-0 left-0 right-0 bg-foreground text-background px-2 py-1.5 pointer-events-none z-20">
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.2 }}
+                    className="absolute bottom-0 left-0 right-0 bg-foreground text-background px-2 py-1.5 pointer-events-none z-20"
+                >
                     <div className="flex items-center justify-between text-xs font-bold leading-none">
                         <span className="truncate opacity-70">{image.format.toUpperCase()}</span>
                         <div className="flex items-center gap-2">
@@ -141,14 +155,14 @@ function ImageThumbnail({
                             )}
                         </div>
                     </div>
-                </div>
+                </motion.div>
             )}
-        </div>
+        </motion.div>
     )
 }
 
 export function ImageGrid() {
-    const { images, selectedIds, selectedCount, selectImage, deselectAll, selectAll, clearAll, removeImage } = useEditor()
+    const { images, selectImage } = useEditor()
     const containerRef = useRef<HTMLDivElement>(null)
     const itemRectsRef = useRef<Map<string, DOMRect>>(new Map())
 
@@ -197,14 +211,24 @@ export function ImageGrid() {
     }, [])
 
     return (
-        <div className="flex min-h-full flex-col">
-            {/* Grid with marquee selection */}
-            <div
-                ref={containerRef}
-                className="relative select-none cursor-crosshair flex-1 min-h-0"
-                {...handlers}
+        <div
+            ref={containerRef}
+            className="relative select-none cursor-crosshair"
+            {...handlers}
+        >
+            <motion.div
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                    visible: {
+                        transition: {
+                            staggerChildren: 0.03
+                        }
+                    }
+                }}
             >
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 h-full">
+                <AnimatePresence mode="popLayout">
                     {images.map(image => (
                         <ImageThumbnail
                             key={image.id}
@@ -212,86 +236,21 @@ export function ImageGrid() {
                             onRegisterRect={handleRegisterRect}
                         />
                     ))}
-                </div>
+                </AnimatePresence>
+            </motion.div>
 
-                {/* Marquee selection rectangle */}
-                {isSelecting && selectionRect && selectionRect.width > 5 && selectionRect.height > 5 && (
-                    <div
-                        className="absolute border-2 border-accent bg-accent/20 pointer-events-none z-10"
-                        style={{
-                            left: selectionRect.x,
-                            top: selectionRect.y,
-                            width: selectionRect.width,
-                            height: selectionRect.height,
-                        }}
-                    />
-                )}
-            </div>
-
-            {/* Selection controls */}
-            <div className="mt-auto pt-5 flex justify-center">
-                <div className="inline-flex items-center gap-3 rounded-sm border border-foreground/30 bg-background px-2 py-2">
-                    {/* Toggle Selection Mode / Select All */}
-                    <button
-                        onClick={selectedCount === images.length ? deselectAll : selectAll}
-                        className={cn(
-                            "h-7 px-3 border text-[10px] font-bold uppercase transition-all flex items-center gap-2 rounded-sm",
-                            selectedCount > 0
-                                ? "border-foreground bg-accent text-accent-foreground shadow-[2px_2px_0_var(--foreground)]"
-                                : "border-foreground/30 bg-background hover:border-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-[2px_2px_0_var(--foreground)] active:border-foreground active:bg-accent active:text-accent-foreground active:shadow-[1px_1px_0_var(--foreground)]"
-                        )}
-                    >
-                        {selectedCount === images.length ? (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                Deselect All
-                            </>
-                        ) : selectedCount > 0 ? (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                <span className="tabular-nums">{selectedCount} selected</span>
-                            </>
-                        ) : (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                Select All
-                            </>
-                        )}
-                    </button>
-
-                    {/* Delete / Clear Action */}
-                    <button
-                        onClick={() => {
-                            if (selectedCount > 0) {
-                                if (confirm(`Delete ${selectedCount} images?`)) {
-                                    const ids = Array.from(selectedIds)
-                                    ids.forEach(id => removeImage(id))
-                                }
-                            } else {
-                                if (confirm("Clear all images?")) clearAll()
-                            }
-                        }}
-                        className={cn(
-                            "h-7 px-3 border text-[10px] font-bold uppercase transition-all flex items-center gap-2 rounded-sm hover:shadow-[2px_2px_0_var(--destructive)] active:shadow-[1px_1px_0_var(--destructive)]",
-                            selectedCount > 0
-                                ? "border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                                : "border-foreground/30 hover:border-destructive hover:text-destructive"
-                        )}
-                    >
-                        {selectedCount > 0 ? (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                Delete Selected
-                            </>
-                        ) : (
-                            <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                Clear All
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
+            {/* Marquee selection rectangle */}
+            {isSelecting && selectionRect && selectionRect.width > 5 && selectionRect.height > 5 && (
+                <div
+                    className="absolute border-2 border-accent bg-accent/20 pointer-events-none z-10"
+                    style={{
+                        left: selectionRect.x,
+                        top: selectionRect.y,
+                        width: selectionRect.width,
+                        height: selectionRect.height,
+                    }}
+                />
+            )}
         </div>
     )
 }

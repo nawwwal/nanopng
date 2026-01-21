@@ -3,12 +3,9 @@
  * Handles decoding of formats that require special handling (HEIC/HEIF)
  * Other formats (AVIF, PNG, JPEG, WebP) are decoded natively by the browser
  */
-// IMPORTANT: Do not import `heic2any` at module scope.
-// It references `window` during initialization and will crash Next.js SSR.
 
 /**
  * Check if a file is HEIC/HEIF format by MIME type or magic bytes
- * HEIC files often have incorrect or missing MIME types, so we check magic bytes too
  */
 export async function isHeicFile(file: File): Promise<boolean> {
   // Check MIME type first (fast path)
@@ -28,7 +25,7 @@ export async function isHeicFile(file: File): Promise<boolean> {
   try {
     const buffer = await file.slice(0, 12).arrayBuffer()
     const view = new Uint8Array(buffer)
-    
+
     // Check for ftyp box (bytes 4-8 should be "ftyp")
     if (view.length >= 12) {
       const ftyp = String.fromCharCode(view[4], view[5], view[6], view[7])
@@ -41,16 +38,15 @@ export async function isHeicFile(file: File): Promise<boolean> {
       }
     }
   } catch (error) {
-    // If we can't read the file, fall back to MIME type/extension check
-    console.warn("Failed to check HEIC magic bytes:", error)
+    // Fall back to MIME type/extension check
   }
 
   return false
 }
 
 /**
- * Decode HEIC/HEIF file to a standard format (PNG or JPEG)
- * Preserves transparency by converting to PNG, otherwise uses JPEG
+ * Decode HEIC/HEIF file to a standard format (PNG)
+ * Uses libheif-wasm for decoding
  */
 async function decodeHeic(file: File): Promise<Blob> {
   if (typeof window === "undefined") {
@@ -58,24 +54,59 @@ async function decodeHeic(file: File): Promise<Blob> {
   }
 
   try {
-    const { default: heic2any } = await import("heic2any")
+    // @ts-expect-error - libheif-wasm types are not wired into this project
+    const { decode } = await import("libheif-wasm/dist/index.mjs")
 
-    // heic2any returns an array of Blobs (supports multi-image HEIC)
-    // We only need the first image
-    const result = await heic2any({
-      blob: file,
-      toType: "image/png", // Use PNG to preserve transparency
-      quality: 1.0, // Maximum quality for conversion
-    })
+    // Read file as ArrayBuffer
+    const buffer = await file.arrayBuffer()
 
-    // Handle both single Blob and array of Blobs
-    const blob = Array.isArray(result) ? result[0] : result
-    
-    if (!blob) {
-      throw new Error("HEIC conversion returned no result")
+    // Decode HEIC → raw pixels
+    const decoded = await decode(new Uint8Array(buffer), { needAlpha: true })
+
+    if (!decoded?.data?.length || !decoded.width || !decoded.height) {
+      throw new Error("No image data found in HEIC file")
     }
 
-    return blob
+    const width = decoded.width
+    const height = decoded.height
+
+    // Create canvas and context
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw new Error("Canvas context initialization failed")
+
+    // Create ImageData for the decoded pixels (must be RGBA for canvas)
+    const imageData = ctx.createImageData(width, height)
+
+    const channel = decoded.channel
+    const src = decoded.data
+    const dst = imageData.data
+
+    if (channel === 4) {
+      dst.set(src)
+    } else if (channel === 3) {
+      // Expand RGB → RGBA
+      for (let i = 0, j = 0; i < src.length; i += 3, j += 4) {
+        dst[j] = src[i]
+        dst[j + 1] = src[i + 1]
+        dst[j + 2] = src[i + 2]
+        dst[j + 3] = 255
+      }
+    } else {
+      throw new Error(`Unsupported HEIC decode channel count: ${channel}`)
+    }
+
+    ctx.putImageData(imageData, 0, 0)
+
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("Canvas to Blob conversion failed"));
+      }, "image/png");
+    });
+
   } catch (error) {
     throw new Error(`Failed to decode HEIC file: ${error instanceof Error ? error.message : "Unknown error"}`)
   }
@@ -87,16 +118,13 @@ async function decodeHeic(file: File): Promise<Blob> {
  */
 export async function ensureDecodable(file: File): Promise<File | Blob> {
   const isHeic = await isHeicFile(file)
-  
+
   if (isHeic) {
     const decodedBlob = await decodeHeic(file)
-    // Create a new File-like object with proper name and type
-    // Use the original filename but change extension to .png
     const newName = file.name.replace(/\.(heic|heif)$/i, ".png")
     return new File([decodedBlob], newName, { type: "image/png" })
   }
 
-  // For all other formats (AVIF, PNG, JPEG, WebP), browsers decode natively
   return file
 }
 

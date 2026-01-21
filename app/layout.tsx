@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Fraunces, Work_Sans } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "sonner"
 import "./globals.css"
 
 const fontSans = Work_Sans({
@@ -40,6 +41,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Toaster position="bottom-right" richColors />
         </ThemeProvider>
       </body>
     </html>

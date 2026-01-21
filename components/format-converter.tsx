@@ -36,7 +36,7 @@ export function FormatConverter({ onConvert, currentFormat }: FormatConverterPro
   return (
     <Card className="p-6">
       <h3 className="text-lg font-semibold mb-4">Convert Format</h3>
-      <RadioGroup value={selectedFormat} onValueChange={(value) => setSelectedFormat(value as any)}>
+      <RadioGroup value={selectedFormat} onValueChange={(value) => setSelectedFormat(value as "png" | "jpeg" | "webp" | "avif")}>
         <div className="space-y-3">
           {formats.map((format) => (
             <div key={format.value} className="flex items-start space-x-3">

@@ -1,0 +1,15 @@
+{
+  "name": "nanopng-core",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "nanopng_core_bg.wasm",
+    "nanopng_core.js",
+    "nanopng_core.d.ts"
+  ],
+  "main": "nanopng_core.js",
+  "types": "nanopng_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

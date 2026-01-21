@@ -11,6 +11,7 @@ export interface ImageAnalysisResult {
   hasHardEdges: boolean
   hasSmoothGradients: boolean
   hasTransparency: boolean
+  hasSignificantTransparency: boolean
   solidRegionRatio: number
 }
 
@@ -82,6 +83,7 @@ export function analyzeImageType(
   // Fix transparency ratio denominator
   const transparencyRatio = transparentPixels / actualSampledPixels
   const hasTransparency = transparencyRatio > 0.01 // >1% transparent
+  const hasSignificantTransparency = transparencyRatio > 0.05 // >5% transparent
 
   // Calculate solid region ratio and edge characteristics
   const { solidRegionRatio, hasHardEdges, hasSmoothGradients } =
@@ -107,6 +109,7 @@ export function analyzeImageType(
     hasHardEdges,
     hasSmoothGradients,
     hasTransparency,
+    hasSignificantTransparency,
     solidRegionRatio
   }
 }

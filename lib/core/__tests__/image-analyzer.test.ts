@@ -57,4 +57,46 @@ describe('analyzeImageType', () => {
       expect(result.uniqueColors).toBe(100)
     })
   })
+
+  describe('transparency detection', () => {
+    it('sets hasSignificantTransparency true when >5% pixels are transparent', () => {
+      const width = 100
+      const height = 100
+      const data = new Uint8ClampedArray(width * height * 4)
+
+      // Make 10% of pixels transparent
+      for (let i = 0; i < width * height; i++) {
+        const idx = i * 4
+        data[idx] = 128     // R
+        data[idx + 1] = 128 // G
+        data[idx + 2] = 128 // B
+        data[idx + 3] = i < 1000 ? 0 : 255 // First 10% transparent
+      }
+
+      const result = analyzeImageType(data, width, height)
+
+      expect(result.hasTransparency).toBe(true)
+      expect(result.hasSignificantTransparency).toBe(true)
+    })
+
+    it('sets hasSignificantTransparency false when <=5% pixels are transparent', () => {
+      const width = 100
+      const height = 100
+      const data = new Uint8ClampedArray(width * height * 4)
+
+      // Make 3% of pixels transparent
+      for (let i = 0; i < width * height; i++) {
+        const idx = i * 4
+        data[idx] = 128
+        data[idx + 1] = 128
+        data[idx + 2] = 128
+        data[idx + 3] = i < 300 ? 0 : 255 // First 3% transparent
+      }
+
+      const result = analyzeImageType(data, width, height)
+
+      expect(result.hasTransparency).toBe(true) // >1%
+      expect(result.hasSignificantTransparency).toBe(false) // <=5%
+    })
+  })
 })

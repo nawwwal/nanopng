@@ -26,6 +26,7 @@ The goal of NanoPNG is to provide **server-grade image optimization without the 
 -   **Metadata Preservation**: Automatically preserves critical metadata (EXIF orientation, ICC Color Profiles) often lost by standard canvas exports.
 -   **Image Analysis**: Advanced photo vs. graphic detection using color histogram analysis, edge detection, and texture variance scoring.
 -   **HEIC Support**: Convert HEIC/HEIF images (common on iOS) to web-friendly formats.
+-   **SVG Optimization**: Optimize SVG files with Safe (lossless) or Aggressive (smaller) modes using SVGO.
 -   **Before/After Comparison**: Interactive slider to compare original and compressed images side-by-side.
 -   **Bulk Download**: Download all optimized images as a ZIP archive.
 -   **Performance**: Offloads heavy computational work to Web Workers with crash recovery, ensuring a smooth, non-blocking UI even with 4K+ images.
@@ -58,11 +59,12 @@ NanoPNG is built with **Next.js 14+**, **TypeScript**, and **Rust/WebAssembly**,
     -   Solid region ratio detection
     -   Edge sharpness analysis
     -   Transparency detection
-3.  **Format Detection & Decoding**: Supports PNG, JPEG, WebP, AVIF, HEIC/HEIF. Converts HEIC to decodable format if needed.
-4.  **Compression** (via Rust/WASM):
-    -   **PNG**: Lossy (imagequant palette reduction) or lossless with optimal filtering
-    -   **JPEG**: Quality-optimized encoding with dimension validation
-    -   **WebP/AVIF**: Modern format encoding with quality tuning
+3.  **Format Detection & Decoding**: Supports PNG, JPEG, WebP, AVIF, HEIC/HEIF, and SVG. Converts HEIC to decodable format if needed.
+4.  **Compression**:
+    -   **PNG**: Lossy (imagequant palette reduction) or lossless with optimal filtering (Rust/WASM)
+    -   **JPEG**: Quality-optimized encoding with dimension validation (Rust/WASM)
+    -   **WebP/AVIF**: Modern format encoding with quality tuning (Rust/WASM)
+    -   **SVG**: Safe or Aggressive optimization via SVGO (JavaScript Worker)
 5.  **Target Size Loop**: Binary search quality adjustment with resize fallback for target size constraints.
 6.  **Metadata Injection**: Extracts EXIF/ICC chunks from source and injects them into the optimized Blob.
 7.  **Size Validation**: Ensures compressed output is smaller than original; reverts if not.
@@ -83,6 +85,7 @@ We are actively working on pushing the boundaries of in-browser compression.
 -   [x] **Smart Compression**: Auto-detection of photo vs. graphic content with optimized compression strategies.
 -   [x] **Target Size Compression**: Binary search quality adjustment with resize fallback.
 -   [x] **Worker Pool Improvements**: O(1) priority queue, crash recovery, and queue size limits.
+-   [x] **SVG Optimization**: Safe and Aggressive modes using SVGO with Web Worker processing.
 
 ### In Progress 🚧
 
@@ -211,6 +214,7 @@ NanoPNG works in all modern browsers that support:
 | WebP   | ✅         | ✅      | ✅     | Full support (Safari 14+) |
 | AVIF   | ✅         | ✅      | ⚠️     | Safari 17+ (encoding) |
 | HEIC   | ✅         | ✅      | ✅     | Via `heic2any` conversion |
+| SVG    | ✅         | ✅      | ✅     | Via SVGO optimization |
 
 **Note**: AVIF encoding requires browser support. The app automatically falls back to WebP if AVIF encoding is not available.
 

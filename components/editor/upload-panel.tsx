@@ -112,7 +112,7 @@ export function UploadPanel() {
                             </p>
 
                             <div className="flex flex-wrap gap-2 justify-center">
-                                {["PNG", "JPEG", "WebP", "AVIF", "HEIC"].map((format, index) => (
+                                {["PNG", "JPEG", "WebP", "AVIF", "HEIC", "SVG"].map((format, index) => (
                                     <motion.span
                                         key={format}
                                         initial={{ opacity: 0, y: 10 }}

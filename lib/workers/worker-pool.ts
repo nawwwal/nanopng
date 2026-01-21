@@ -24,20 +24,14 @@ class WorkerPool {
   private initialized = false
   private initializing: Promise<void> | null = null
   private poolSize: number
-  private normalPoolSize: number
-  private maxPoolSize: number // Full CPU utilization for probes
 
   constructor() {
     const cores = typeof navigator !== "undefined" && navigator.hardwareConcurrency
       ? navigator.hardwareConcurrency
       : 4
 
-    // Default pool size: 75% of cores (min 2, max 8) for full compression
-    this.normalPoolSize = Math.max(2, Math.min(8, Math.floor(cores * 0.75)))
-    this.poolSize = this.normalPoolSize
-
-    // Max pool size: 100% of cores for lightweight probe operations
-    this.maxPoolSize = Math.max(2, Math.min(12, cores))
+    // Pool size: 75% of cores (min 2, max 8)
+    this.poolSize = Math.max(2, Math.min(8, Math.floor(cores * 0.75)))
   }
 
   private async initialize(): Promise<void> {
@@ -162,48 +156,6 @@ class WorkerPool {
     return fileSize < BATCH_SIZE_THRESHOLD
   }
 
-  /**
-   * Expand pool to target size for lightweight operations.
-   * Creates new workers up to maxPoolSize.
-   */
-  private async expandPool(targetSize: number): Promise<void> {
-    const actualTarget = Math.min(targetSize, this.maxPoolSize)
-
-    while (this.workers.length < actualTarget) {
-      const worker = new Worker(
-        new URL("./processor.worker.ts", import.meta.url),
-        { type: "module" }
-      )
-      const api = Comlink.wrap<ProcessorAPI>(worker)
-
-      const newIndex = this.workers.length
-      this.workers.push(worker)
-      this.apis.push(api)
-      this.available.add(newIndex)
-    }
-
-    this.poolSize = this.workers.length
-  }
-
-  /**
-   * Shrink pool back to normal size.
-   * Terminates idle workers above normalPoolSize.
-   */
-  private shrinkPool(): void {
-    while (this.workers.length > this.normalPoolSize) {
-      // Only shrink if we have idle workers above normal size
-      const lastIndex = this.workers.length - 1
-      if (!this.available.has(lastIndex)) break
-
-      this.available.delete(lastIndex)
-      this.workers[lastIndex].terminate()
-      this.workers.pop()
-      this.apis.pop()
-    }
-
-    this.poolSize = this.workers.length
-  }
-
   terminate(): void {
     this.workers.forEach(w => w.terminate())
     this.workers = []
@@ -216,14 +168,6 @@ class WorkerPool {
 
   getPoolSize(): number {
     return this.poolSize
-  }
-
-  /**
-   * Get maximum pool size (100% CPU utilization).
-   * Used for lightweight probe operations that can safely use all cores.
-   */
-  getMaxPoolSize(): number {
-    return this.maxPoolSize
   }
 
   /**

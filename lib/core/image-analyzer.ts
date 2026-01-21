@@ -219,33 +219,3 @@ function analyzeTexture(
     hasSmoothGradients
   }
 }
-
-/**
- * Fast probe to estimate if full compression is worthwhile.
- * Uses reduced resolution and fast presets to quickly estimate savings.
- *
- * @param originalSize - Original file size in bytes
- * @param probeResult - Size after quick probe compression
- * @param scaleFactor - How much the image was scaled down for probe
- * @returns Estimated savings percentage if full compression were applied
- */
-export function estimateSavings(
-  originalSize: number,
-  probeResult: number,
-  scaleFactor: number = 0.5
-): { estimatedSavings: number; shouldSkip: boolean } {
-  // Probe was at reduced resolution, scale back
-  // Compression ratio tends to be similar across resolutions for same image
-  const probeSavings = (1 - (probeResult / (originalSize * scaleFactor * scaleFactor))) * 100
-
-  // Estimate full savings - typically probe underestimates by ~10-20%
-  const estimatedSavings = probeSavings * 1.15
-
-  // Skip if estimated savings < 3%
-  const shouldSkip = estimatedSavings < 3
-
-  return {
-    estimatedSavings: Math.max(0, estimatedSavings),
-    shouldSkip
-  }
-}

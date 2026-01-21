@@ -99,4 +99,32 @@ describe('analyzeImageType', () => {
       expect(result.hasSignificantTransparency).toBe(false) // <=5%
     })
   })
+
+  describe('bounds safety', () => {
+    it('handles 1x1 image without crashing', () => {
+      const data = new Uint8ClampedArray([128, 128, 128, 255])
+
+      expect(() => analyzeImageType(data, 1, 1)).not.toThrow()
+    })
+
+    it('handles image smaller than block size without crashing', () => {
+      // 2x2 image, smaller than 4x4 texture analysis block
+      const data = new Uint8ClampedArray(2 * 2 * 4)
+      for (let i = 0; i < 4; i++) {
+        data[i * 4] = 128
+        data[i * 4 + 1] = 128
+        data[i * 4 + 2] = 128
+        data[i * 4 + 3] = 255
+      }
+
+      expect(() => analyzeImageType(data, 2, 2)).not.toThrow()
+    })
+
+    it('handles truncated buffer gracefully', () => {
+      // Buffer is shorter than expected for 10x10 image
+      const data = new Uint8ClampedArray(50 * 4) // Only 50 pixels instead of 100
+
+      expect(() => analyzeImageType(data, 10, 10)).not.toThrow()
+    })
+  })
 })

@@ -128,9 +128,13 @@ function analyzeTexture(
   let hardEdgeCount = 0
   let smoothTransitionCount = 0
 
+  // Clamp to valid range for block analysis
+  const maxY = Math.max(0, height - blockSize)
+  const maxX = Math.max(0, width - blockSize)
+
   // Analyze 4x4 blocks for solid regions
-  for (let y = 0; y < height - blockSize; y += blockSize) {
-    for (let x = 0; x < width - blockSize; x += blockSize) {
+  for (let y = 0; y < maxY; y += blockSize) {
+    for (let x = 0; x < maxX; x += blockSize) {
       totalBlocks++
 
       let minR = 255, maxR = 0
@@ -140,6 +144,9 @@ function analyzeTexture(
       for (let by = 0; by < blockSize; by++) {
         for (let bx = 0; bx < blockSize; bx++) {
           const idx = ((y + by) * width + (x + bx)) * 4
+          // Bounds check
+          if (idx + 2 >= data.length) continue
+
           const r = data[idx]
           const g = data[idx + 1]
           const b = data[idx + 2]
@@ -165,8 +172,12 @@ function analyzeTexture(
   const edgeSampleStep = Math.max(1, Math.floor(height / 100))
 
   for (let y = 0; y < height; y += edgeSampleStep) {
+    // Stop at width - 2 to ensure nextIdx is valid
     for (let x = 1; x < width - 1; x++) {
       const idx = (y * width + x) * 4
+      // Bounds check for idx + 2 and nextIdx + 2
+      if (idx + 6 >= data.length) continue
+
       const prevIdx = idx - 4
       const nextIdx = idx + 4
 
@@ -192,8 +203,12 @@ function analyzeTexture(
   const solidRegionRatio = totalBlocks > 0 ? solidBlocks / totalBlocks : 0
 
   // Heuristics for edge/gradient classification
-  const edgeRatio = hardEdgeCount / (width * (height / edgeSampleStep))
-  const smoothRatio = smoothTransitionCount / (width * (height / edgeSampleStep))
+  const sampledWidth = Math.max(1, width - 2)
+  const sampledRows = Math.max(1, Math.ceil(height / edgeSampleStep))
+  const totalEdgeSamples = sampledWidth * sampledRows
+
+  const edgeRatio = hardEdgeCount / totalEdgeSamples
+  const smoothRatio = smoothTransitionCount / totalEdgeSamples
 
   const hasHardEdges = edgeRatio > 0.05 // >5% hard edges
   const hasSmoothGradients = smoothRatio > 0.6 // >60% smooth transitions

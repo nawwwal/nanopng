@@ -162,6 +162,73 @@ class WorkerPool {
     return fileSize < BATCH_SIZE_THRESHOLD
   }
 
+  /**
+   * Expand pool to target size for lightweight operations.
+   * Creates new workers up to maxPoolSize.
+   */
+  private async expandPool(targetSize: number): Promise<void> {
+    const actualTarget = Math.min(targetSize, this.maxPoolSize)
+
+    while (this.workers.length < actualTarget) {
+      const worker = new Worker(
+        new URL("./processor.worker.ts", import.meta.url),
+        { type: "module" }
+      )
+      const api = Comlink.wrap<ProcessorAPI>(worker)
+
+      const newIndex = this.workers.length
+      this.workers.push(worker)
+      this.apis.push(api)
+      this.available.add(newIndex)
+    }
+
+    this.poolSize = this.workers.length
+    console.log(`Worker pool expanded to ${this.poolSize} workers`)
+  }
+
+  /**
+   * Shrink pool back to normal size.
+   * Terminates idle workers above normalPoolSize.
+   */
+  private shrinkPool(): void {
+    while (this.workers.length > this.normalPoolSize) {
+      // Only shrink if we have idle workers above normal size
+      const lastIndex = this.workers.length - 1
+      if (!this.available.has(lastIndex)) break
+
+      this.available.delete(lastIndex)
+      this.workers[lastIndex].terminate()
+      this.workers.pop()
+      this.apis.pop()
+    }
+
+    this.poolSize = this.workers.length
+    if (this.poolSize < this.maxPoolSize) {
+      console.log(`Worker pool shrunk to ${this.poolSize} workers`)
+    }
+  }
+
+  /**
+   * Execute a probe task with pool expansion for maximum throughput.
+   */
+  async executeProbe<T>(
+    task: (api: Comlink.Remote<ProcessorAPI>) => Promise<T>
+  ): Promise<T> {
+    // Expand pool for probe work if there's queued work
+    if (this.getQueueLength() > 0 && this.poolSize < this.maxPoolSize) {
+      await this.expandPool(this.maxPoolSize)
+    }
+
+    return this.execute(task, 'high')
+  }
+
+  /**
+   * Signal that probe phase is complete, pool can shrink.
+   */
+  probePhaseComplete(): void {
+    this.shrinkPool()
+  }
+
   terminate(): void {
     this.workers.forEach(w => w.terminate())
     this.workers = []

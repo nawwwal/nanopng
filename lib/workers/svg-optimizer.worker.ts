@@ -20,7 +20,7 @@ const safeConfig: Config = {
 
 const aggressiveConfig: Config = {
   plugins: [
-    ...safeConfig.plugins as string[],
+    ...(safeConfig.plugins as string[]),
     'removeUselessDefs',
     { name: 'cleanupNumericValues', params: { floatPrecision: 2 } },
     'convertColors',
@@ -29,7 +29,7 @@ const aggressiveConfig: Config = {
     'convertPathData',
     'mergePaths',
     'collapseGroups',
-  ]
+  ] as Config['plugins']
 }
 
 export interface SvgOptimizerAPI {

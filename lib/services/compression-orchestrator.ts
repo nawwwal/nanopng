@@ -155,10 +155,18 @@ export class CompressionOrchestrator {
     const targetFormat = options.format === 'auto' ? undefined : options.format
     const effectiveFormat = targetFormat || sourceFormat
 
+    // Skip probe for SVG (not applicable to vector formats)
+    // SVG should not go through this orchestrator - handled separately
+    // But if it does, just skip the probe
+    if (effectiveFormat === 'svg') {
+      // SVG optimization is handled by the SVG optimizer worker
+      // This orchestrator is for raster image compression only
+    }
+
     // Quick probe for same-format conversions to skip already-optimized images
     let imageAnalysis: ImageAnalysisResult | undefined
-    if (this.shouldUseQuickProbe(file, options)) {
-      const probeResult = await this.quickProbe(file, id, effectiveFormat)
+    if (effectiveFormat !== 'svg' && this.shouldUseQuickProbe(file, options)) {
+      const probeResult = await this.quickProbe(file, id, effectiveFormat as Exclude<ImageFormat, 'svg'>)
 
       if (probeResult.shouldSkip) {
         // Image is already optimized, return early

@@ -99,13 +99,11 @@ async function initWebPEncoder() {
 
     try {
         // Load wasm-feature-detect at runtime (bypassing bundler)
-        // @ts-expect-error - Runtime dynamic import bypasses bundler
         const wasmFeatureDetect = await import(/* webpackIgnore: true */ /* @vite-ignore */ getAbsoluteUrl("/wasm/wasm-feature-detect.js"));
         const hasSIMD = await wasmFeatureDetect.simd();
 
         // Load appropriate encoder based on SIMD support
         const encoderPath = hasSIMD ? "/wasm/webp_enc_simd.js" : "/wasm/webp_enc.js";
-        // @ts-expect-error - Runtime dynamic import bypasses bundler
         const encoder = await import(/* webpackIgnore: true */ /* @vite-ignore */ getAbsoluteUrl(encoderPath));
 
         // Initialize Emscripten module with locateFile for WASM loading
@@ -125,7 +123,6 @@ async function initWasm() {
     if (wasmModule) return;
 
     try {
-        // @ts-expect-error - Runtime dynamic import bypasses bundler
         const wasm = await import(/* webpackIgnore: true */ /* @vite-ignore */ getAbsoluteUrl("/wasm/nanopng_core.js"));
         await wasm.default(getAbsoluteUrl("/wasm/nanopng_core_bg.wasm"));
         wasmModule = wasm;
@@ -208,7 +205,7 @@ const api: ProcessorAPI = {
             const fitDimensions = calculateFitDimensions(width, height, opt.targetWidth, opt.targetHeight);
 
             const config = {
-                format: opt.format === 'jpg' ? 'Jpeg' :
+                format: opt.format === 'jpeg' ? 'Jpeg' :
                     opt.format === 'png' ? 'Png' :
                         opt.format === 'avif' ? 'Avif' : 'Jpeg',
                 quality: Math.round((opt.quality || 0.8) * 100),

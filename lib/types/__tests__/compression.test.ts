@@ -4,7 +4,7 @@ import type { CompressionOptions, ImageFormat } from '../compression';
 describe('CompressionTypes', () => {
     describe('ImageFormat type', () => {
         it('accepts valid formats', () => {
-            const validFormats: ImageFormat[] = ['jpeg', 'jpg', 'png', 'webp', 'avif'];
+            const validFormats: ImageFormat[] = ['jpeg', 'png', 'webp', 'avif'];
             validFormats.forEach(format => {
                 expect(typeof format).toBe('string');
             });

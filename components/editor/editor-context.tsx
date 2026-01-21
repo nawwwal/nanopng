@@ -5,7 +5,7 @@ import { CompressionOrchestrator } from "@/lib/services/compression-orchestrator
 import { ImageService } from "@/lib/services/image-service"
 import { ensureDecodable, isHeicFile } from "@/lib/core/format-decoder"
 import { PresetId, getPresetById, COMPRESSION_PRESETS } from "@/lib/types/presets"
-import type { CompressedImage, CompressionStatus, CompressionOptions, OutputFormat } from "@/lib/types/compression"
+import type { CompressedImage, CompressionStatus, CompressionOptions, ImageFormat } from "@/lib/types/compression"
 import { toast } from "sonner"
 import JSZip from "jszip"
 
@@ -170,7 +170,7 @@ export function useEditor() {
 export function EditorProvider({ children }: { children: ReactNode }) {
     const [state, dispatch] = useReducer(editorReducer, {
         images: [],
-        selectedIds: new Set(),
+        selectedIds: new Set<string>(),
         previewImageId: null,
         isProcessing: false,
         queueIndex: 0,
@@ -289,6 +289,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 status = "already-optimized"
             }
 
+            const originalFormatRaw = originalFormat || file.type.split("/")[1] || "png"
+            const normalizedOriginalFormat = originalFormatRaw === "jpg" ? "jpeg" : originalFormatRaw
+
             const completedImage: CompressedImage = {
                 id: image.id,
                 originalName: file.name,
@@ -296,12 +299,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 originalWidth: result.originalWidth,
                 originalHeight: result.originalHeight,
                 compressedSize: compressedSize,
-                compressedBlob: result.blob,
+                compressedBlob: result.blob ?? undefined,
                 blobUrl: result.blob ? URL.createObjectURL(result.blob) : undefined,
                 originalBlobUrl: URL.createObjectURL(file),
                 savings: Math.max(0, savings),
                 format: (result.format as "png" | "jpeg" | "webp" | "avif") || "png",
-                originalFormat: (originalFormat || file.type.split("/")[1] || "png") as OutputFormat,
+                originalFormat: normalizedOriginalFormat as "png" | "jpeg" | "webp" | "avif" | "heic" | "heif",
                 status,
                 analysis: result.analysis,
                 generation: image.generation || 0,
@@ -428,7 +431,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 originalSize: file.size,
                 compressedSize: 0,
                 savings: 0,
-                format: inferredFormat as OutputFormat,
+                format: inferredFormat as ImageFormat,
                 status: "queued" as const,
                 progress: 0,
                 generation: 0,

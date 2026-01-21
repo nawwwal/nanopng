@@ -508,7 +508,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
             const img = successfulImages[0]!
             const blob = img.compressedBlob || fileMapRef.current.get(img.id)
             if (blob) {
-                const extMap: Record<string, string> = { jpeg: "jpg", avif: "avif", webp: "webp", png: "png" }
+                const extMap: Record<string, string> = { jpeg: "jpg", avif: "avif", webp: "webp", png: "png", svg: "svg" }
                 const ext = extMap[img.format] || img.format
                 const name = `optimized-${img.originalName.replace(/\.[^/.]+$/, "")}.${ext}`
                 const url = URL.createObjectURL(blob)
@@ -530,7 +530,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
             successfulImages.forEach((img) => {
                 const blob = img.compressedBlob || fileMapRef.current.get(img.id)
                 if (blob) {
-                    const extMap: Record<string, string> = { jpeg: "jpg", avif: "avif", webp: "webp", png: "png" }
+                    const extMap: Record<string, string> = { jpeg: "jpg", avif: "avif", webp: "webp", png: "png", svg: "svg" }
                     const ext = extMap[img.format] || img.format
                     const name = `optimized-${img.originalName.replace(/\.[^/.]+$/, "")}.${ext}`
                     zip.file(name, blob)

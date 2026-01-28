@@ -26,16 +26,25 @@ const RESIZE_FILTER_OPTIONS: { value: ResizeFilter; label: string; desc: string 
     { value: "Nearest", label: "Nearest", desc: "Pixel-perfect for pixel art" },
 ]
 
+const WEBP_PRESET_OPTIONS: { value: "photo" | "picture" | "graph"; label: string; desc: string }[] = [
+    { value: "photo", label: "Photo", desc: "Default for photos (smooth gradients)" },
+    { value: "picture", label: "Picture", desc: "For indoor/outdoor photos with objects" },
+    { value: "graph", label: "Graphic", desc: "For graphics, text, screenshots" },
+]
+
 const SETTING_HINTS = {
     format: "Auto picks the best format based on image content",
     quality: "Lower = smaller files. 80-85% is usually indistinguishable from original",
     highDetail: "Preserves color detail in fine patterns and text",
     lossless: "No quality loss but larger files. Use for pixel-perfect accuracy",
+    preserveMetadata: "Keep EXIF, GPS, color profile data. Turn off for privacy",
     dithering: "Simulates gradients. Turn off (0%) for sharp-edged graphics",
     maxDimensions: "Resize images exceeding these limits while keeping aspect ratio",
     resizeFilter: "Lanczos for photos, Nearest for pixel art",
     targetSize: "Auto-adjusts quality to meet file size limit",
     svgOptimization: "Safe preserves all details. Aggressive removes metadata for smaller files",
+    webpPreset: "Optimizes encoding for different content types",
+    progressive: "Loads progressively from blurry to sharp. Recommended for web.",
 }
 
 export function AdvancedSettings() {
@@ -158,6 +167,16 @@ export function AdvancedSettings() {
                             </SettingHint>
                         </div>
 
+                        {/* Preserve Metadata toggle */}
+                        <SettingHint label="Preserve Metadata" hint={SETTING_HINTS.preserveMetadata} inline>
+                            <input
+                                type="checkbox"
+                                checked={!!compressionOptions.preserveMetadata}
+                                onChange={(e) => setCompressionOptions({ preserveMetadata: e.target.checked })}
+                                className="w-4 h-4 accent-foreground"
+                            />
+                        </SettingHint>
+
                         {/* Dithering - only for lossy PNG/WebP */}
                         {(compressionOptions.format === 'png' || compressionOptions.format === 'webp') && !compressionOptions.lossless && (
                             <SettingHint label="Dithering" hint={SETTING_HINTS.dithering}>
@@ -173,6 +192,43 @@ export function AdvancedSettings() {
                                     value={Math.round((compressionOptions.dithering ?? 1) * 100)}
                                     onChange={(e) => setCompressionOptions({ dithering: parseInt(e.target.value) / 100 })}
                                     className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                />
+                            </SettingHint>
+                        )}
+
+                        {/* WebP Preset - only for webp format */}
+                        {compressionOptions.format === 'webp' && (
+                            <SettingHint label="WebP Preset" hint={SETTING_HINTS.webpPreset}>
+                                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="WebP Preset">
+                                    {WEBP_PRESET_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => setCompressionOptions({ webpPreset: opt.value })}
+                                            className={cn(
+                                                "px-2.5 py-1 border text-xs font-bold uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-foreground",
+                                                (compressionOptions.webpPreset || "photo") === opt.value
+                                                    ? "border-foreground bg-foreground text-background"
+                                                    : "border-foreground/30 hover:border-foreground"
+                                            )}
+                                            title={opt.desc}
+                                            role="radio"
+                                            aria-checked={(compressionOptions.webpPreset || "photo") === opt.value}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </SettingHint>
+                        )}
+
+                        {/* Progressive JPEG - only for jpeg format */}
+                        {compressionOptions.format === 'jpeg' && (
+                            <SettingHint label="Progressive" hint={SETTING_HINTS.progressive} inline>
+                                <input
+                                    type="checkbox"
+                                    checked={compressionOptions.progressive !== false}
+                                    onChange={(e) => setCompressionOptions({ progressive: e.target.checked })}
+                                    className="w-4 h-4 accent-foreground"
                                 />
                             </SettingHint>
                         )}

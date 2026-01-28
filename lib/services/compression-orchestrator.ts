@@ -80,7 +80,9 @@ export class CompressionOrchestrator {
         true, // chromaSubsampling
         false, // not lossless
         true, // speedMode enabled
-        'high' // High priority for fast probe execution
+        'high', // High priority for fast probe execution
+        undefined, // resizeFilter
+        false // preserveMetadata - not needed for probe
       )
 
       const probeSize = probeResult.compressedBlob?.size || originalSize
@@ -252,7 +254,8 @@ export class CompressionOrchestrator {
       effectiveLossless,
       options.speedMode,
       'normal',
-      options.resizeFilter
+      options.resizeFilter,
+      options.preserveMetadata
     )
 
     // If target size is specified and exceeded, iterate with binary search
@@ -277,7 +280,8 @@ export class CompressionOrchestrator {
           effectiveLossless,
           options.speedMode,
           'normal',
-          options.resizeFilter
+          options.resizeFilter,
+          options.preserveMetadata
         )
 
         const currentSize = imageServiceResult.compressedBlob?.size || 0
@@ -336,7 +340,8 @@ export class CompressionOrchestrator {
             effectiveLossless,
             options.speedMode,
             'normal',
-            options.resizeFilter
+            options.resizeFilter,
+            options.preserveMetadata
           )
 
           currentSize = imageServiceResult.compressedBlob?.size || 0
@@ -393,7 +398,8 @@ export class CompressionOrchestrator {
           effectiveLossless,
           options.speedMode,
           'normal',
-          options.resizeFilter
+          options.resizeFilter,
+          options.preserveMetadata
         );
 
         if (retryResult.compressedBlob && retryResult.compressedBlob.size < finalBlob.size) {

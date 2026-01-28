@@ -31,10 +31,16 @@ pub struct Config {
     pub speed_mode: bool, // true = fast encoding presets, false = quality presets
     #[serde(default = "default_avif_speed")]
     pub avif_speed: u8,   // AVIF encoder speed (0-10, higher = faster)
+    #[serde(default = "default_progressive")]
+    pub progressive: bool, // Progressive JPEG encoding (default: true)
 }
 
 fn default_avif_speed() -> u8 {
     6 // Default balanced speed
+}
+
+fn default_progressive() -> bool {
+    true // Default ON - progressive JPEGs load blurry to sharp
 }
 
 #[wasm_bindgen]
@@ -85,6 +91,7 @@ pub fn process_image(
             current_height,
             config.quality,
             config.chroma_subsampling,
+            config.progressive,
         )
         .map_err(|e| JsValue::from_str(&e)),
         Format::Png => codecs::png::encode_png(

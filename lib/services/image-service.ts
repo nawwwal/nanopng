@@ -64,7 +64,8 @@ export class ImageService {
     lossless?: boolean,
     speedMode?: boolean,
     priority: 'normal' | 'high' = 'normal',
-    resizeFilter?: ResizeFilter
+    resizeFilter?: ResizeFilter,
+    preserveMetadata?: boolean
   ): Promise<CompressedImage> {
     const originalSize = file.size;
     const img = await createImageBitmap(file);
@@ -127,7 +128,7 @@ export class ImageService {
     const blob = new Blob([new Uint8Array(result.data)], { type: `image/${actualFormat}` });
 
     let finalBlob = blob;
-    if (file.type === "image/jpeg" && (actualFormat === "jpeg")) {
+    if (preserveMetadata && file.type === "image/jpeg" && (actualFormat === "jpeg")) {
       try {
         finalBlob = await copyMetadata(file, blob);
       } catch (e) { console.warn("Metadata copy failed", e); }

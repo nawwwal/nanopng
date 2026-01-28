@@ -5,7 +5,9 @@ pub fn encode_jpeg(
     width: u32,
     height: u32,
     quality: u8,
-    _chroma_subsampling: bool // Note: jpeg-encoder doesn't expose chroma subsampling control
+    _chroma_subsampling: bool, // Note: jpeg-encoder doesn't expose chroma subsampling control
+    _progressive: bool, // TODO: Progressive JPEG requires MozJPEG integration (Phase 2)
+                        // The jpeg-encoder crate doesn't support progressive encoding
 ) -> Result<Vec<u8>, String> {
     // Validate dimensions before casting to u16
     if width > u16::MAX as u32 || height > u16::MAX as u32 {

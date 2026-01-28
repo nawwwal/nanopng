@@ -25,6 +25,12 @@ export interface CompressionOptions {
   avifSpeed?: number // AVIF encoder speed (0-10, higher = faster, default 6)
   // Resize options
   resizeFilter?: ResizeFilter // Resize algorithm (default: Lanczos3)
+  // Metadata options
+  preserveMetadata?: boolean // Keep EXIF, GPS, color profile data (default: false for privacy)
+  // WebP options
+  webpPreset?: "photo" | "picture" | "graph" // WebP image_hint (default: photo)
+  // JPEG options
+  progressive?: boolean // Progressive JPEG encoding (loads blurry to sharp, default: true)
 }
 
 export interface CompressionResult {

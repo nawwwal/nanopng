@@ -5,35 +5,69 @@ import { PresetSelector } from "./preset-selector"
 import { AdvancedSettings } from "./advanced-settings"
 
 export function SettingsPanel() {
-    const { hasImages, selectedCount, images, totalSavings, completedCount, isProcessing } = useEditor()
+    const { hasImages, selectedCount, totalSavings, completedCount, isProcessing } = useEditor()
 
     // Pitch content when no images
     if (!hasImages) {
         return (
             <div className="h-full flex flex-col justify-center p-6 lg:p-8 overflow-hidden">
                 <div className="max-w-md">
-                    <h1 className="text-4xl sm:text-5xl lg:text-5xl font-black uppercase leading-[0.9] tracking-tight mb-6 text-balance">
-                        Compress images.
-                        <span className="accent-bg inline-block px-2 mt-2">Locally.</span>
-                    </h1>
+                    {/* Privacy Badge */}
+                    <div className="flex items-center gap-2 mb-6">
+                        <div className="w-6 h-6 rounded-full bg-accent border-2 border-background flex items-center justify-center text-[10px] font-bold">🔒</div>
+                        <span className="text-xs font-bold text-muted-foreground">100% browser-based • Zero server uploads</span>
+                    </div>
 
-                    <p className="text-lg font-bold uppercase tracking-wide text-muted-foreground mb-8">
-                        No upload. No limits. No bullsh*t.
-                    </p>
+                    <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.85] tracking-tight mb-4 text-balance">
+                        Compress images
+                        <span className="accent-bg inline-block px-2 mt-2">without uploading them.</span>
+                    </h2>
 
-                    <div className="space-y-4 text-sm">
+                    <h3 className="text-base font-bold uppercase tracking-wide text-muted-foreground mb-8">
+                        80% smaller files. Zero server uploads. Your images never leave your browser.
+                    </h3>
+
+                    <section className="space-y-4 text-sm mb-8" aria-labelledby="how-it-works">
+                        <h4 id="how-it-works" className="sr-only">How NanoPNG Works</h4>
                         <div className="flex items-start gap-3">
-                            <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0">01</span>
-                            <span>Your images stay on <strong className="uppercase">your device</strong>. Not on a server.</span>
+                            <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0" aria-hidden="true">01</span>
+                            <p>Compress confidential designs without worrying who's storing your unreleased work.</p>
                         </div>
                         <div className="flex items-start gap-3">
-                            <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0">02</span>
-                            <span>Process 100 images while others are still loading spinners.</span>
+                            <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0" aria-hidden="true">02</span>
+                            <p>No upload wait time. Processing starts instantly in your browser.</p>
                         </div>
                         <div className="flex items-start gap-3">
-                            <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0">03</span>
-                            <span>No "upgrade to pro" nonsense. It's <strong className="uppercase">free forever</strong>.</span>
+                            <span className="accent-bg px-1.5 py-0.5 font-bold text-xs shrink-0" aria-hidden="true">03</span>
+                            <p>Verify it yourself: open DevTools → Network tab. Zero outbound image data.</p>
                         </div>
+                    </section>
+
+                    {/* Why Choose NanoPNG */}
+                    <section className="space-y-3 mb-6" aria-labelledby="why-nanopng">
+                        <h4 id="why-nanopng" className="sr-only">Why Choose NanoPNG</h4>
+                        <div className="border-l-4 border-accent pl-4 py-2">
+                            <h5 className="text-sm font-bold uppercase tracking-tight">Instant Processing</h5>
+                            <p className="text-xs text-muted-foreground">No upload wait time. Compression starts immediately in your browser.</p>
+                        </div>
+                        <div className="border-l-4 border-accent pl-4 py-2">
+                            <h5 className="text-sm font-bold uppercase tracking-tight">Unlimited & Free</h5>
+                            <p className="text-xs text-muted-foreground">No file limits, no signup, no premium tier. Process 100 images at once.</p>
+                        </div>
+                        <div className="border-l-4 border-accent pl-4 py-2">
+                            <h5 className="text-sm font-bold uppercase tracking-tight">Inspect the Code</h5>
+                            <p className="text-xs text-muted-foreground">Open your browser's network tab. Zero outbound requests with your images.</p>
+                        </div>
+                    </section>
+
+                    {/* Technical Trust */}
+                    <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                            <span>⚡</span>
+                            <span>WebAssembly powered</span>
+                        </span>
+                        <span className="text-foreground/30">|</span>
+                        <span>PNG • JPEG • WebP • AVIF • SVG</span>
                     </div>
                 </div>
             </div>

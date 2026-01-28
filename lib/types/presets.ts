@@ -12,44 +12,46 @@ export interface CompressionPreset {
     maxWidth?: number
     maxHeight?: number
     targetSizeKb?: number
+    lossless?: boolean
 }
 
 export const COMPRESSION_PRESETS: CompressionPreset[] = [
     {
         id: "photo",
         name: "Photo",
-        description: "Best for photographs with smooth gradients",
+        description: "Keeps skin tones natural and skies smooth",
         icon: "📷",
         format: "webp",
-        quality: 85,
+        quality: 78,
         maxWidth: 2560,
         maxHeight: 1440,
     },
     {
         id: "graphic",
         name: "Graphic / Logo",
-        description: "Sharp edges, flat colors, illustrations",
+        description: "Preserves crisp text and brand colors",
         icon: "🎨",
         format: "png",
-        quality: 100,
+        quality: 85,
+        lossless: false,
     },
     {
         id: "social",
         name: "Social Media",
-        description: "Optimized for Instagram, Twitter, Facebook",
+        description: "Hits Instagram's sweet spot: small files, no visible loss",
         icon: "📱",
         format: "jpeg",
-        quality: 85,
+        quality: 72,
         maxWidth: 1200,
         maxHeight: 1200,
     },
     {
         id: "custom",
         name: "Custom",
-        description: "Fine-tune all settings",
+        description: "For pixel-peepers who want total control",
         icon: "⚙️",
         format: "auto",
-        quality: 85,
+        quality: 80,
     },
 ]
 

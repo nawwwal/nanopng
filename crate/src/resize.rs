@@ -31,12 +31,17 @@ pub fn resize_image(
 
     // 4. Configure Resizer
     let mut resizer = Resizer::new();
-    let options = ResizeOptions::new().resize_alg(ResizeAlg::Convolution(match filter {
-        "CatmullRom" => FilterType::CatmullRom,
-        "Mitchell" => FilterType::Mitchell,
-        "Bilinear" => FilterType::Bilinear,
-        _ => FilterType::Lanczos3, // Default to best quality
-    }));
+
+    // Use Nearest algorithm for pixel art, Convolution for others
+    let resize_alg = match filter {
+        "Nearest" => ResizeAlg::Nearest,
+        "CatmullRom" => ResizeAlg::Convolution(FilterType::CatmullRom),
+        "Mitchell" => ResizeAlg::Convolution(FilterType::Mitchell),
+        "Bilinear" => ResizeAlg::Convolution(FilterType::Bilinear),
+        _ => ResizeAlg::Convolution(FilterType::Lanczos3), // Default to best quality
+    };
+
+    let options = ResizeOptions::new().resize_alg(resize_alg);
 
     // 5. Resize
     resizer

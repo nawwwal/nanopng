@@ -5,6 +5,7 @@ import { BeforeAfterSlider } from "@/components/before-after-slider"
 import { useEditor } from "./editor-context"
 import type { CompressedImage } from "@/lib/types/compression"
 import { cn } from "@/lib/utils"
+import { trackCTAClick } from "@/lib/analytics"
 
 interface ImagePreviewProps {
     image: CompressedImage
@@ -12,7 +13,7 @@ interface ImagePreviewProps {
 }
 
 export function ImagePreview({ image, onClose }: ImagePreviewProps) {
-    const { removeImage } = useEditor()
+    const { removeImage, downloadSingle } = useEditor()
 
 
     const isComplete = image.status === "completed" || image.status === "already-optimized"
@@ -63,6 +64,24 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 shrink-0">
+                    {/* Download button - primary CTA */}
+                    {isComplete && (
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => {
+                                trackCTAClick("download_single", "image_preview")
+                                downloadSingle(image.id)
+                            }}
+                            className="h-8 px-3 accent-bg text-accent-foreground text-xs font-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0_var(--foreground)] hover:shadow-[1px_1px_0_var(--foreground)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
+                            aria-label="Download image"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download
+                        </motion.button>
+                    )}
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

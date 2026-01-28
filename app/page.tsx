@@ -14,6 +14,9 @@ export default function Home() {
   return (
     <EditorProvider>
       <main className="h-[100dvh] flex flex-col overflow-hidden bg-background font-mono selection:bg-accent selection:text-accent-foreground">
+        {/* SEO H1 - visually hidden but accessible to crawlers */}
+        <h1 className="sr-only">NanoPNG - Free Image Compressor That Runs in Your Browser | No Upload Required</h1>
+
         {/* Brutalist Navbar */}
         <nav className="border-b border-foreground bg-background z-50 shrink-0">
           <div className="px-4 h-14 flex items-center justify-between">
@@ -24,7 +27,7 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <ThemeToggle />
               <a
-                href="https://github.com"
+                href="https://github.com/nanopng/nanopng"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="GitHub (opens in new tab)"
@@ -42,13 +45,19 @@ export default function Home() {
         </div>
 
         {/* Footer */}
-        <footer className="border-t border-foreground py-2 bg-background shrink-0 z-50 text-[10px] sm:text-xs">
-          <div className="container mx-auto px-4 sm:px-6 max-w-7xl flex items-center justify-between gap-4">
-            <div className="text-muted-foreground uppercase tracking-wide">
-              Built for privacy. Runs locally.
+        <footer className="border-t border-foreground py-3 bg-background shrink-0 z-50 text-xs sm:text-sm">
+          <div className="container mx-auto px-4 sm:px-6 max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-4 text-muted-foreground">
+              <span className="uppercase tracking-wide font-bold">Built for privacy. Runs locally.</span>
+              <span className="hidden sm:inline text-foreground/30">|</span>
+              <span className="hidden sm:inline">PNG • JPEG • WebP • AVIF • HEIC • SVG</span>
             </div>
-            <div className="text-muted-foreground font-mono">
-              NANOPNG © {new Date().getFullYear()}
+            <div className="flex items-center gap-4 text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span>⚡ WebAssembly powered</span>
+              </span>
+              <span className="text-foreground/30">|</span>
+              <span className="font-mono">NanoPNG © {new Date().getFullYear()}</span>
             </div>
           </div>
         </footer>

@@ -3,6 +3,7 @@
 import { useEditor } from "./editor-context"
 import { COMPRESSION_PRESETS, PresetId } from "@/lib/types/presets"
 import { cn } from "@/lib/utils"
+import { trackPresetSelect } from "@/lib/analytics"
 
 export function PresetSelector() {
     const { currentPreset, setCurrentPreset } = useEditor()
@@ -17,7 +18,10 @@ export function PresetSelector() {
                 {COMPRESSION_PRESETS.map(preset => (
                     <button
                         key={preset.id}
-                        onClick={() => setCurrentPreset(preset.id)}
+                        onClick={() => {
+                            setCurrentPreset(preset.id)
+                            trackPresetSelect(preset.id)
+                        }}
                         className={cn(
                             "p-3 border text-left transition-colors transition-transform duration-200 group relative",
                             currentPreset === preset.id

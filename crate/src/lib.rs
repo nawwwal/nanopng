@@ -94,6 +94,7 @@ pub fn process_image(
             config.lossless,
             config.dithering,
             config.speed_mode,
+            config.quality,
         )
         .map_err(|e| JsValue::from_str(&e)),
         Format::Avif => codecs::avif::encode_avif(

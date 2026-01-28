@@ -3,9 +3,10 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { useEditor } from "./editor-context"
 import { cn } from "@/lib/utils"
+import { trackCTAClick } from "@/lib/analytics"
 
 export function ActionBar() {
-    const { images, selectedIds, selectedCount, selectAll, deselectAll, removeImage, clearAll } = useEditor()
+    const { images, selectedIds, selectedCount, selectAll, deselectAll, removeImage, clearAll, downloadAll, downloadSelected, completedCount, isProcessing } = useEditor()
 
     if (images.length === 0) return null
 
@@ -18,6 +19,25 @@ export function ActionBar() {
             className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 border border-foreground bg-background/95 backdrop-blur-sm shadow-[4px_4px_0_var(--foreground)] py-3 px-4"
         >
             <div className="inline-flex items-center gap-3">
+                    {/* Primary Download CTA */}
+                    {completedCount > 0 && (
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => {
+                                trackCTAClick(selectedCount > 0 ? "download_selected" : "download_all", "action_bar")
+                                selectedCount > 0 ? downloadSelected() : downloadAll()
+                            }}
+                            disabled={isProcessing && completedCount === 0}
+                            className="h-8 px-4 accent-bg text-accent-foreground text-xs font-black uppercase tracking-tight transition-all flex items-center gap-2 shadow-[3px_3px_0_var(--foreground)] hover:shadow-[1px_1px_0_var(--foreground)] hover:translate-x-[2px] hover:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            {selectedCount > 0 ? `Download ${selectedCount}` : `Download All (${completedCount})`}
+                        </motion.button>
+                    )}
+
                     {/* Toggle Selection Mode / Select All */}
                     <motion.button
                         whileHover={{ scale: 1.02 }}

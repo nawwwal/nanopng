@@ -22,7 +22,7 @@
   --secondary-foreground: #000000;
   
   --muted: #e5e5e5;
-  --muted-foreground: #666666;
+  --muted-foreground: #525252;
   
   /* Acid accent for highlights, success states */
   --accent: #c8ff00;
@@ -74,7 +74,7 @@
   --secondary-foreground: #ffffff;
   
   --muted: #2a2a2a;
-  --muted-foreground: #999999;
+  --muted-foreground: #a3a3a3;
   
   --accent: #c8ff00;
   --accent-foreground: #000000;

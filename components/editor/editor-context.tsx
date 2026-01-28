@@ -10,6 +10,7 @@ import { PresetId, getPresetById, COMPRESSION_PRESETS } from "@/lib/types/preset
 import type { CompressedImage, CompressionStatus, CompressionOptions, ImageFormat } from "@/lib/types/compression"
 import { toast } from "sonner"
 import JSZip from "jszip"
+import { trackImageUpload, trackCompressionComplete, trackBatchComplete, trackDownload, trackFunnelStage, trackError } from "@/lib/analytics"
 
 // Constants
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
@@ -154,6 +155,7 @@ interface EditorContextValue {
     clearAll: () => void
     downloadSelected: () => Promise<void>
     downloadAll: () => Promise<void>
+    downloadSingle: (id: string) => Promise<void>
 
     // Computed
     hasImages: boolean
@@ -298,6 +300,14 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                     generation: image.generation || 0,
                 }
 
+                // Track SVG compression
+                trackCompressionComplete(
+                    file.size / 1024,
+                    result.optimizedSize / 1024,
+                    "svg",
+                    savings
+                )
+
                 dispatch({ type: "UPDATE_IMAGE", payload: completedImage })
                 return
             }
@@ -350,15 +360,25 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 height: result.height,
             }
 
+            // Track compression complete
+            trackCompressionComplete(
+                file.size / 1024,
+                compressedSize / 1024,
+                completedImage.format,
+                savings
+            )
+
             dispatch({ type: "UPDATE_IMAGE", payload: completedImage })
         } catch (error) {
             console.error("Processing failed", error)
+            const errorMessage = error instanceof Error ? error.message : "Unknown error"
+            trackError("compression_failed", errorMessage, image.originalName)
             dispatch({
                 type: "UPDATE_STATUS",
                 payload: {
                     id: image.id,
                     status: "error",
-                    error: error instanceof Error ? error.message : "Unknown error"
+                    error: errorMessage
                 }
             })
         }
@@ -375,6 +395,15 @@ export function EditorProvider({ children }: { children: ReactNode }) {
             const toProcess = queued.slice(0, CONCURRENT_PROCESSING - active)
             toProcess.forEach(img => processNextImage(img))
         } else if (active === 0 && queued.length === 0) {
+            // Track batch completion when all processing is done
+            const completed = state.images.filter(i => i.status === "completed" || i.status === "already-optimized")
+            if (completed.length > 0) {
+                const totalOriginalKb = completed.reduce((acc, img) => acc + img.originalSize, 0) / 1024
+                const totalCompressedKb = completed.reduce((acc, img) => acc + (img.compressedSize || img.originalSize), 0) / 1024
+                const avgSavings = completed.reduce((acc, img) => acc + img.savings, 0) / completed.length
+                trackBatchComplete(completed.length, totalOriginalKb, totalCompressedKb, avgSavings)
+                trackFunnelStage("completed")
+            }
             dispatch({ type: "NEXT_QUEUE" })
         }
     }, [state.images, processNextImage, state.isProcessing])
@@ -487,6 +516,11 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
         if (newImages.length === 0) return
 
+        // Track upload event and funnel stage
+        const totalSizeKb = newImages.reduce((acc, img) => acc + img.originalSize, 0) / 1024
+        trackImageUpload(newImages.length, totalSizeKb)
+        trackFunnelStage("upload")
+
         dispatch({ type: "ADD_FILES", payload: newImages })
     }, [])
 
@@ -519,6 +553,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                 a.click()
                 document.body.removeChild(a)
                 URL.revokeObjectURL(url)
+                trackDownload(img.format, 1)
             }
             return
         }
@@ -545,6 +580,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
             a.click()
             document.body.removeChild(a)
             URL.revokeObjectURL(url)
+            trackDownload("zip", successfulImages.length)
         } catch (err) {
             console.error("Zip failed", err)
             alert("Failed to create zip")
@@ -560,6 +596,14 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
     const downloadAll = useCallback(async () => {
         await downloadImages(state.images)
+    }, [state.images, downloadImages])
+
+    const downloadSingle = useCallback(async (id: string) => {
+        const image = state.images.find(img => img.id === id)
+        if (image) {
+            trackFunnelStage("download")
+            await downloadImages([image])
+        }
     }, [state.images, downloadImages])
 
     // Computed values
@@ -591,6 +635,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         clearAll,
         downloadSelected,
         downloadAll,
+        downloadSingle,
         hasImages: state.images.length > 0,
         selectedCount: state.selectedIds.size,
         completedCount: completedImages.length,

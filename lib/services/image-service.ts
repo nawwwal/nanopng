@@ -1,4 +1,5 @@
 import { CompressedImage, ImageAnalysis, ImageFormat } from "@/types/image"
+import type { ResizeFilter } from "@/lib/types/compression"
 import { canEncodeAvif } from "@/lib/core/format-capabilities"
 import { copyMetadata } from "@/lib/core/metadata"
 import * as exifr from "exifr"
@@ -12,6 +13,16 @@ export class ImageService {
     if (mimeType.includes('webp')) return 'webp'
     if (mimeType.includes('avif')) return 'avif'
     return 'jpeg' // default
+  }
+
+  private static selectOptimalFormat(hasTransparency: boolean, isPhoto: boolean): ImageFormat {
+    if (hasTransparency) {
+      return 'webp'; // WebP handles alpha well with good compression
+    }
+    if (isPhoto) {
+      return 'webp'; // WebP compresses photos better than JPEG
+    }
+    return 'png'; // Graphics benefit from PNG's lossless palette
   }
 
   static async computeHash(file: File): Promise<string> {
@@ -52,7 +63,8 @@ export class ImageService {
     chromaSubsampling?: boolean,
     lossless?: boolean,
     speedMode?: boolean,
-    priority: 'normal' | 'high' = 'normal'
+    priority: 'normal' | 'high' = 'normal',
+    resizeFilter?: ResizeFilter
   ): Promise<CompressedImage> {
     const originalSize = file.size;
     const img = await createImageBitmap(file);
@@ -68,6 +80,22 @@ export class ImageService {
     const imageData = ctx.getImageData(0, 0, oriWidth, oriHeight);
     dataView.set(imageData.data);
 
+    // Detect transparency for auto format selection
+    let hasTransparency = false;
+    if (format === "auto") {
+      for (let i = 3; i < imageData.data.length; i += 4) {
+        if (imageData.data[i] < 255) {
+          hasTransparency = true;
+          break;
+        }
+      }
+    }
+
+    // Resolve format before passing to worker
+    const resolvedFormat = format === "auto"
+      ? ImageService.selectOptimalFormat(hasTransparency, analysis?.isPhoto ?? true)
+      : (format || "jpeg");
+
     // Use worker pool for better performance
     const workerPool = getWorkerPool();
 
@@ -77,14 +105,15 @@ export class ImageService {
         oriWidth,
         oriHeight,
         {
-          format: (format || "jpeg") as ImageFormat | "auto",
+          format: resolvedFormat,
           quality: quality ?? 0.85,
           targetWidth,
           targetHeight,
           dithering,
           chromaSubsampling,
           lossless,
-          speedMode
+          speedMode,
+          resizeFilter
         },
         sab
       );
@@ -94,7 +123,6 @@ export class ImageService {
       throw new Error(result.error || "Unknown Wasm error");
     }
 
-    const resolvedFormat = format === "auto" ? "jpeg" : (format || "jpeg");
     const actualFormat = (resolvedFormat as string) === "jpg" ? "jpeg" : resolvedFormat;
     const blob = new Blob([new Uint8Array(result.data)], { type: `image/${actualFormat}` });
 
@@ -136,7 +164,7 @@ export class ImageService {
       blobUrl: URL.createObjectURL(finalBlob),
       originalBlobUrl: URL.createObjectURL(file),
       savings,
-      format: ((format === "auto" ? "jpeg" : format) || "jpeg") as ImageFormat,
+      format: resolvedFormat,
       originalFormat: ImageService.detectFormat(file.type),
       status: savings < 1 ? "already-optimized" : "completed",
       analysis: analysis || { isPhoto: true, hasTransparency: false, complexity: 0.5, uniqueColors: 10000, suggestedFormat: "webp" },

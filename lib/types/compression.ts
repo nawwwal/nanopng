@@ -7,6 +7,9 @@ export type OutputFormat = "auto" | "png" | "jpeg" | "webp" | "avif" | "svg"
 // Basic types
 export type ImageFormat = "jpeg" | "png" | "webp" | "avif" | "svg"
 
+// Resize filter types
+export type ResizeFilter = "Lanczos3" | "Mitchell" | "Bilinear" | "Nearest"
+
 export interface CompressionOptions {
   format: ImageFormat | "auto"
   quality: number // 0-100
@@ -20,6 +23,8 @@ export interface CompressionOptions {
   // Speed optimization options
   speedMode?: boolean // true = fast encoding presets for speed
   avifSpeed?: number // AVIF encoder speed (0-10, higher = faster, default 6)
+  // Resize options
+  resizeFilter?: ResizeFilter // Resize algorithm (default: Lanczos3)
 }
 
 export interface CompressionResult {

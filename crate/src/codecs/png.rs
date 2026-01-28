@@ -8,9 +8,10 @@ pub fn encode_png(
     lossless: bool,
     dithering_level: f32,
     speed_mode: bool,
+    quality: u8,
 ) -> Result<Vec<u8>, String> {
     // Validate RGBA data length is a multiple of 4
-    if data.len() % 4 != 0 {
+    if !data.len().is_multiple_of(4) {
         return Err(format!(
             "Invalid RGBA data length {}: must be multiple of 4",
             data.len()
@@ -32,7 +33,7 @@ pub fn encode_png(
     if lossless {
         encode_lossless(data, width, height, speed_mode)
     } else {
-        encode_lossy(data, width, height, dithering_level, speed_mode)
+        encode_lossy(data, width, height, dithering_level, speed_mode, quality)
     }
 }
 
@@ -64,6 +65,7 @@ fn encode_lossy(
     height: u32,
     dithering_level: f32,
     speed_mode: bool,
+    quality: u8,
 ) -> Result<Vec<u8>, String> {
     // 1. Convert raw bytes to RGBA pixels
     let pixels: Vec<RGBA> = data
@@ -82,7 +84,9 @@ fn encode_lossy(
     // In speed mode, use 10 for ~2x speedup; otherwise use 5 for balanced quality
     attr.set_speed(if speed_mode { 10 } else { 5 })
         .map_err(|e| format!("Failed to set LIQ speed: {:?}", e))?;
-    attr.set_quality(0, 100)
+    // Quality 80 means range 60-80, quality 100 means 80-100
+    let min_quality = quality.saturating_sub(20);
+    attr.set_quality(min_quality, quality)
         .map_err(|e| format!("Failed to set LIQ quality: {:?}", e))?;
 
     let mut img = attr

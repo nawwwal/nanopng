@@ -167,7 +167,7 @@ async function processWebP(
                 height,
                 fitDimensions.width,
                 fitDimensions.height,
-                "Lanczos3"
+                opt.resizeFilter || "Lanczos3"
             );
             pixelData = resized;
             currentWidth = fitDimensions.width;
@@ -229,7 +229,7 @@ const api: ProcessorAPI = {
                 resize: fitDimensions ? {
                     width: fitDimensions.width,
                     height: fitDimensions.height,
-                    filter: "Lanczos3"
+                    filter: opt.resizeFilter || "Lanczos3"
                 } : null,
                 chroma_subsampling: opt.chromaSubsampling !== false,
                 speed_mode: opt.speedMode || false,

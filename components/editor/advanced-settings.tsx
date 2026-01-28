@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useEditor } from "./editor-context"
 import { QualityPreview } from "./quality-preview"
-import { OutputFormat } from "@/lib/types/compression"
+import { OutputFormat, ResizeFilter } from "@/lib/types/compression"
 import type { SvgOptimizationMode } from "@/lib/types/svg"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
@@ -19,6 +19,13 @@ const FORMAT_OPTIONS: { value: OutputFormat; label: string; desc: string }[] = [
     { value: "png", label: "PNG", desc: "Lossless, best for graphics with transparency" },
 ]
 
+const RESIZE_FILTER_OPTIONS: { value: ResizeFilter; label: string; desc: string }[] = [
+    { value: "Lanczos3", label: "Lanczos", desc: "Best quality for photos (default)" },
+    { value: "Mitchell", label: "Mitchell", desc: "Good balance of sharpness and smoothness" },
+    { value: "Bilinear", label: "Bilinear", desc: "Fast, good for slight scaling" },
+    { value: "Nearest", label: "Nearest", desc: "Pixel-perfect for pixel art" },
+]
+
 const SETTING_HINTS = {
     format: "Auto picks the best format based on image content",
     quality: "Lower = smaller files. 80-85% is usually indistinguishable from original",
@@ -26,6 +33,7 @@ const SETTING_HINTS = {
     lossless: "No quality loss but larger files. Use for pixel-perfect accuracy",
     dithering: "Simulates gradients. Turn off (0%) for sharp-edged graphics",
     maxDimensions: "Resize images exceeding these limits while keeping aspect ratio",
+    resizeFilter: "Lanczos for photos, Nearest for pixel art",
     targetSize: "Auto-adjusts quality to meet file size limit",
     svgOptimization: "Safe preserves all details. Aggressive removes metadata for smaller files",
 }
@@ -229,6 +237,31 @@ export function AdvancedSettings() {
                                 />
                             </div>
                         </SettingHint>
+
+                        {/* Resize Filter - only show when resize is enabled */}
+                        {(compressionOptions.targetWidth || compressionOptions.targetHeight) && (
+                            <SettingHint label="Resize Filter" hint={SETTING_HINTS.resizeFilter}>
+                                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Resize Filter">
+                                    {RESIZE_FILTER_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => setCompressionOptions({ resizeFilter: opt.value })}
+                                            className={cn(
+                                                "px-2.5 py-1 border text-xs font-bold uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-foreground",
+                                                (compressionOptions.resizeFilter || "Lanczos3") === opt.value
+                                                    ? "border-foreground bg-foreground text-background"
+                                                    : "border-foreground/30 hover:border-foreground"
+                                            )}
+                                            title={opt.desc}
+                                            role="radio"
+                                            aria-checked={(compressionOptions.resizeFilter || "Lanczos3") === opt.value}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </SettingHint>
+                        )}
 
                         {/* Target Size */}
                         <SettingHint label="Target Size" hint={SETTING_HINTS.targetSize}>

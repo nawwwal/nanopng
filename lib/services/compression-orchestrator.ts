@@ -200,15 +200,17 @@ export class CompressionOrchestrator {
 
     if (imageAnalysis && effectiveFormat === 'png' && effectiveLossless === undefined) {
       // Auto-select lossless vs lossy for PNG based on image type
-      // Photos: use lossless (better quality preservation)
-      // Graphics: use lossy (palette reduction works great)
-      // Mixed: use transparency to decide (lossy artifacts visible in semi-transparent areas)
+      // Photos: NEVER use lossless PNG - it produces huge files. Use lossy quantization.
+      // Graphics: use lossy (palette reduction works great for flat colors)
+      // Mixed: use lossy with higher dithering for smooth gradients
+      // Only use lossless for very simple graphics with few colors where quantization would be obvious
       if (imageAnalysis.type === 'photo') {
-        effectiveLossless = true
+        effectiveLossless = false  // Photos should NEVER be lossless PNG - they become huge
       } else if (imageAnalysis.type === 'mixed') {
-        effectiveLossless = imageAnalysis.hasSignificantTransparency
+        effectiveLossless = false  // Lossy with dithering handles gradients well
       } else {
-        effectiveLossless = false
+        // Graphics: only use lossless if very few unique colors (< 256 means palette is lossless anyway)
+        effectiveLossless = imageAnalysis.uniqueColors !== undefined && imageAnalysis.uniqueColors < 256
       }
     }
 
@@ -248,7 +250,9 @@ export class CompressionOrchestrator {
       options.dithering,
       options.chromaSubsampling,
       effectiveLossless,
-      options.speedMode
+      options.speedMode,
+      'normal',
+      options.resizeFilter
     )
 
     // If target size is specified and exceeded, iterate with binary search
@@ -271,7 +275,9 @@ export class CompressionOrchestrator {
           options.dithering,
           options.chromaSubsampling,
           effectiveLossless,
-          options.speedMode
+          options.speedMode,
+          'normal',
+          options.resizeFilter
         )
 
         const currentSize = imageServiceResult.compressedBlob?.size || 0
@@ -328,7 +334,9 @@ export class CompressionOrchestrator {
             options.dithering,
             options.chromaSubsampling,
             effectiveLossless,
-            options.speedMode
+            options.speedMode,
+            'normal',
+            options.resizeFilter
           )
 
           currentSize = imageServiceResult.compressedBlob?.size || 0
@@ -359,8 +367,70 @@ export class CompressionOrchestrator {
       warning = `Could not meet target size of ${options.targetSizeKb}KB (best: ${Math.round(finalSize / 1024)}KB)`
     }
 
+    // Safety check: if output is larger than input, try to reduce or skip
+    const originalSize = file.size;
+    let finalBlob = imageServiceResult.compressedBlob;
+    let usedQuality = quality;
+
+    if (finalBlob && finalBlob.size >= originalSize && !options.targetSizeKb) {
+      // Output is larger than input - try iterative quality reduction
+      let retryQuality = Math.min(effectiveQuality, 70); // Start lower
+
+      while (finalBlob && finalBlob.size >= originalSize && retryQuality >= 40) {
+        retryQuality -= 10;
+
+        const retryResult = await ImageService.compress(
+          file,
+          id,
+          0,
+          undefined,
+          targetFormat,
+          retryQuality / 100,
+          currentWidth,
+          currentHeight,
+          options.dithering,
+          options.chromaSubsampling,
+          effectiveLossless,
+          options.speedMode,
+          'normal',
+          options.resizeFilter
+        );
+
+        if (retryResult.compressedBlob && retryResult.compressedBlob.size < finalBlob.size) {
+          finalBlob = retryResult.compressedBlob;
+          usedQuality = retryQuality;
+          imageServiceResult = retryResult;
+        }
+      }
+
+      // If still larger than original after all retries, return original file
+      if (finalBlob && finalBlob.size >= originalSize) {
+        const img = await createImageBitmap(file);
+        // suggestedFormat excludes 'svg' - use a safe fallback
+        const suggestedFmt = effectiveFormat === 'svg' ? 'png' : effectiveFormat;
+        return {
+          blob: file,
+          format: effectiveFormat,
+          analysis: imageServiceResult.analysis || {
+            isPhoto: true,
+            hasTransparency: false,
+            complexity: 0.5,
+            uniqueColors: 10000,
+            suggestedFormat: suggestedFmt
+          },
+          resizeApplied: false,
+          targetSizeMet: true,
+          originalWidth: img.width,
+          originalHeight: img.height,
+          width: img.width,
+          height: img.height,
+          warning: 'Returned original: already optimized (compression would increase size)'
+        };
+      }
+    }
+
     return {
-      blob: imageServiceResult.compressedBlob || null,
+      blob: finalBlob || null,
       format: imageServiceResult.format,
       analysis: imageServiceResult.analysis!,
       resizeApplied: !!(options.targetWidth || options.targetHeight) || resizeAttempts > 0,

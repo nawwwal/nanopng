@@ -223,3 +223,45 @@ pub fn resize_only(
     resize::resize_image(data_mut, width, height, target_width, target_height, filter)
         .map_err(|e| JsValue::from_str(&e))
 }
+
+#[wasm_bindgen]
+pub fn decode_gif(data: &[u8]) -> Result<Vec<u8>, JsValue> {
+    let (pixels, width, height) = codecs::gif::decode_gif(data)
+        .map_err(|e| JsValue::from_str(&e))?;
+
+    // Return pixels with width and height encoded in first 8 bytes
+    let mut result = Vec::with_capacity(8 + pixels.len());
+    result.extend_from_slice(&width.to_le_bytes());
+    result.extend_from_slice(&height.to_le_bytes());
+    result.extend_from_slice(&pixels);
+
+    Ok(result)
+}
+
+#[wasm_bindgen]
+pub fn decode_bmp(data: &[u8]) -> Result<Vec<u8>, JsValue> {
+    let (pixels, width, height) = codecs::bmp::decode_bmp(data)
+        .map_err(|e| JsValue::from_str(&e))?;
+
+    // Return pixels with width and height encoded in first 8 bytes
+    let mut result = Vec::with_capacity(8 + pixels.len());
+    result.extend_from_slice(&width.to_le_bytes());
+    result.extend_from_slice(&height.to_le_bytes());
+    result.extend_from_slice(&pixels);
+
+    Ok(result)
+}
+
+#[wasm_bindgen]
+pub fn decode_tiff(data: &[u8]) -> Result<Vec<u8>, JsValue> {
+    let (pixels, width, height) = codecs::tiff::decode_tiff(data)
+        .map_err(|e| JsValue::from_str(&e))?;
+
+    // Return pixels with width and height encoded in first 8 bytes
+    let mut result = Vec::with_capacity(8 + pixels.len());
+    result.extend_from_slice(&width.to_le_bytes());
+    result.extend_from_slice(&height.to_le_bytes());
+    result.extend_from_slice(&pixels);
+
+    Ok(result)
+}

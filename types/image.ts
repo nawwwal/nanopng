@@ -6,8 +6,8 @@ export type CompressionStatus =
   | "already-optimized"
   | "error"
 
-export type ImageFormat = "png" | "jpeg" | "webp" | "avif" | "svg"
-export type OriginalFormat = "png" | "jpeg" | "webp" | "avif" | "heic" | "heif" | "svg"
+export type ImageFormat = "png" | "jpeg" | "webp" | "avif" | "svg" | "gif" | "tiff" | "bmp"
+export type OriginalFormat = "png" | "jpeg" | "webp" | "avif" | "heic" | "heif" | "svg" | "gif" | "tiff" | "bmp"
 export type FormatPreference = "smart" | "keep" | ImageFormat
 
 export interface CompressedImage {
@@ -47,5 +47,5 @@ export interface ImageAnalysis {
   hasTransparency: boolean
   complexity: number
   uniqueColors: number
-  suggestedFormat: "png" | "jpeg" | "webp" | "avif"
+  suggestedFormat: "png" | "jpeg" | "webp" | "avif" | "gif" | "tiff" | "bmp"
 }

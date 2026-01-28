@@ -29,3 +29,9 @@ fast_image_resize = { version = "4.0", default-features = false }
 
 # Compression (pure Rust)
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
+
+# GIF decoding (pure Rust - Wasm compatible)
+gif = "0.13"
+
+# TIFF decoding (pure Rust - Wasm compatible)
+tiff = "0.9"

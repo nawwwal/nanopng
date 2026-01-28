@@ -5,7 +5,7 @@ export type CompressionStatus = "queued" | "analyzing" | "compressing" | "comple
 export type OutputFormat = "auto" | "png" | "jpeg" | "webp" | "avif" | "svg"
 
 // Basic types
-export type ImageFormat = "jpeg" | "png" | "webp" | "avif" | "svg"
+export type ImageFormat = "jpeg" | "png" | "webp" | "avif" | "svg" | "gif" | "tiff" | "bmp"
 
 // Resize filter types
 export type ResizeFilter = "Lanczos3" | "Mitchell" | "Bilinear" | "Nearest"

@@ -44,40 +44,6 @@ pub fn sharpen(data: &[u8], width: u32, height: u32, amount: f32) -> Vec<u8> {
     result
 }
 
-/// Apply Gaussian blur (for unsharp mask base)
-/// Reserved for future blur feature (Phase 5)
-#[allow(dead_code)]
-pub fn blur_3x3(data: &[u8], width: u32, height: u32) -> Vec<u8> {
-    if width < 3 || height < 3 {
-        return data.to_vec();
-    }
-
-    let mut result = data.to_vec();
-    let w = width as usize;
-    let h = height as usize;
-
-    // Simple box blur kernel (approximates Gaussian)
-    for y in 1..(h - 1) {
-        for x in 1..(w - 1) {
-            let idx = (y * w + x) * 4;
-
-            for c in 0..3 {
-                let mut sum = 0.0f32;
-                for dy in -1i32..=1 {
-                    for dx in -1i32..=1 {
-                        let ny = (y as i32 + dy) as usize;
-                        let nx = (x as i32 + dx) as usize;
-                        sum += data[(ny * w + nx) * 4 + c] as f32;
-                    }
-                }
-                result[idx + c] = (sum / 9.0) as u8;
-            }
-        }
-    }
-
-    result
-}
-
 /// Detect the bounding box of non-background content.
 /// Returns (x, y, width, height) of the content area.
 /// threshold: 0-255, how different a pixel must be from the background to be considered content

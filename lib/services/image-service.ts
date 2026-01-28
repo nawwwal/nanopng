@@ -12,6 +12,9 @@ export class ImageService {
     if (mimeType.includes('png')) return 'png'
     if (mimeType.includes('webp')) return 'webp'
     if (mimeType.includes('avif')) return 'avif'
+    if (mimeType.includes('gif')) return 'gif'
+    if (mimeType.includes('tiff')) return 'tiff'
+    if (mimeType.includes('bmp')) return 'bmp'
     return 'jpeg' // default
   }
 

@@ -17,6 +17,9 @@ export function ImageAnalyzer({ image }: ImageAnalyzerProps) {
     webp: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
     avif: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
     svg: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+    gif: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+    tiff: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    bmp: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300",
   } as const
 
   // Estimate quality score based on savings (heuristics)

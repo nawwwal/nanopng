@@ -28,6 +28,9 @@ const ACCEPTED_FORMATS = {
     "image/heic": [".heic"],
     "image/heif": [".heif"],
     "image/svg+xml": [".svg"],
+    "image/gif": [".gif"],
+    "image/tiff": [".tiff", ".tif"],
+    "image/bmp": [".bmp"],
 }
 
 // State types
@@ -486,7 +489,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
             if (inferredFormat === "jpg") inferredFormat = "jpeg"
             if (inferredFormat === "svg+xml") inferredFormat = "svg"
-            if (!["png", "jpeg", "webp", "avif", "svg"].includes(inferredFormat)) inferredFormat = "png"
+            if (inferredFormat === "tif") inferredFormat = "tiff"
+            if (!["png", "jpeg", "webp", "avif", "svg", "gif", "tiff", "bmp"].includes(inferredFormat)) inferredFormat = "png"
 
             const id = Math.random().toString(36).substr(2, 9)
             fileMapRef.current.set(id, file)

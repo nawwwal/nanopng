@@ -187,6 +187,40 @@ async function initWasm() {
 }
 
 /**
+ * Decode a GIF image to RGBA pixels using WASM.
+ * For animated GIFs, only the first frame is decoded.
+ */
+async function decodeGIF(data: Uint8Array): Promise<{ pixels: Uint8Array; width: number; height: number }> {
+    await initWasm();
+    const result = wasmModule.decode_gif(data);
+
+    // First 8 bytes are width and height (little-endian u32)
+    const view = new DataView(result.buffer);
+    const width = view.getUint32(0, true);
+    const height = view.getUint32(4, true);
+    const pixels = new Uint8Array(result.buffer, 8);
+
+    return { pixels, width, height };
+}
+
+/**
+ * Decode a TIFF image to RGBA pixels using WASM.
+ * Supports 8-bit and 16-bit grayscale, RGB, and RGBA.
+ */
+async function decodeTIFF(data: Uint8Array): Promise<{ pixels: Uint8Array; width: number; height: number }> {
+    await initWasm();
+    const result = wasmModule.decode_tiff(data);
+
+    // First 8 bytes are width and height (little-endian u32)
+    const view = new DataView(result.buffer);
+    const width = view.getUint32(0, true);
+    const height = view.getUint32(4, true);
+    const pixels = new Uint8Array(result.buffer, 8);
+
+    return { pixels, width, height };
+}
+
+/**
  * Crop RGBA pixel data to the specified region.
  */
 function cropPixelData(

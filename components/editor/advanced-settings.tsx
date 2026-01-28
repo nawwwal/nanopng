@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useEditor } from "./editor-context"
 import { QualityPreview } from "./quality-preview"
-import { OutputFormat, ResizeFilter, FitMode } from "@/lib/types/compression"
+import { OutputFormat, ResizeFilter, FitMode, CropAspectRatio } from "@/lib/types/compression"
 import type { SvgOptimizationMode } from "@/lib/types/svg"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
@@ -49,8 +49,24 @@ const AVIF_BIT_DEPTH_OPTIONS: { value: 8 | 10; label: string; desc: string }[] =
     { value: 10, label: "10-bit", desc: "Better gradients, HDR support" },
 ]
 
+const ROTATION_OPTIONS: { value: 0 | 90 | 180 | 270; label: string }[] = [
+    { value: 0, label: "0" },
+    { value: 90, label: "90" },
+    { value: 180, label: "180" },
+    { value: 270, label: "270" },
+]
+
+const CROP_ASPECT_OPTIONS: { value: CropAspectRatio; label: string }[] = [
+    { value: "free", label: "Free" },
+    { value: "1:1", label: "1:1" },
+    { value: "16:9", label: "16:9" },
+    { value: "4:3", label: "4:3" },
+    { value: "3:2", label: "3:2" },
+]
+
 const SETTING_HINTS = {
     format: "Auto picks the best format based on image content",
+    transform: "Rotate and flip applied before resize",
     quality: "Lower = smaller files. 80-85% is usually indistinguishable from original",
     highDetail: "Preserves color detail in fine patterns and text",
     lossless: "No quality loss but larger files. Use for pixel-perfect accuracy",
@@ -65,6 +81,9 @@ const SETTING_HINTS = {
     progressive: "Loads progressively from blurry to sharp. Recommended for web.",
     webpLosslessMode: "Near-lossless provides best size/quality balance",
     avifBitDepth: "Higher bit depth = better gradients but less browser support",
+    sharpen: "Enhance edges and details. Apply after resize for best results",
+    autoTrim: "Automatically remove solid color borders from screenshots and scanned documents",
+    crop: "Crop region applied before resize and compression",
 }
 
 export function AdvancedSettings() {
@@ -346,6 +365,28 @@ export function AdvancedSettings() {
                                 </div>
                             </RadioGroup>
                         </SettingHint>
+
+                        {/* Sharpen slider */}
+                        <SettingHint label="Sharpen" hint={SETTING_HINTS.sharpen}>
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-mono font-bold">
+                                    {compressionOptions.sharpen || 0}%
+                                </span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={compressionOptions.sharpen || 0}
+                                onChange={(e) => setCompressionOptions({ sharpen: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                aria-label="Sharpen Amount"
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                <span>Off</span>
+                                <span>Maximum</span>
+                            </div>
+                        </SettingHint>
                     </div>
 
                     {/* Resize & Constraints */}
@@ -353,6 +394,35 @@ export function AdvancedSettings() {
                         <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
                             Resize & Constraints
                         </div>
+
+                        {/* Auto-Trim Whitespace toggle */}
+                        <SettingHint label="Auto-Trim Whitespace" hint={SETTING_HINTS.autoTrim} inline>
+                            <input
+                                type="checkbox"
+                                checked={!!compressionOptions.autoTrim}
+                                onChange={(e) => setCompressionOptions({ autoTrim: e.target.checked })}
+                                className="w-4 h-4 accent-foreground"
+                            />
+                        </SettingHint>
+
+                        {/* Trim Threshold - only show when auto-trim is enabled */}
+                        {compressionOptions.autoTrim && (
+                            <SettingHint label="Trim Threshold" hint="Higher = more aggressive trimming">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-mono font-bold">
+                                        {compressionOptions.autoTrimThreshold ?? 10}%
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="50"
+                                    value={compressionOptions.autoTrimThreshold ?? 10}
+                                    onChange={(e) => setCompressionOptions({ autoTrimThreshold: parseInt(e.target.value) })}
+                                    className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                />
+                            </SettingHint>
+                        )}
 
                         {/* Max Dimensions */}
                         <SettingHint label="Max Dimensions" hint={SETTING_HINTS.maxDimensions}>
@@ -455,6 +525,144 @@ export function AdvancedSettings() {
                                 <span className="text-xs font-bold uppercase text-muted-foreground">KB</span>
                             </div>
                         </SettingHint>
+                    </div>
+
+                    {/* Crop Settings */}
+                    <div className="p-4 border-t border-foreground/10 space-y-4">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                            Crop
+                        </div>
+                        <SettingHint label="Crop Region" hint={SETTING_HINTS.crop}>
+                            <div className="grid grid-cols-4 gap-2">
+                                <input
+                                    type="number"
+                                    placeholder="X"
+                                    min="0"
+                                    value={compressionOptions.crop?.x ?? ""}
+                                    onChange={(e) => setCompressionOptions({
+                                        crop: {
+                                            x: parseInt(e.target.value) || 0,
+                                            y: compressionOptions.crop?.y || 0,
+                                            width: compressionOptions.crop?.width || 0,
+                                            height: compressionOptions.crop?.height || 0
+                                        }
+                                    })}
+                                    className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                    aria-label="Crop X offset"
+                                />
+                                <input
+                                    type="number"
+                                    placeholder="Y"
+                                    min="0"
+                                    value={compressionOptions.crop?.y ?? ""}
+                                    onChange={(e) => setCompressionOptions({
+                                        crop: {
+                                            x: compressionOptions.crop?.x || 0,
+                                            y: parseInt(e.target.value) || 0,
+                                            width: compressionOptions.crop?.width || 0,
+                                            height: compressionOptions.crop?.height || 0
+                                        }
+                                    })}
+                                    className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                    aria-label="Crop Y offset"
+                                />
+                                <input
+                                    type="number"
+                                    placeholder="W"
+                                    min="1"
+                                    value={compressionOptions.crop?.width ?? ""}
+                                    onChange={(e) => setCompressionOptions({
+                                        crop: {
+                                            x: compressionOptions.crop?.x || 0,
+                                            y: compressionOptions.crop?.y || 0,
+                                            width: parseInt(e.target.value) || 0,
+                                            height: compressionOptions.crop?.height || 0
+                                        }
+                                    })}
+                                    className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                    aria-label="Crop width"
+                                />
+                                <input
+                                    type="number"
+                                    placeholder="H"
+                                    min="1"
+                                    value={compressionOptions.crop?.height ?? ""}
+                                    onChange={(e) => setCompressionOptions({
+                                        crop: {
+                                            x: compressionOptions.crop?.x || 0,
+                                            y: compressionOptions.crop?.y || 0,
+                                            width: compressionOptions.crop?.width || 0,
+                                            height: parseInt(e.target.value) || 0
+                                        }
+                                    })}
+                                    className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-foreground text-xs font-mono focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                                    aria-label="Crop height"
+                                />
+                            </div>
+                            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                                <span>X</span>
+                                <span>Y</span>
+                                <span>Width</span>
+                                <span>Height</span>
+                            </div>
+                            {compressionOptions.crop && (compressionOptions.crop.width > 0 || compressionOptions.crop.height > 0) && (
+                                <button
+                                    onClick={() => setCompressionOptions({ crop: undefined })}
+                                    className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    Clear crop
+                                </button>
+                            )}
+                        </SettingHint>
+                    </div>
+
+                    {/* Transform Settings */}
+                    <div className="p-4 border-t border-foreground/10 space-y-4">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                            Transform
+                        </div>
+
+                        {/* Rotation */}
+                        <SettingHint label="Rotation" hint={SETTING_HINTS.transform}>
+                            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Rotation">
+                                {ROTATION_OPTIONS.map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setCompressionOptions({ rotate: opt.value })}
+                                        className={cn(
+                                            "px-2.5 py-1 border text-xs font-bold uppercase transition-colors",
+                                            (compressionOptions.rotate || 0) === opt.value
+                                                ? "border-foreground bg-foreground text-background"
+                                                : "border-foreground/30 hover:border-foreground"
+                                        )}
+                                        role="radio"
+                                        aria-checked={(compressionOptions.rotate || 0) === opt.value}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </SettingHint>
+
+                        {/* Flip options */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <SettingHint label="Flip Horizontal" hint="Mirror left-right" inline>
+                                <input
+                                    type="checkbox"
+                                    checked={!!compressionOptions.flipH}
+                                    onChange={(e) => setCompressionOptions({ flipH: e.target.checked })}
+                                    className="w-4 h-4 accent-foreground"
+                                />
+                            </SettingHint>
+                            <SettingHint label="Flip Vertical" hint="Mirror top-bottom" inline>
+                                <input
+                                    type="checkbox"
+                                    checked={!!compressionOptions.flipV}
+                                    onChange={(e) => setCompressionOptions({ flipV: e.target.checked })}
+                                    className="w-4 h-4 accent-foreground"
+                                />
+                            </SettingHint>
+                        </div>
                     </div>
                 </div>
             </CollapsibleContent>

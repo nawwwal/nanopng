@@ -13,6 +13,27 @@ export type ResizeFilter = "Lanczos3" | "Mitchell" | "Bilinear" | "Nearest"
 // Fit modes for resize
 export type FitMode = "contain" | "cover" | "fill" | "inside" | "outside"
 
+// Rotation angle (clockwise)
+export type RotationAngle = 0 | 90 | 180 | 270
+
+// Crop region
+export interface CropRegion {
+  x: number      // Left offset in pixels
+  y: number      // Top offset in pixels
+  width: number  // Crop width in pixels
+  height: number // Crop height in pixels
+}
+
+// Preset aspect ratios for crop
+export type CropAspectRatio = "free" | "1:1" | "16:9" | "4:3" | "3:2"
+
+// Transform options
+export interface TransformOptions {
+  rotate?: RotationAngle  // Rotation in degrees clockwise
+  flipH?: boolean         // Flip horizontally
+  flipV?: boolean         // Flip vertically
+}
+
 // WebP lossless mode
 export type WebpLosslessMode = "lossy" | "near-lossless" | "lossless"
 
@@ -41,6 +62,17 @@ export interface CompressionOptions {
   nearLosslessLevel?: number // Near-lossless quality 0-100 (default: 60)
   // JPEG options
   progressive?: boolean // Progressive JPEG encoding (loads blurry to sharp, default: true)
+  // Transform options
+  rotate?: RotationAngle  // Rotation in degrees clockwise (0, 90, 180, 270)
+  flipH?: boolean         // Flip horizontally
+  flipV?: boolean         // Flip vertically
+  // Filter options
+  sharpen?: number // Sharpen amount 0-100 (0 = off, default: 0)
+  // Auto-trim options
+  autoTrim?: boolean          // Auto-trim whitespace borders
+  autoTrimThreshold?: number  // Color difference threshold 0-100 (default: 10)
+  // Crop options
+  crop?: CropRegion           // Crop region to apply before other operations
 }
 
 export interface CompressionResult {

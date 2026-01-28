@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 mod codecs;
+mod filters;
 mod resize;
+mod transform;
 
 #[derive(Serialize, Deserialize)]
 pub enum Format {
@@ -25,6 +27,14 @@ fn default_fit_mode() -> String {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct CropConfig {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct Config {
     pub format: Format,
     pub quality: u8,       // 0-100
@@ -41,6 +51,24 @@ pub struct Config {
     pub avif_bit_depth: u8, // AVIF bit depth: 8 or 10
     #[serde(default = "default_progressive")]
     pub progressive: bool, // Progressive JPEG encoding (default: true)
+    #[serde(default)]
+    pub rotate: u16,  // 0, 90, 180, 270
+    #[serde(default)]
+    pub flip_h: bool,
+    #[serde(default)]
+    pub flip_v: bool,
+    #[serde(default)]
+    pub auto_trim: bool,
+    #[serde(default = "default_trim_threshold")]
+    pub auto_trim_threshold: u8,  // 0-255
+    #[serde(default)]
+    pub crop: Option<CropConfig>,
+    #[serde(default)]
+    pub sharpen: f32,  // 0.0 to 1.0
+}
+
+fn default_trim_threshold() -> u8 {
+    25  // ~10% of 255
 }
 
 fn default_avif_speed() -> u8 {
@@ -69,10 +97,30 @@ pub fn process_image(
 ) -> Result<Vec<u8>, JsValue> {
     let config: Config = serde_wasm_bindgen::from_value(config_val)?;
 
-    // We need to own the data if we resize (since size changes)
-    // Or we keep it as ref if no resize.
-    // Since resize returns Vec<u8>, we can use Cow or just shadow.
+    // Apply auto-trim if enabled (FIRST, before crop, transform, resize)
+    let (trimmed_data, trimmed_width, trimmed_height) = if config.auto_trim {
+        filters::auto_trim(data_mut, width, height, config.auto_trim_threshold)
+    } else {
+        (data_mut.to_vec(), width, height)
+    };
 
+    // Apply user crop if specified (after auto-trim, before resize)
+    let (cropped_data, cropped_width, cropped_height) = if let Some(crop_cfg) = &config.crop {
+        let cropped = resize::crop_image(
+            &trimmed_data,
+            trimmed_width,
+            trimmed_height,
+            crop_cfg.x,
+            crop_cfg.y,
+            crop_cfg.width,
+            crop_cfg.height,
+        );
+        (cropped, crop_cfg.width, crop_cfg.height)
+    } else {
+        (trimmed_data, trimmed_width, trimmed_height)
+    };
+
+    // Now apply resize if specified
     let current_data: Vec<u8>;
     let current_width: u32;
     let current_height: u32;
@@ -80,8 +128,8 @@ pub fn process_image(
     if let Some(resize_cfg) = config.resize {
         // Calculate dimensions and optional crop based on fit mode
         let (scaled_w, scaled_h, crop_region) = resize::calculate_fit_dimensions(
-            width,
-            height,
+            cropped_width,
+            cropped_height,
             resize_cfg.width,
             resize_cfg.height,
             &resize_cfg.fit_mode,
@@ -89,9 +137,9 @@ pub fn process_image(
 
         // First resize to calculated dimensions
         let resized_data = resize::resize_image(
-            data_mut, // src
-            width,
-            height,
+            &cropped_data, // src (use cropped data)
+            cropped_width,
+            cropped_height,
             scaled_w,
             scaled_h,
             &resize_cfg.filter,
@@ -109,25 +157,42 @@ pub fn process_image(
             current_height = scaled_h;
         }
     } else {
-        current_data = data_mut.to_vec();
-        current_width = width;
-        current_height = height;
+        current_data = cropped_data;
+        current_width = cropped_width;
+        current_height = cropped_height;
     }
+
+    // Apply transforms (rotate, flip)
+    let (transformed_data, transformed_width, transformed_height) = transform::apply_transforms(
+        &current_data,
+        current_width,
+        current_height,
+        config.rotate,
+        config.flip_h,
+        config.flip_v,
+    );
+
+    // Apply sharpen if specified (after resize/transforms, before encoding)
+    let final_data = if config.sharpen > 0.0 {
+        filters::sharpen(&transformed_data, transformed_width, transformed_height, config.sharpen)
+    } else {
+        transformed_data
+    };
 
     match config.format {
         Format::Jpeg => codecs::jpeg::encode_jpeg(
-            &current_data,
-            current_width,
-            current_height,
+            &final_data,
+            transformed_width,
+            transformed_height,
             config.quality,
             config.chroma_subsampling,
             config.progressive,
         )
         .map_err(|e| JsValue::from_str(&e)),
         Format::Png => codecs::png::encode_png(
-            &current_data,
-            current_width,
-            current_height,
+            &final_data,
+            transformed_width,
+            transformed_height,
             config.lossless,
             config.dithering,
             config.speed_mode,
@@ -135,9 +200,9 @@ pub fn process_image(
         )
         .map_err(|e| JsValue::from_str(&e)),
         Format::Avif => codecs::avif::encode_avif(
-            &current_data,
-            current_width,
-            current_height,
+            &final_data,
+            transformed_width,
+            transformed_height,
             config.quality,
             config.avif_speed,
             config.avif_bit_depth,

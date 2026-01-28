@@ -186,6 +186,26 @@ async function initWasm() {
     }
 }
 
+/**
+ * Crop RGBA pixel data to the specified region.
+ */
+function cropPixelData(
+    data: Uint8Array,
+    width: number,
+    x: number,
+    y: number,
+    cropWidth: number,
+    cropHeight: number
+): Uint8Array {
+    const cropped = new Uint8Array(cropWidth * cropHeight * 4);
+    for (let row = 0; row < cropHeight; row++) {
+        const srcStart = ((row + y) * width + x) * 4;
+        const dstStart = row * cropWidth * 4;
+        cropped.set(data.subarray(srcStart, srcStart + cropWidth * 4), dstStart);
+    }
+    return cropped;
+}
+
 async function processWebP(
     data: Uint8Array,
     width: number,
@@ -197,16 +217,30 @@ async function processWebP(
         let currentWidth = width;
         let currentHeight = height;
 
+        // Apply user crop first if specified (before resize)
+        if (opt.crop && opt.crop.width > 0 && opt.crop.height > 0) {
+            pixelData = cropPixelData(
+                pixelData,
+                currentWidth,
+                opt.crop.x,
+                opt.crop.y,
+                opt.crop.width,
+                opt.crop.height
+            );
+            currentWidth = opt.crop.width;
+            currentHeight = opt.crop.height;
+        }
+
         // Handle resize using Rust WASM if needed
         // For WebP, we use a simplified resize (WASM handles fit modes for other formats)
         const fitMode = opt.fitMode || "contain";
-        const targetDims = calculateTargetDimensions(width, height, opt.targetWidth, opt.targetHeight, fitMode);
+        const targetDims = calculateTargetDimensions(currentWidth, currentHeight, opt.targetWidth, opt.targetHeight, fitMode);
         if (targetDims) {
             await initWasm();
             // For WebP, we need to handle fit mode in JS since we're using a separate encoder
             // Calculate actual resize dimensions based on fit mode
-            const scaleX = targetDims.width / width;
-            const scaleY = targetDims.height / height;
+            const scaleX = targetDims.width / currentWidth;
+            const scaleY = targetDims.height / currentHeight;
             let resizeWidth: number;
             let resizeHeight: number;
 
@@ -217,19 +251,19 @@ async function processWebP(
             } else if (fitMode === "cover" || fitMode === "outside") {
                 // Scale to fill/cover - use larger scale
                 const scale = Math.max(scaleX, scaleY);
-                resizeWidth = Math.max(1, Math.round(width * scale));
-                resizeHeight = Math.max(1, Math.round(height * scale));
+                resizeWidth = Math.max(1, Math.round(currentWidth * scale));
+                resizeHeight = Math.max(1, Math.round(currentHeight * scale));
             } else {
                 // "contain" or "inside" - scale to fit within bounds
                 const scale = Math.min(scaleX, scaleY);
-                resizeWidth = Math.max(1, Math.round(width * scale));
-                resizeHeight = Math.max(1, Math.round(height * scale));
+                resizeWidth = Math.max(1, Math.round(currentWidth * scale));
+                resizeHeight = Math.max(1, Math.round(currentHeight * scale));
             }
 
             const resized = wasmModule.resize_only(
-                data,
-                width,
-                height,
+                pixelData,
+                currentWidth,
+                currentHeight,
                 resizeWidth,
                 resizeHeight,
                 opt.resizeFilter || "Lanczos3"
@@ -323,14 +357,28 @@ async function processJPEG(
         let currentWidth = width;
         let currentHeight = height;
 
+        // Apply user crop first if specified (before resize)
+        if (opt.crop && opt.crop.width > 0 && opt.crop.height > 0) {
+            pixelData = cropPixelData(
+                pixelData,
+                currentWidth,
+                opt.crop.x,
+                opt.crop.y,
+                opt.crop.width,
+                opt.crop.height
+            );
+            currentWidth = opt.crop.width;
+            currentHeight = opt.crop.height;
+        }
+
         // Handle resize using Rust WASM if needed
         const fitMode = opt.fitMode || "contain";
-        const targetDims = calculateTargetDimensions(width, height, opt.targetWidth, opt.targetHeight, fitMode);
+        const targetDims = calculateTargetDimensions(currentWidth, currentHeight, opt.targetWidth, opt.targetHeight, fitMode);
         if (targetDims) {
             await initWasm();
             // Calculate actual resize dimensions based on fit mode
-            const scaleX = targetDims.width / width;
-            const scaleY = targetDims.height / height;
+            const scaleX = targetDims.width / currentWidth;
+            const scaleY = targetDims.height / currentHeight;
             let resizeWidth: number;
             let resizeHeight: number;
 
@@ -341,19 +389,19 @@ async function processJPEG(
             } else if (fitMode === "cover" || fitMode === "outside") {
                 // Scale to fill/cover - use larger scale
                 const scale = Math.max(scaleX, scaleY);
-                resizeWidth = Math.max(1, Math.round(width * scale));
-                resizeHeight = Math.max(1, Math.round(height * scale));
+                resizeWidth = Math.max(1, Math.round(currentWidth * scale));
+                resizeHeight = Math.max(1, Math.round(currentHeight * scale));
             } else {
                 // "contain" or "inside" - scale to fit within bounds
                 const scale = Math.min(scaleX, scaleY);
-                resizeWidth = Math.max(1, Math.round(width * scale));
-                resizeHeight = Math.max(1, Math.round(height * scale));
+                resizeWidth = Math.max(1, Math.round(currentWidth * scale));
+                resizeHeight = Math.max(1, Math.round(currentHeight * scale));
             }
 
             const resized = wasmModule.resize_only(
-                data,
-                width,
-                height,
+                pixelData,
+                currentWidth,
+                currentHeight,
                 resizeWidth,
                 resizeHeight,
                 opt.resizeFilter || "Lanczos3"
@@ -463,7 +511,19 @@ const api: ProcessorAPI = {
                 speed_mode: opt.speedMode || false,
                 avif_speed: opt.avifSpeed ?? 6,
                 avif_bit_depth: opt.avifBitDepth ?? 8,
-                progressive: opt.progressive ?? true
+                progressive: opt.progressive ?? true,
+                sharpen: (opt.sharpen || 0) / 100,  // Convert 0-100 to 0.0-1.0
+                rotate: opt.rotate || 0,
+                flip_h: opt.flipH || false,
+                flip_v: opt.flipV || false,
+                auto_trim: opt.autoTrim || false,
+                auto_trim_threshold: Math.round((opt.autoTrimThreshold ?? 10) * 2.55),  // Convert 0-100 to 0-255
+                crop: opt.crop ? {
+                    x: opt.crop.x,
+                    y: opt.crop.y,
+                    width: opt.crop.width,
+                    height: opt.crop.height,
+                } : null,
             };
 
             const result: Uint8Array = wasmModule.process_image(data, width, height, config);

@@ -50,7 +50,7 @@ export default function Home() {
             <div className="flex items-center gap-4 text-muted-foreground">
               <span className="uppercase tracking-wide font-bold">Built for privacy. Runs locally.</span>
               <span className="hidden sm:inline text-foreground/30">|</span>
-              <span className="hidden sm:inline">PNG • JPEG • WebP • AVIF • HEIC • SVG</span>
+              <span className="hidden sm:inline">PNG • JPEG • WebP • AVIF • GIF • HEIC • TIFF • BMP • SVG • JXL</span>
             </div>
             <div className="flex items-center gap-4 text-muted-foreground">
               <span className="flex items-center gap-1">

@@ -21,12 +21,20 @@ The goal of NanoPNG is to provide **server-grade image optimization without the 
 -   **Smart Compression**: Automatically detects photo vs. graphic content and applies optimal compression strategies. Quick probe skips already-optimized images.
 -   **Batch Processing**: Process up to 100 images simultaneously with parallel workers and O(1) priority queue scheduling. No limits, no subscriptions.
 -   **Intelligent Format Selection**: Automatically chooses the best format (AVIF → WebP → PNG) based on browser support and image characteristics.
--   **Format Conversion**: Convert between PNG, JPEG, WebP, and AVIF formats with intelligent quality settings.
+-   **Format Conversion**: Convert between PNG, JPEG, WebP, AVIF, and JPEG-XL formats with intelligent quality settings.
+-   **Wide Format Support**: GIF, TIFF, and BMP input formats in addition to PNG, JPEG, WebP, AVIF, HEIC, and SVG.
 -   **Target Size Compression**: Specify a target file size (e.g., "under 50KB") and the compressor will automatically adjust quality and dimensions.
 -   **Metadata Preservation**: Automatically preserves critical metadata (EXIF orientation, ICC Color Profiles) often lost by standard canvas exports.
 -   **Image Analysis**: Advanced photo vs. graphic detection using color histogram analysis, edge detection, and texture variance scoring.
+-   **Image Editing**: Built-in blur, sharpen, crop, rotate/flip, and auto-trim operations—all processed locally.
+-   **Watermark/Overlay Support**: Add watermarks or overlays to images before compression.
+-   **Fit Modes**: Cover, contain, fill, inside, and outside modes for precise dimension control.
 -   **HEIC Support**: Convert HEIC/HEIF images (common on iOS) to web-friendly formats.
 -   **SVG Optimization**: Optimize SVG files with Safe (lossless) or Aggressive (smaller) modes using SVGO.
+-   **JPEG-XL Output**: Experimental JPEG-XL encoding support (Safari 17+).
+-   **Progressive JPEG**: MozJPEG-powered progressive JPEG encoding for optimized loading.
+-   **Near-Lossless WebP**: Near-lossless WebP mode for maximum quality with smaller file sizes.
+-   **AVIF 10-bit Depth**: Support for 10-bit AVIF encoding for HDR-quality images.
 -   **Before/After Comparison**: Interactive slider to compare original and compressed images side-by-side.
 -   **Bulk Download**: Download all optimized images as a ZIP archive.
 -   **Performance**: Offloads heavy computational work to Web Workers with crash recovery, ensuring a smooth, non-blocking UI even with 4K+ images.
@@ -86,11 +94,18 @@ We are actively working on pushing the boundaries of in-browser compression.
 -   [x] **Target Size Compression**: Binary search quality adjustment with resize fallback.
 -   [x] **Worker Pool Improvements**: O(1) priority queue, crash recovery, and queue size limits.
 -   [x] **SVG Optimization**: Safe and Aggressive modes using SVGO with Web Worker processing.
+-   [x] **GIF, TIFF, BMP Support**: Input format support for legacy image formats.
+-   [x] **JPEG-XL Output**: Experimental JPEG-XL encoding (browser support varies).
+-   [x] **Image Editing**: Blur, sharpen, crop, rotate/flip, and auto-trim operations.
+-   [x] **Watermark/Overlay**: Add watermarks or overlays to images.
+-   [x] **Near-Lossless WebP**: Near-lossless mode for maximum quality WebP output.
+-   [x] **Fit Modes**: Cover, contain, fill, inside, and outside dimension modes.
+-   [x] **AVIF 10-bit Depth**: HDR-quality AVIF encoding with 10-bit color depth.
+-   [x] **Progressive JPEG**: MozJPEG-powered progressive JPEG encoding.
 
 ### In Progress 🚧
 
 -   [ ] **PWA Support**: Full offline capabilities with service worker caching.
--   [ ] **Advanced Compression Options**: Fine-tune quantization levels, dithering intensity, and quality presets.
 
 ### Future 🔮
 
@@ -184,7 +199,9 @@ nanopng/
 ├── crate/                  # Rust/WASM source code
 │   ├── src/
 │   │   ├── lib.rs         # WASM entry point
-│   │   └── codecs/        # PNG, JPEG, WebP, AVIF encoders
+│   │   ├── filters.rs     # Blur, sharpen, and image filters
+│   │   ├── transform.rs   # Crop, rotate, flip, auto-trim
+│   │   └── codecs/        # PNG, JPEG, WebP, AVIF, GIF, TIFF, BMP encoders
 │   └── Cargo.toml         # Rust dependencies
 ├── lib/
 │   ├── core/              # Core algorithms (image analysis, format detection)
@@ -210,13 +227,17 @@ NanoPNG works in all modern browsers that support:
 | Format | Chrome/Edge | Firefox | Safari | Notes |
 |--------|------------|---------|--------|-------|
 | PNG    | ✅         | ✅      | ✅     | Full support |
-| JPEG   | ✅         | ✅      | ✅     | Full support |
-| WebP   | ✅         | ✅      | ✅     | Full support (Safari 14+) |
+| JPEG   | ✅         | ✅      | ✅     | Progressive via MozJPEG |
+| WebP   | ✅         | ✅      | ✅     | Safari 14+ |
 | AVIF   | ✅         | ✅      | ⚠️     | Safari 17+ (encoding) |
-| HEIC   | ✅         | ✅      | ✅     | Via `heic2any` conversion |
-| SVG    | ✅         | ✅      | ✅     | Via SVGO optimization |
+| GIF    | ✅         | ✅      | ✅     | Input only (static) |
+| TIFF   | ✅         | ✅      | ✅     | Input only |
+| BMP    | ✅         | ✅      | ✅     | Input only |
+| HEIC   | ✅         | ✅      | ✅     | Via heic2any |
+| SVG    | ✅         | ✅      | ✅     | Via SVGO |
+| JXL    | ⚠️         | ⚠️      | ⚠️     | Experimental |
 
-**Note**: AVIF encoding requires browser support. The app automatically falls back to WebP if AVIF encoding is not available.
+**Note**: AVIF encoding requires browser support. The app automatically falls back to WebP if AVIF encoding is not available. JPEG-XL (JXL) is experimental and browser support is limited.
 
 ## 📄 License
 

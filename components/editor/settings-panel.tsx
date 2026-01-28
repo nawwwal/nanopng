@@ -10,7 +10,7 @@ export function SettingsPanel() {
     // Pitch content when no images
     if (!hasImages) {
         return (
-            <div className="h-full flex flex-col justify-center p-6 lg:p-8 overflow-hidden">
+            <div className="h-full flex flex-col justify-start p-6 lg:p-8 pt-8 lg:pt-12 overflow-y-auto">
                 <div className="max-w-md">
                     {/* Privacy Badge */}
                     <div className="flex items-center gap-2 mb-6">
@@ -58,6 +58,10 @@ export function SettingsPanel() {
                             <h5 className="text-sm font-bold uppercase tracking-tight">Inspect the Code</h5>
                             <p className="text-xs text-muted-foreground">Open your browser's network tab. Zero outbound requests with your images.</p>
                         </div>
+                        <div className="border-l-4 border-accent pl-4 py-2">
+                            <h5 className="text-sm font-bold uppercase tracking-tight">Quick Edits Included</h5>
+                            <p className="text-xs text-muted-foreground">Blur, sharpen, crop, rotate, add watermarks — all without uploading.</p>
+                        </div>
                     </section>
 
                     {/* Technical Trust */}
@@ -67,7 +71,7 @@ export function SettingsPanel() {
                             <span>WebAssembly powered</span>
                         </span>
                         <span className="text-foreground/30">|</span>
-                        <span>PNG • JPEG • WebP • AVIF • SVG</span>
+                        <span>PNG • JPEG • WebP • AVIF • GIF • HEIC • TIFF • BMP • SVG • JXL</span>
                     </div>
                 </div>
             </div>
@@ -109,7 +113,7 @@ export function SettingsPanel() {
             </div>
 
             {/* Settings content */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 scrollbar-hide">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-6">
                 {/* Presets */}
                 <PresetSelector />
 

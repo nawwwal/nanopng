@@ -29,44 +29,64 @@ export interface ProcessorAPI {
 let wasmModule: any = null;
 
 /**
- * Calculate dimensions that fit within maxWidth x maxHeight while preserving aspect ratio.
- * Only resizes if the image is larger than the bounds.
+ * Calculate target dimensions for resize based on fit mode.
  * Returns null if no resize is needed.
+ * For fit modes that need exact dimensions (fill, cover), returns the target dimensions.
+ * The actual fit mode logic is handled in WASM.
  */
-function calculateFitDimensions(
+function calculateTargetDimensions(
     srcWidth: number,
     srcHeight: number,
-    maxWidth: number | undefined,
-    maxHeight: number | undefined
+    targetWidth: number | undefined,
+    targetHeight: number | undefined,
+    fitMode: string = "contain"
 ): { width: number; height: number } | null {
-    // If no max dimensions specified, no resize needed
-    if (!maxWidth && !maxHeight) return null;
+    // If no target dimensions specified, no resize needed
+    if (!targetWidth && !targetHeight) return null;
 
-    // Use original dimensions as fallback for unspecified max
-    const effectiveMaxWidth = maxWidth || srcWidth;
-    const effectiveMaxHeight = maxHeight || srcHeight;
+    // Use original dimensions as fallback for unspecified target
+    const effectiveWidth = targetWidth || srcWidth;
+    const effectiveHeight = targetHeight || srcHeight;
 
-    // If image already fits within bounds, no resize needed
-    if (srcWidth <= effectiveMaxWidth && srcHeight <= effectiveMaxHeight) {
+    // For contain/inside modes, skip if image already fits within bounds
+    if ((fitMode === "contain" || fitMode === "inside") &&
+        srcWidth <= effectiveWidth && srcHeight <= effectiveHeight) {
         return null;
     }
 
-    // Calculate scale factors for each dimension
-    const scaleX = effectiveMaxWidth / srcWidth;
-    const scaleY = effectiveMaxHeight / srcHeight;
-
-    // Use the smaller scale to ensure image fits within both bounds
-    const scale = Math.min(scaleX, scaleY);
-
-    // Calculate new dimensions, ensuring at least 1px
-    const newWidth = Math.max(1, Math.round(srcWidth * scale));
-    const newHeight = Math.max(1, Math.round(srcHeight * scale));
-
-    return { width: newWidth, height: newHeight };
+    // Return target dimensions - WASM will handle the fit mode logic
+    return { width: effectiveWidth, height: effectiveHeight };
 }
 
 // WebP encoder module (loaded at runtime to bypass Webpack)
 let webpModule: any = null;
+
+// MozJPEG encoder module for progressive JPEG encoding
+let mozjpegModule: any = null;
+
+// Default MozJPEG encoding options (from @jsquash/jpeg/meta.js)
+// MozJPEG provides 5-15% smaller files at same quality with:
+// - Progressive JPEG encoding (loads blurry to sharp)
+// - Trellis quantization for optimal coefficient encoding
+// - Optimal Huffman coding tables
+const mozjpegDefaultOptions = {
+    quality: 75,
+    baseline: false,
+    arithmetic: false,
+    progressive: true,      // Progressive JPEG enabled by default
+    optimize_coding: true,  // Optimal Huffman coding
+    smoothing: 0,
+    color_space: 3,         // YCbCr color space
+    quant_table: 3,         // MozJPEG optimized quant tables
+    trellis_multipass: false,
+    trellis_opt_zero: false,
+    trellis_opt_table: false,
+    trellis_loops: 1,
+    auto_subsample: true,
+    chroma_subsample: 2,    // 4:2:0 chroma subsampling
+    separate_chroma_quality: false,
+    chroma_quality: 75,
+};
 
 // Default WebP encoding options (from @jsquash/webp/meta.js)
 const webpDefaultOptions = {
@@ -133,6 +153,26 @@ async function initWebPEncoder() {
     }
 }
 
+async function initMozJPEGEncoder() {
+    if (mozjpegModule) return mozjpegModule;
+
+    try {
+        // Load MozJPEG encoder at runtime (bypassing bundler)
+        const encoder = await import(/* webpackIgnore: true */ /* @vite-ignore */ getAbsoluteUrl("/wasm/mozjpeg_enc.js"));
+
+        // Initialize Emscripten module with locateFile for WASM loading
+        mozjpegModule = await encoder.default({
+            noInitialRun: true,
+            locateFile: (file: string) => getAbsoluteUrl(`/wasm/${file}`),
+        });
+
+        return mozjpegModule;
+    } catch (e) {
+        console.error("Failed to init MozJPEG encoder:", e);
+        throw e;
+    }
+}
+
 async function initWasm() {
     if (wasmModule) return;
 
@@ -157,21 +197,63 @@ async function processWebP(
         let currentWidth = width;
         let currentHeight = height;
 
-        // Handle resize using Rust WASM if needed (fit within bounds, preserve aspect ratio)
-        const fitDimensions = calculateFitDimensions(width, height, opt.targetWidth, opt.targetHeight);
-        if (fitDimensions) {
+        // Handle resize using Rust WASM if needed
+        // For WebP, we use a simplified resize (WASM handles fit modes for other formats)
+        const fitMode = opt.fitMode || "contain";
+        const targetDims = calculateTargetDimensions(width, height, opt.targetWidth, opt.targetHeight, fitMode);
+        if (targetDims) {
             await initWasm();
+            // For WebP, we need to handle fit mode in JS since we're using a separate encoder
+            // Calculate actual resize dimensions based on fit mode
+            const scaleX = targetDims.width / width;
+            const scaleY = targetDims.height / height;
+            let resizeWidth: number;
+            let resizeHeight: number;
+
+            if (fitMode === "fill") {
+                // Stretch to exact dimensions
+                resizeWidth = targetDims.width;
+                resizeHeight = targetDims.height;
+            } else if (fitMode === "cover" || fitMode === "outside") {
+                // Scale to fill/cover - use larger scale
+                const scale = Math.max(scaleX, scaleY);
+                resizeWidth = Math.max(1, Math.round(width * scale));
+                resizeHeight = Math.max(1, Math.round(height * scale));
+            } else {
+                // "contain" or "inside" - scale to fit within bounds
+                const scale = Math.min(scaleX, scaleY);
+                resizeWidth = Math.max(1, Math.round(width * scale));
+                resizeHeight = Math.max(1, Math.round(height * scale));
+            }
+
             const resized = wasmModule.resize_only(
                 data,
                 width,
                 height,
-                fitDimensions.width,
-                fitDimensions.height,
+                resizeWidth,
+                resizeHeight,
                 opt.resizeFilter || "Lanczos3"
             );
-            pixelData = resized;
-            currentWidth = fitDimensions.width;
-            currentHeight = fitDimensions.height;
+
+            // For cover mode, crop to target dimensions
+            if (fitMode === "cover" && (resizeWidth > targetDims.width || resizeHeight > targetDims.height)) {
+                // Center crop
+                const cropX = Math.floor((resizeWidth - targetDims.width) / 2);
+                const cropY = Math.floor((resizeHeight - targetDims.height) / 2);
+                const cropped = new Uint8Array(targetDims.width * targetDims.height * 4);
+                for (let row = 0; row < targetDims.height; row++) {
+                    const srcStart = ((row + cropY) * resizeWidth + cropX) * 4;
+                    const dstStart = row * targetDims.width * 4;
+                    cropped.set(resized.subarray(srcStart, srcStart + targetDims.width * 4), dstStart);
+                }
+                pixelData = cropped;
+                currentWidth = targetDims.width;
+                currentHeight = targetDims.height;
+            } else {
+                pixelData = resized;
+                currentWidth = resizeWidth;
+                currentHeight = resizeHeight;
+            }
         }
 
         // Initialize WebP encoder (runtime loaded)
@@ -183,12 +265,29 @@ async function processWebP(
         const method = opt.speedMode ? 0 : webpDefaultOptions.method;
         // Map webpPreset to image_hint (0=photo, 1=picture, 2=graph)
         const imageHintMap: Record<string, number> = { photo: 0, picture: 1, graph: 2 };
+
+        // Determine lossless and near_lossless settings
+        let losslessFlag = 0;
+        let nearLosslessValue = 100;
+
+        if (opt.webpLosslessMode === 'lossless') {
+            losslessFlag = 1;
+            nearLosslessValue = 100;
+        } else if (opt.webpLosslessMode === 'near-lossless') {
+            losslessFlag = 1;
+            nearLosslessValue = opt.nearLosslessLevel ?? 60;
+        } else {
+            // lossy mode (default)
+            losslessFlag = opt.lossless ? 1 : 0;
+        }
+
         const encodeOptions = {
             ...webpDefaultOptions,
             quality,
-            lossless: opt.lossless ? 1 : 0,
+            lossless: losslessFlag,
             method,
             image_hint: opt.webpPreset ? imageHintMap[opt.webpPreset] : 0,
+            near_lossless: nearLosslessValue,
         };
 
         // Encode using the Emscripten module
@@ -206,37 +305,164 @@ async function processWebP(
     }
 }
 
+/**
+ * Process JPEG using MozJPEG for progressive encoding and better compression.
+ * MozJPEG provides:
+ * - Progressive JPEG encoding (loads blurry to sharp)
+ * - Trellis quantization for optimal coefficient encoding
+ * - 5-15% smaller files at same quality
+ */
+async function processJPEG(
+    data: Uint8Array,
+    width: number,
+    height: number,
+    opt: CompressionOptions
+): Promise<{ success: boolean; data?: Uint8Array; error?: string }> {
+    try {
+        let pixelData = data;
+        let currentWidth = width;
+        let currentHeight = height;
+
+        // Handle resize using Rust WASM if needed
+        const fitMode = opt.fitMode || "contain";
+        const targetDims = calculateTargetDimensions(width, height, opt.targetWidth, opt.targetHeight, fitMode);
+        if (targetDims) {
+            await initWasm();
+            // Calculate actual resize dimensions based on fit mode
+            const scaleX = targetDims.width / width;
+            const scaleY = targetDims.height / height;
+            let resizeWidth: number;
+            let resizeHeight: number;
+
+            if (fitMode === "fill") {
+                // Stretch to exact dimensions
+                resizeWidth = targetDims.width;
+                resizeHeight = targetDims.height;
+            } else if (fitMode === "cover" || fitMode === "outside") {
+                // Scale to fill/cover - use larger scale
+                const scale = Math.max(scaleX, scaleY);
+                resizeWidth = Math.max(1, Math.round(width * scale));
+                resizeHeight = Math.max(1, Math.round(height * scale));
+            } else {
+                // "contain" or "inside" - scale to fit within bounds
+                const scale = Math.min(scaleX, scaleY);
+                resizeWidth = Math.max(1, Math.round(width * scale));
+                resizeHeight = Math.max(1, Math.round(height * scale));
+            }
+
+            const resized = wasmModule.resize_only(
+                data,
+                width,
+                height,
+                resizeWidth,
+                resizeHeight,
+                opt.resizeFilter || "Lanczos3"
+            );
+
+            // For cover mode, crop to target dimensions
+            if (fitMode === "cover" && (resizeWidth > targetDims.width || resizeHeight > targetDims.height)) {
+                // Center crop
+                const cropX = Math.floor((resizeWidth - targetDims.width) / 2);
+                const cropY = Math.floor((resizeHeight - targetDims.height) / 2);
+                const cropped = new Uint8Array(targetDims.width * targetDims.height * 4);
+                for (let row = 0; row < targetDims.height; row++) {
+                    const srcStart = ((row + cropY) * resizeWidth + cropX) * 4;
+                    const dstStart = row * targetDims.width * 4;
+                    cropped.set(resized.subarray(srcStart, srcStart + targetDims.width * 4), dstStart);
+                }
+                pixelData = cropped;
+                currentWidth = targetDims.width;
+                currentHeight = targetDims.height;
+            } else {
+                pixelData = resized;
+                currentWidth = resizeWidth;
+                currentHeight = resizeHeight;
+            }
+        }
+
+        // Initialize MozJPEG encoder
+        const module = await initMozJPEGEncoder();
+
+        // Build encoding options
+        const quality = Math.round((opt.quality || 0.8) * 100);
+        const progressive = opt.progressive ?? true;
+
+        // Chroma subsampling: 2 = 4:2:0 (smaller), 1 = 4:4:4 (better quality)
+        const chromaSubsample = opt.chromaSubsampling !== false ? 2 : 1;
+
+        const encodeOptions = {
+            ...mozjpegDefaultOptions,
+            quality,
+            progressive,
+            chroma_subsample: chromaSubsample,
+            // Use auto_subsample to let MozJPEG optimize based on content
+            auto_subsample: opt.chromaSubsampling !== false,
+        };
+
+        // MozJPEG expects ImageData-like object with data, width, height
+        // The encode function expects RGBA data and will convert to RGB internally
+        const imageData = {
+            data: pixelData,
+            width: currentWidth,
+            height: currentHeight,
+        };
+
+        // Encode using the Emscripten module
+        const result = module.encode(imageData.data, imageData.width, imageData.height, encodeOptions);
+        if (!result) {
+            throw new Error("MozJPEG encoding failed");
+        }
+
+        return { success: true, data: new Uint8Array(result.buffer) };
+    } catch (err) {
+        return {
+            success: false,
+            error: err instanceof Error ? err.message : String(err)
+        };
+    }
+}
+
 const api: ProcessorAPI = {
     async processImage(id, width, height, opt, sharedBuffer) {
         const data = new Uint8Array(sharedBuffer);
 
-        // Route WebP to JS encoder, others to Rust WASM
+        // Route WebP to JS encoder
         if (opt.format === 'webp') {
             return processWebP(data, width, height, opt);
         }
 
+        // Route JPEG to MozJPEG for progressive encoding and better compression
+        // MozJPEG provides 5-15% smaller files with progressive loading
+        if (opt.format === 'jpeg') {
+            return processJPEG(data, width, height, opt);
+        }
+
+        // PNG and AVIF use Rust WASM encoder
         await initWasm();
 
         try {
-            // Calculate aspect-ratio-preserving resize dimensions
-            const fitDimensions = calculateFitDimensions(width, height, opt.targetWidth, opt.targetHeight);
+            // Calculate target dimensions based on fit mode
+            const fitMode = opt.fitMode || "contain";
+            const targetDims = calculateTargetDimensions(width, height, opt.targetWidth, opt.targetHeight, fitMode);
 
             const config = {
-                format: opt.format === 'jpeg' ? 'Jpeg' :
-                    opt.format === 'png' ? 'Png' :
-                        opt.format === 'avif' ? 'Avif' : 'Jpeg',
+                // JPEG and WebP are handled above, so this is only PNG or AVIF
+                format: opt.format === 'png' ? 'Png' :
+                    opt.format === 'avif' ? 'Avif' : 'Png',
                 quality: Math.round((opt.quality || 0.8) * 100),
                 transparent: true,
                 lossless: opt.lossless || false,
                 dithering: opt.dithering || 1.0,
-                resize: fitDimensions ? {
-                    width: fitDimensions.width,
-                    height: fitDimensions.height,
-                    filter: opt.resizeFilter || "Lanczos3"
+                resize: targetDims ? {
+                    width: targetDims.width,
+                    height: targetDims.height,
+                    filter: opt.resizeFilter || "Lanczos3",
+                    fit_mode: fitMode
                 } : null,
                 chroma_subsampling: opt.chromaSubsampling !== false,
                 speed_mode: opt.speedMode || false,
                 avif_speed: opt.avifSpeed ?? 6,
+                avif_bit_depth: opt.avifBitDepth ?? 8,
                 progressive: opt.progressive ?? true
             };
 

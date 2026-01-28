@@ -10,6 +10,12 @@ export type ImageFormat = "jpeg" | "png" | "webp" | "avif" | "svg"
 // Resize filter types
 export type ResizeFilter = "Lanczos3" | "Mitchell" | "Bilinear" | "Nearest"
 
+// Fit modes for resize
+export type FitMode = "contain" | "cover" | "fill" | "inside" | "outside"
+
+// WebP lossless mode
+export type WebpLosslessMode = "lossy" | "near-lossless" | "lossless"
+
 export interface CompressionOptions {
   format: ImageFormat | "auto"
   quality: number // 0-100
@@ -23,12 +29,16 @@ export interface CompressionOptions {
   // Speed optimization options
   speedMode?: boolean // true = fast encoding presets for speed
   avifSpeed?: number // AVIF encoder speed (0-10, higher = faster, default 6)
+  avifBitDepth?: 8 | 10 // AVIF bit depth (default: 8)
   // Resize options
   resizeFilter?: ResizeFilter // Resize algorithm (default: Lanczos3)
+  fitMode?: FitMode // How to fit image in target dimensions (default: contain)
   // Metadata options
   preserveMetadata?: boolean // Keep EXIF, GPS, color profile data (default: false for privacy)
   // WebP options
   webpPreset?: "photo" | "picture" | "graph" // WebP image_hint (default: photo)
+  webpLosslessMode?: WebpLosslessMode // WebP compression mode (default: lossy)
+  nearLosslessLevel?: number // Near-lossless quality 0-100 (default: 60)
   // JPEG options
   progressive?: boolean // Progressive JPEG encoding (loads blurry to sharp, default: true)
 }

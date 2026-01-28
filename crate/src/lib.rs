@@ -16,6 +16,12 @@ pub struct ResizeConfig {
     pub width: u32,
     pub height: u32,
     pub filter: String, // "Lanczos3", "CatmullRom", etc.
+    #[serde(default = "default_fit_mode")]
+    pub fit_mode: String, // "contain", "cover", "fill", "inside", "outside"
+}
+
+fn default_fit_mode() -> String {
+    "contain".to_string()
 }
 
 #[derive(Serialize, Deserialize)]
@@ -31,12 +37,18 @@ pub struct Config {
     pub speed_mode: bool, // true = fast encoding presets, false = quality presets
     #[serde(default = "default_avif_speed")]
     pub avif_speed: u8,   // AVIF encoder speed (0-10, higher = faster)
+    #[serde(default = "default_avif_bit_depth")]
+    pub avif_bit_depth: u8, // AVIF bit depth: 8 or 10
     #[serde(default = "default_progressive")]
     pub progressive: bool, // Progressive JPEG encoding (default: true)
 }
 
 fn default_avif_speed() -> u8 {
     6 // Default balanced speed
+}
+
+fn default_avif_bit_depth() -> u8 {
+    8 // Default 8-bit for maximum compatibility
 }
 
 fn default_progressive() -> bool {
@@ -66,18 +78,36 @@ pub fn process_image(
     let current_height: u32;
 
     if let Some(resize_cfg) = config.resize {
-        current_data = resize::resize_image(
-            data_mut, // src
+        // Calculate dimensions and optional crop based on fit mode
+        let (scaled_w, scaled_h, crop_region) = resize::calculate_fit_dimensions(
             width,
             height,
             resize_cfg.width,
             resize_cfg.height,
+            &resize_cfg.fit_mode,
+        );
+
+        // First resize to calculated dimensions
+        let resized_data = resize::resize_image(
+            data_mut, // src
+            width,
+            height,
+            scaled_w,
+            scaled_h,
             &resize_cfg.filter,
         )
         .map_err(|e| JsValue::from_str(&e))?;
 
-        current_width = resize_cfg.width;
-        current_height = resize_cfg.height;
+        // Apply crop if needed (for cover mode)
+        if let Some((crop_x, crop_y, crop_w, crop_h)) = crop_region {
+            current_data = resize::crop_image(&resized_data, scaled_w, scaled_h, crop_x, crop_y, crop_w, crop_h);
+            current_width = crop_w;
+            current_height = crop_h;
+        } else {
+            current_data = resized_data;
+            current_width = scaled_w;
+            current_height = scaled_h;
+        }
     } else {
         current_data = data_mut.to_vec();
         current_width = width;
@@ -110,6 +140,7 @@ pub fn process_image(
             current_height,
             config.quality,
             config.avif_speed,
+            config.avif_bit_depth,
         )
         .map_err(|e| JsValue::from_str(&e)),
     }

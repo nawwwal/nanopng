@@ -8,6 +8,7 @@ const projectRoot = join(__dirname, '..');
 
 const sourceDir = join(projectRoot, 'lib/wasm/nanopng-core/pkg');
 const webpSourceDir = join(projectRoot, 'node_modules/@jsquash/webp/codec/enc');
+const jpegSourceDir = join(projectRoot, 'node_modules/@jsquash/jpeg/codec/enc');
 const wasmFeatureDetectDir = join(projectRoot, 'node_modules/wasm-feature-detect/dist/esm');
 const targetDir = join(projectRoot, 'public/wasm');
 
@@ -20,6 +21,9 @@ const filesToCopy = [
     // WebP encoder JS files (for runtime loading, bypassing Webpack)
     { src: 'webp_enc.js', dest: 'webp_enc.js', sourceDir: webpSourceDir },
     { src: 'webp_enc_simd.js', dest: 'webp_enc_simd.js', sourceDir: webpSourceDir },
+    // MozJPEG encoder WASM files (for progressive JPEG encoding)
+    { src: 'mozjpeg_enc.wasm', dest: 'mozjpeg_enc.wasm', sourceDir: jpegSourceDir },
+    { src: 'mozjpeg_enc.js', dest: 'mozjpeg_enc.js', sourceDir: jpegSourceDir },
     // WASM feature detection for SIMD support check
     { src: 'index.js', dest: 'wasm-feature-detect.js', sourceDir: wasmFeatureDetectDir },
 ];

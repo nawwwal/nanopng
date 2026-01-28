@@ -226,7 +226,7 @@ async function initWasm() {
 
     try {
         const wasm = await import(/* webpackIgnore: true */ /* @vite-ignore */ getAbsoluteUrl("/wasm/nanopng_core.js"));
-        await wasm.default(getAbsoluteUrl("/wasm/nanopng_core_bg.wasm"));
+        await wasm.default({ module_or_path: getAbsoluteUrl("/wasm/nanopng_core_bg.wasm") });
         wasmModule = wasm;
     } catch (e) {
         console.error("Failed to init Wasm:", e);

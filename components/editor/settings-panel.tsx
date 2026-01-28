@@ -10,7 +10,7 @@ export function SettingsPanel() {
     // Pitch content when no images
     if (!hasImages) {
         return (
-            <div className="h-full flex flex-col justify-start p-6 lg:p-8 pt-8 lg:pt-12 overflow-y-auto">
+            <div className="h-full flex flex-col justify-start p-6 lg:p-8 pt-8 lg:pt-12 overflow-y-auto overflow-x-hidden">
                 <div className="max-w-md">
                     {/* Privacy Badge */}
                     <div className="flex items-center gap-2 mb-6">
@@ -18,7 +18,7 @@ export function SettingsPanel() {
                         <span className="text-xs font-bold text-muted-foreground">100% browser-based • Zero server uploads</span>
                     </div>
 
-                    <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.85] tracking-tight mb-4 text-balance">
+                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase leading-[0.85] tracking-tight mb-4 text-balance">
                         Compress images
                         <span className="accent-bg inline-block px-2 mt-2">without uploading them.</span>
                     </h2>

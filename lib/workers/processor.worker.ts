@@ -64,6 +64,11 @@ let webpModule: any = null;
 // MozJPEG encoder module for progressive JPEG encoding
 let mozjpegModule: any = null;
 
+// JPEG-XL encoder module (experimental - limited browser support)
+// Uses @jsquash/jxl for encoding to JXL format
+// Note: Only Safari supports displaying JXL as of 2024
+let jxlModule: any = null;
+
 // Default MozJPEG encoding options (from @jsquash/jpeg/meta.js)
 // MozJPEG provides 5-15% smaller files at same quality with:
 // - Progressive JPEG encoding (loads blurry to sharp)
@@ -86,6 +91,24 @@ const mozjpegDefaultOptions = {
     chroma_subsample: 2,    // 4:2:0 chroma subsampling
     separate_chroma_quality: false,
     chroma_quality: 75,
+};
+
+// Default JPEG-XL encoding options (from @jsquash/jxl/meta.ts)
+// JPEG-XL provides 30-60% smaller files than JPEG with:
+// - Better compression efficiency
+// - Support for both lossy and lossless modes
+// - Progressive decoding support
+// Note: Browser support is limited (Safari only as of 2024)
+const jxlDefaultOptions = {
+    effort: 7,              // 1-9, higher = slower but better compression
+    quality: 75,            // 0-100, quality level for lossy encoding
+    progressive: false,     // Enable progressive decoding
+    epf: -1,               // Edge-preserving filter (-1 = auto)
+    lossyPalette: false,   // Use lossy palette
+    decodingSpeedTier: 0,  // Decoding speed tier (0-4)
+    photonNoiseIso: 0,     // Photon noise ISO
+    lossyModular: false,   // Use lossy modular mode
+    lossless: false,       // Force lossless encoding
 };
 
 // Default WebP encoding options (from @jsquash/webp/meta.js)
@@ -169,6 +192,31 @@ async function initMozJPEGEncoder() {
         return mozjpegModule;
     } catch (e) {
         console.error("Failed to init MozJPEG encoder:", e);
+        throw e;
+    }
+}
+
+/**
+ * Initialize JPEG-XL encoder using @jsquash/jxl WASM module.
+ * JPEG-XL provides 30-60% smaller files than JPEG.
+ * Note: Browser support is limited (Safari only as of 2024).
+ */
+async function initJXLEncoder() {
+    if (jxlModule) return jxlModule;
+
+    try {
+        // Load JXL encoder at runtime (bypassing bundler)
+        const encoder = await import(/* webpackIgnore: true */ /* @vite-ignore */ getAbsoluteUrl("/wasm/jxl_enc.js"));
+
+        // Initialize Emscripten module with locateFile for WASM loading
+        jxlModule = await encoder.default({
+            noInitialRun: true,
+            locateFile: (file: string) => getAbsoluteUrl(`/wasm/${file}`),
+        });
+
+        return jxlModule;
+    } catch (e) {
+        console.error("Failed to init JXL encoder:", e);
         throw e;
     }
 }
@@ -504,6 +552,128 @@ async function processJPEG(
     }
 }
 
+/**
+ * Process JPEG-XL encoding using @jsquash/jxl WASM encoder.
+ * JPEG-XL provides:
+ * - 30-60% smaller files than JPEG at equivalent quality
+ * - Support for both lossy and lossless modes
+ * - Progressive decoding support
+ * Note: Browser support is limited (Safari only as of 2024)
+ */
+async function processJXL(
+    data: Uint8Array,
+    width: number,
+    height: number,
+    opt: CompressionOptions
+): Promise<{ success: boolean; data?: Uint8Array; error?: string }> {
+    try {
+        let pixelData = data;
+        let currentWidth = width;
+        let currentHeight = height;
+
+        // Apply user crop first if specified (before resize)
+        if (opt.crop && opt.crop.width > 0 && opt.crop.height > 0) {
+            pixelData = cropPixelData(
+                pixelData,
+                currentWidth,
+                opt.crop.x,
+                opt.crop.y,
+                opt.crop.width,
+                opt.crop.height
+            );
+            currentWidth = opt.crop.width;
+            currentHeight = opt.crop.height;
+        }
+
+        // Handle resize using Rust WASM if needed
+        const fitMode = opt.fitMode || "contain";
+        const targetDims = calculateTargetDimensions(currentWidth, currentHeight, opt.targetWidth, opt.targetHeight, fitMode);
+        if (targetDims) {
+            await initWasm();
+            // Calculate actual resize dimensions based on fit mode
+            const scaleX = targetDims.width / currentWidth;
+            const scaleY = targetDims.height / currentHeight;
+            let resizeWidth: number;
+            let resizeHeight: number;
+
+            if (fitMode === "fill") {
+                // Stretch to exact dimensions
+                resizeWidth = targetDims.width;
+                resizeHeight = targetDims.height;
+            } else if (fitMode === "cover" || fitMode === "outside") {
+                // Scale to fill/cover - use larger scale
+                const scale = Math.max(scaleX, scaleY);
+                resizeWidth = Math.max(1, Math.round(currentWidth * scale));
+                resizeHeight = Math.max(1, Math.round(currentHeight * scale));
+            } else {
+                // "contain" or "inside" - scale to fit within bounds
+                const scale = Math.min(scaleX, scaleY);
+                resizeWidth = Math.max(1, Math.round(currentWidth * scale));
+                resizeHeight = Math.max(1, Math.round(currentHeight * scale));
+            }
+
+            const resized = wasmModule.resize_only(
+                pixelData,
+                currentWidth,
+                currentHeight,
+                resizeWidth,
+                resizeHeight,
+                opt.resizeFilter || "Lanczos3"
+            );
+
+            // For cover mode, crop to target dimensions
+            if (fitMode === "cover" && (resizeWidth > targetDims.width || resizeHeight > targetDims.height)) {
+                // Center crop
+                const cropX = Math.floor((resizeWidth - targetDims.width) / 2);
+                const cropY = Math.floor((resizeHeight - targetDims.height) / 2);
+                const cropped = new Uint8Array(targetDims.width * targetDims.height * 4);
+                for (let row = 0; row < targetDims.height; row++) {
+                    const srcStart = ((row + cropY) * resizeWidth + cropX) * 4;
+                    const dstStart = row * targetDims.width * 4;
+                    cropped.set(resized.subarray(srcStart, srcStart + targetDims.width * 4), dstStart);
+                }
+                pixelData = cropped;
+                currentWidth = targetDims.width;
+                currentHeight = targetDims.height;
+            } else {
+                pixelData = resized;
+                currentWidth = resizeWidth;
+                currentHeight = resizeHeight;
+            }
+        }
+
+        // Initialize JXL encoder
+        const module = await initJXLEncoder();
+
+        // Build encoding options
+        const quality = Math.round((opt.quality || 0.8) * 100);
+        const effort = opt.jxlEffort ?? jxlDefaultOptions.effort;
+        const progressive = opt.jxlProgressive ?? jxlDefaultOptions.progressive;
+        const lossless = opt.lossless ?? jxlDefaultOptions.lossless;
+
+        const encodeOptions = {
+            ...jxlDefaultOptions,
+            quality,
+            effort,
+            progressive,
+            lossless,
+        };
+
+        // JXL encoder expects RGBA data (same as other encoders)
+        const result = module.encode(pixelData, currentWidth, currentHeight, encodeOptions);
+        if (!result) {
+            throw new Error("JXL encoding failed");
+        }
+
+        return { success: true, data: new Uint8Array(result.buffer) };
+    } catch (err) {
+        return {
+            success: false,
+            error: err instanceof Error ? err.message : String(err)
+        };
+    }
+}
+
 const api: ProcessorAPI = {
     async processImage(id, width, height, opt, sharedBuffer) {
         const data = new Uint8Array(sharedBuffer);
@@ -517,6 +687,12 @@ const api: ProcessorAPI = {
         // MozJPEG provides 5-15% smaller files with progressive loading
         if (opt.format === 'jpeg') {
             return processJPEG(data, width, height, opt);
+        }
+
+        // Route JXL to JPEG-XL encoder (experimental - limited browser support)
+        // JXL provides 30-60% smaller files than JPEG
+        if (opt.format === 'jxl') {
+            return processJXL(data, width, height, opt);
         }
 
         // PNG and AVIF use Rust WASM encoder
@@ -547,6 +723,7 @@ const api: ProcessorAPI = {
                 avif_bit_depth: opt.avifBitDepth ?? 8,
                 progressive: opt.progressive ?? true,
                 sharpen: (opt.sharpen || 0) / 100,  // Convert 0-100 to 0.0-1.0
+                blur: Math.round((opt.blur || 0) / 2),  // Convert 0-100 to 0-50 radius
                 rotate: opt.rotate || 0,
                 flip_h: opt.flipH || false,
                 flip_v: opt.flipV || false,

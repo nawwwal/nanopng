@@ -141,3 +141,81 @@ pub fn auto_trim(data: &[u8], width: u32, height: u32, threshold: u8) -> (Vec<u8
         None => (data.to_vec(), width, height),
     }
 }
+
+/// Apply box blur to an RGBA image.
+/// radius: blur radius in pixels (1-50)
+pub fn blur(data: &[u8], width: u32, height: u32, radius: u32) -> Vec<u8> {
+    if radius == 0 || width < 3 || height < 3 {
+        return data.to_vec();
+    }
+
+    let radius = radius.min(50) as i32;
+    let w = width as usize;
+    let h = height as usize;
+
+    // Two-pass box blur (horizontal then vertical) for efficiency
+    // This approximates Gaussian blur
+
+    let mut temp = data.to_vec();
+    let mut result = data.to_vec();
+
+    // Horizontal pass
+    for y in 0..h {
+        for x in 0..w {
+            let mut r_sum = 0u32;
+            let mut g_sum = 0u32;
+            let mut b_sum = 0u32;
+            let mut a_sum = 0u32;
+            let mut count = 0u32;
+
+            for dx in -radius..=radius {
+                let nx = x as i32 + dx;
+                if nx >= 0 && nx < w as i32 {
+                    let idx = (y * w + nx as usize) * 4;
+                    r_sum += data[idx] as u32;
+                    g_sum += data[idx + 1] as u32;
+                    b_sum += data[idx + 2] as u32;
+                    a_sum += data[idx + 3] as u32;
+                    count += 1;
+                }
+            }
+
+            let idx = (y * w + x) * 4;
+            temp[idx] = (r_sum / count) as u8;
+            temp[idx + 1] = (g_sum / count) as u8;
+            temp[idx + 2] = (b_sum / count) as u8;
+            temp[idx + 3] = (a_sum / count) as u8;
+        }
+    }
+
+    // Vertical pass
+    for y in 0..h {
+        for x in 0..w {
+            let mut r_sum = 0u32;
+            let mut g_sum = 0u32;
+            let mut b_sum = 0u32;
+            let mut a_sum = 0u32;
+            let mut count = 0u32;
+
+            for dy in -radius..=radius {
+                let ny = y as i32 + dy;
+                if ny >= 0 && ny < h as i32 {
+                    let idx = (ny as usize * w + x) * 4;
+                    r_sum += temp[idx] as u32;
+                    g_sum += temp[idx + 1] as u32;
+                    b_sum += temp[idx + 2] as u32;
+                    a_sum += temp[idx + 3] as u32;
+                    count += 1;
+                }
+            }
+
+            let idx = (y * w + x) * 4;
+            result[idx] = (r_sum / count) as u8;
+            result[idx + 1] = (g_sum / count) as u8;
+            result[idx + 2] = (b_sum / count) as u8;
+            result[idx + 3] = (a_sum / count) as u8;
+        }
+    }
+
+    result
+}

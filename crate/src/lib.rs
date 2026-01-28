@@ -65,6 +65,8 @@ pub struct Config {
     pub crop: Option<CropConfig>,
     #[serde(default)]
     pub sharpen: f32,  // 0.0 to 1.0
+    #[serde(default)]
+    pub blur: u32,  // Blur radius 0-50
 }
 
 fn default_trim_threshold() -> u8 {
@@ -173,10 +175,17 @@ pub fn process_image(
     );
 
     // Apply sharpen if specified (after resize/transforms, before encoding)
-    let final_data = if config.sharpen > 0.0 {
+    let sharpened_data = if config.sharpen > 0.0 {
         filters::sharpen(&transformed_data, transformed_width, transformed_height, config.sharpen)
     } else {
         transformed_data
+    };
+
+    // Apply blur if specified (after sharpen, before encoding)
+    let final_data = if config.blur > 0 {
+        filters::blur(&sharpened_data, transformed_width, transformed_height, config.blur)
+    } else {
+        sharpened_data
     };
 
     match config.format {

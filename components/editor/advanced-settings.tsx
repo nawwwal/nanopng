@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useEditor } from "./editor-context"
 import { QualityPreview } from "./quality-preview"
-import { OutputFormat, ResizeFilter, FitMode, CropAspectRatio } from "@/lib/types/compression"
+import { OutputFormat, ResizeFilter, FitMode, CropAspectRatio, WatermarkPosition } from "@/lib/types/compression"
 import type { SvgOptimizationMode } from "@/lib/types/svg"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
@@ -17,6 +17,7 @@ const FORMAT_OPTIONS: { value: OutputFormat; label: string; desc: string }[] = [
     { value: "avif", label: "AVIF", desc: "Newest format, 50% smaller, limited support" },
     { value: "jpeg", label: "JPEG", desc: "Universal, best for photos" },
     { value: "png", label: "PNG", desc: "Lossless, best for graphics with transparency" },
+    { value: "jxl", label: "JXL", desc: "JPEG-XL (Experimental) - 30-60% smaller, Safari only" },
 ]
 
 const RESIZE_FILTER_OPTIONS: { value: ResizeFilter; label: string; desc: string }[] = [
@@ -64,6 +65,14 @@ const CROP_ASPECT_OPTIONS: { value: CropAspectRatio; label: string }[] = [
     { value: "3:2", label: "3:2" },
 ]
 
+const WATERMARK_POSITION_OPTIONS: { value: WatermarkPosition; label: string }[] = [
+    { value: "bottom-right", label: "Bottom Right" },
+    { value: "bottom-left", label: "Bottom Left" },
+    { value: "top-right", label: "Top Right" },
+    { value: "top-left", label: "Top Left" },
+    { value: "center", label: "Center" },
+]
+
 const SETTING_HINTS = {
     format: "Auto picks the best format based on image content",
     transform: "Rotate and flip applied before resize",
@@ -82,8 +91,12 @@ const SETTING_HINTS = {
     webpLosslessMode: "Near-lossless provides best size/quality balance",
     avifBitDepth: "Higher bit depth = better gradients but less browser support",
     sharpen: "Enhance edges and details. Apply after resize for best results",
+    blur: "Apply blur for privacy or placeholder images",
     autoTrim: "Automatically remove solid color borders from screenshots and scanned documents",
     crop: "Crop region applied before resize and compression",
+    watermark: "Add text watermark to images",
+    jxlEffort: "Higher effort = smaller files but slower encoding",
+    jxlProgressive: "Enable progressive decoding (slightly larger files)",
 }
 
 export function AdvancedSettings() {
@@ -344,6 +357,43 @@ export function AdvancedSettings() {
                             </SettingHint>
                         )}
 
+                        {/* JXL Options - only for jxl format */}
+                        {compressionOptions.format === 'jxl' && (
+                            <>
+                                <div className="bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                                    <strong>Experimental:</strong> JPEG-XL has limited browser support (mainly Safari). Images may not display in Chrome/Firefox.
+                                </div>
+                                <SettingHint label="Effort" hint={SETTING_HINTS.jxlEffort}>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-mono font-bold">
+                                            {compressionOptions.jxlEffort ?? 7}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="9"
+                                        value={compressionOptions.jxlEffort ?? 7}
+                                        onChange={(e) => setCompressionOptions({ jxlEffort: parseInt(e.target.value) })}
+                                        className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                        aria-label="JXL Encoding Effort"
+                                    />
+                                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                        <span>Faster</span>
+                                        <span>Smaller</span>
+                                    </div>
+                                </SettingHint>
+                                <SettingHint label="Progressive" hint={SETTING_HINTS.jxlProgressive} inline>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!compressionOptions.jxlProgressive}
+                                        onChange={(e) => setCompressionOptions({ jxlProgressive: e.target.checked })}
+                                        className="w-4 h-4 accent-foreground"
+                                    />
+                                </SettingHint>
+                            </>
+                        )}
+
                         {/* SVG Optimization Mode */}
                         <SettingHint label="SVG Optimization" hint={SETTING_HINTS.svgOptimization}>
                             <RadioGroup
@@ -381,6 +431,28 @@ export function AdvancedSettings() {
                                 onChange={(e) => setCompressionOptions({ sharpen: parseInt(e.target.value) })}
                                 className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
                                 aria-label="Sharpen Amount"
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                <span>Off</span>
+                                <span>Maximum</span>
+                            </div>
+                        </SettingHint>
+
+                        {/* Blur slider */}
+                        <SettingHint label="Blur" hint={SETTING_HINTS.blur}>
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-mono font-bold">
+                                    {compressionOptions.blur || 0}%
+                                </span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={compressionOptions.blur || 0}
+                                onChange={(e) => setCompressionOptions({ blur: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                aria-label="Blur Amount"
                             />
                             <div className="flex justify-between text-xs text-muted-foreground mt-1">
                                 <span>Off</span>
@@ -663,6 +735,103 @@ export function AdvancedSettings() {
                                 />
                             </SettingHint>
                         </div>
+                    </div>
+
+                    {/* Watermark Settings */}
+                    <div className="p-4 border-t border-foreground/10 space-y-4">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                            Watermark
+                        </div>
+
+                        <SettingHint label="Watermark Text" hint={SETTING_HINTS.watermark}>
+                            <input
+                                type="text"
+                                placeholder="Enter watermark text..."
+                                value={compressionOptions.watermark?.text || ""}
+                                onChange={(e) => setCompressionOptions({
+                                    watermark: e.target.value ? {
+                                        text: e.target.value,
+                                        position: compressionOptions.watermark?.position || "bottom-right",
+                                        opacity: compressionOptions.watermark?.opacity ?? 50,
+                                        fontSize: compressionOptions.watermark?.fontSize || 24,
+                                        color: compressionOptions.watermark?.color || "#ffffff"
+                                    } : undefined
+                                })}
+                                className="w-full px-2 py-1.5 border border-foreground/30 bg-background text-xs focus:outline-none focus:border-foreground"
+                            />
+                        </SettingHint>
+
+                        {compressionOptions.watermark?.text && (
+                            <>
+                                <SettingHint label="Position" hint="Where to place the watermark">
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {WATERMARK_POSITION_OPTIONS.map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => setCompressionOptions({
+                                                    watermark: { ...compressionOptions.watermark!, position: opt.value }
+                                                })}
+                                                className={cn(
+                                                    "px-2 py-1 border text-[10px] font-bold uppercase",
+                                                    compressionOptions.watermark?.position === opt.value
+                                                        ? "border-foreground bg-foreground text-background"
+                                                        : "border-foreground/30 hover:border-foreground"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </SettingHint>
+
+                                <SettingHint label="Opacity" hint="Watermark transparency">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-mono font-bold">
+                                            {compressionOptions.watermark?.opacity ?? 50}%
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="10"
+                                        max="100"
+                                        value={compressionOptions.watermark?.opacity ?? 50}
+                                        onChange={(e) => setCompressionOptions({
+                                            watermark: { ...compressionOptions.watermark!, opacity: parseInt(e.target.value) }
+                                        })}
+                                        className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                    />
+                                </SettingHint>
+
+                                <SettingHint label="Font Size" hint="Text size in pixels">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-mono font-bold">
+                                            {compressionOptions.watermark?.fontSize || 24}px
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="12"
+                                        max="72"
+                                        value={compressionOptions.watermark?.fontSize || 24}
+                                        onChange={(e) => setCompressionOptions({
+                                            watermark: { ...compressionOptions.watermark!, fontSize: parseInt(e.target.value) }
+                                        })}
+                                        className="w-full h-2 bg-foreground/20 appearance-none cursor-pointer accent-foreground"
+                                    />
+                                </SettingHint>
+
+                                <SettingHint label="Color" hint="Watermark text color">
+                                    <input
+                                        type="color"
+                                        value={compressionOptions.watermark?.color || "#ffffff"}
+                                        onChange={(e) => setCompressionOptions({
+                                            watermark: { ...compressionOptions.watermark!, color: e.target.value }
+                                        })}
+                                        className="w-full h-8 border border-foreground/30 bg-background cursor-pointer"
+                                    />
+                                </SettingHint>
+                            </>
+                        )}
                     </div>
                 </div>
             </CollapsibleContent>

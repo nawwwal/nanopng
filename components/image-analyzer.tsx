@@ -20,6 +20,7 @@ export function ImageAnalyzer({ image }: ImageAnalyzerProps) {
     gif: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
     tiff: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
     bmp: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300",
+    jxl: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
   } as const
 
   // Estimate quality score based on savings (heuristics)

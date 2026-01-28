@@ -255,7 +255,8 @@ export class CompressionOrchestrator {
       options.speedMode,
       'normal',
       options.resizeFilter,
-      options.preserveMetadata
+      options.preserveMetadata,
+      options.watermark
     )
 
     // If target size is specified and exceeded, iterate with binary search
@@ -281,7 +282,8 @@ export class CompressionOrchestrator {
           options.speedMode,
           'normal',
           options.resizeFilter,
-          options.preserveMetadata
+          options.preserveMetadata,
+          options.watermark
         )
 
         const currentSize = imageServiceResult.compressedBlob?.size || 0
@@ -341,7 +343,8 @@ export class CompressionOrchestrator {
             options.speedMode,
             'normal',
             options.resizeFilter,
-            options.preserveMetadata
+            options.preserveMetadata,
+            options.watermark
           )
 
           currentSize = imageServiceResult.compressedBlob?.size || 0
@@ -399,7 +402,8 @@ export class CompressionOrchestrator {
           options.speedMode,
           'normal',
           options.resizeFilter,
-          options.preserveMetadata
+          options.preserveMetadata,
+          options.watermark
         );
 
         if (retryResult.compressedBlob && retryResult.compressedBlob.size < finalBlob.size) {

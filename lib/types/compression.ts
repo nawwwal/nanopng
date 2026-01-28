@@ -2,10 +2,10 @@ import { CompressedImage, ImageAnalysis } from "@/types/image"
 
 export type CompressionStatus = "queued" | "analyzing" | "compressing" | "completed" | "error" | "already-optimized"
 
-export type OutputFormat = "auto" | "png" | "jpeg" | "webp" | "avif" | "svg"
+export type OutputFormat = "auto" | "png" | "jpeg" | "webp" | "avif" | "svg" | "jxl"
 
 // Basic types
-export type ImageFormat = "jpeg" | "png" | "webp" | "avif" | "svg" | "gif" | "tiff" | "bmp"
+export type ImageFormat = "jpeg" | "png" | "webp" | "avif" | "svg" | "gif" | "tiff" | "bmp" | "jxl"
 
 // Resize filter types
 export type ResizeFilter = "Lanczos3" | "Mitchell" | "Bilinear" | "Nearest"
@@ -22,6 +22,18 @@ export interface CropRegion {
   y: number      // Top offset in pixels
   width: number  // Crop width in pixels
   height: number // Crop height in pixels
+}
+
+// Watermark position
+export type WatermarkPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center"
+
+// Watermark options
+export interface WatermarkOptions {
+  text: string              // Watermark text
+  position: WatermarkPosition
+  opacity: number           // 0-100
+  fontSize: number          // Font size in pixels (default: 24)
+  color: string             // Hex color (default: "#ffffff")
 }
 
 // Preset aspect ratios for crop
@@ -62,17 +74,23 @@ export interface CompressionOptions {
   nearLosslessLevel?: number // Near-lossless quality 0-100 (default: 60)
   // JPEG options
   progressive?: boolean // Progressive JPEG encoding (loads blurry to sharp, default: true)
+  // JPEG-XL options (experimental)
+  jxlEffort?: number // JXL encoding effort (1-9, higher = slower but better, default: 7)
+  jxlProgressive?: boolean // JXL progressive encoding (default: false)
   // Transform options
   rotate?: RotationAngle  // Rotation in degrees clockwise (0, 90, 180, 270)
   flipH?: boolean         // Flip horizontally
   flipV?: boolean         // Flip vertically
   // Filter options
   sharpen?: number // Sharpen amount 0-100 (0 = off, default: 0)
+  blur?: number // Blur amount 0-100 (0 = off, default: 0)
   // Auto-trim options
   autoTrim?: boolean          // Auto-trim whitespace borders
   autoTrimThreshold?: number  // Color difference threshold 0-100 (default: 10)
   // Crop options
   crop?: CropRegion           // Crop region to apply before other operations
+  // Watermark options
+  watermark?: WatermarkOptions // Text watermark to overlay on image
 }
 
 export interface CompressionResult {

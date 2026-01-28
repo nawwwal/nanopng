@@ -9,6 +9,7 @@ const projectRoot = join(__dirname, '..');
 const sourceDir = join(projectRoot, 'lib/wasm/nanopng-core/pkg');
 const webpSourceDir = join(projectRoot, 'node_modules/@jsquash/webp/codec/enc');
 const jpegSourceDir = join(projectRoot, 'node_modules/@jsquash/jpeg/codec/enc');
+const jxlSourceDir = join(projectRoot, 'node_modules/@jsquash/jxl/codec/enc');
 const wasmFeatureDetectDir = join(projectRoot, 'node_modules/wasm-feature-detect/dist/esm');
 const targetDir = join(projectRoot, 'public/wasm');
 
@@ -24,6 +25,9 @@ const filesToCopy = [
     // MozJPEG encoder WASM files (for progressive JPEG encoding)
     { src: 'mozjpeg_enc.wasm', dest: 'mozjpeg_enc.wasm', sourceDir: jpegSourceDir },
     { src: 'mozjpeg_enc.js', dest: 'mozjpeg_enc.js', sourceDir: jpegSourceDir },
+    // JPEG-XL encoder WASM files (experimental - limited browser support)
+    { src: 'jxl_enc.wasm', dest: 'jxl_enc.wasm', sourceDir: jxlSourceDir, optional: true },
+    { src: 'jxl_enc.js', dest: 'jxl_enc.js', sourceDir: jxlSourceDir, optional: true },
     // WASM feature detection for SIMD support check
     { src: 'index.js', dest: 'wasm-feature-detect.js', sourceDir: wasmFeatureDetectDir },
 ];
@@ -56,6 +60,10 @@ async function prepareWasm() {
 
         // Check if source file exists
         if (!(await fileExists(srcPath))) {
+            if (file.optional) {
+                console.warn(`⚠️  Optional file ${file.src} not found, skipping...`);
+                continue;
+            }
             console.warn('⚠️  WASM files not found. Run "npm run wasm:build" first.');
             console.warn('   Skipping WASM preparation.');
             process.exit(0);

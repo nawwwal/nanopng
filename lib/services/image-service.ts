@@ -1,9 +1,71 @@
 import { CompressedImage, ImageAnalysis, ImageFormat } from "@/types/image"
-import type { ResizeFilter } from "@/lib/types/compression"
+import type { ResizeFilter, WatermarkOptions } from "@/lib/types/compression"
 import { canEncodeAvif } from "@/lib/core/format-capabilities"
 import { copyMetadata } from "@/lib/core/metadata"
 import * as exifr from "exifr"
 import { getWorkerPool } from "@/lib/workers/worker-pool"
+
+/**
+ * Applies a text watermark to an image blob using Canvas API
+ */
+async function applyWatermark(
+  blob: Blob,
+  watermark: WatermarkOptions
+): Promise<Blob> {
+  const img = await createImageBitmap(blob);
+  const canvas = new OffscreenCanvas(img.width, img.height);
+  const ctx = canvas.getContext('2d')!;
+
+  // Draw original image
+  ctx.drawImage(img, 0, 0);
+
+  // Configure text style
+  const fontSize = watermark.fontSize || 24;
+  ctx.font = `${fontSize}px sans-serif`;
+  ctx.fillStyle = watermark.color || '#ffffff';
+  ctx.globalAlpha = (watermark.opacity ?? 50) / 100;
+
+  // Calculate position
+  const metrics = ctx.measureText(watermark.text);
+  const textWidth = metrics.width;
+  const textHeight = fontSize;
+  const padding = 10;
+
+  let x: number, y: number;
+  switch (watermark.position) {
+    case 'top-left':
+      x = padding;
+      y = textHeight + padding;
+      break;
+    case 'top-right':
+      x = img.width - textWidth - padding;
+      y = textHeight + padding;
+      break;
+    case 'bottom-left':
+      x = padding;
+      y = img.height - padding;
+      break;
+    case 'bottom-right':
+      x = img.width - textWidth - padding;
+      y = img.height - padding;
+      break;
+    case 'center':
+    default:
+      x = (img.width - textWidth) / 2;
+      y = (img.height + textHeight) / 2;
+      break;
+  }
+
+  // Draw text with shadow for visibility
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
+  ctx.fillText(watermark.text, x, y);
+
+  // Convert back to blob
+  return await canvas.convertToBlob({ type: blob.type });
+}
 
 export class ImageService {
 
@@ -15,6 +77,7 @@ export class ImageService {
     if (mimeType.includes('gif')) return 'gif'
     if (mimeType.includes('tiff')) return 'tiff'
     if (mimeType.includes('bmp')) return 'bmp'
+    if (mimeType.includes('jxl')) return 'jxl'
     return 'jpeg' // default
   }
 
@@ -68,7 +131,8 @@ export class ImageService {
     speedMode?: boolean,
     priority: 'normal' | 'high' = 'normal',
     resizeFilter?: ResizeFilter,
-    preserveMetadata?: boolean
+    preserveMetadata?: boolean,
+    watermark?: WatermarkOptions
   ): Promise<CompressedImage> {
     const originalSize = file.size;
     const img = await createImageBitmap(file);
@@ -135,6 +199,13 @@ export class ImageService {
       try {
         finalBlob = await copyMetadata(file, blob);
       } catch (e) { console.warn("Metadata copy failed", e); }
+    }
+
+    // Apply watermark if specified
+    if (watermark && watermark.text) {
+      try {
+        finalBlob = await applyWatermark(finalBlob, watermark);
+      } catch (e) { console.warn("Watermark application failed", e); }
     }
 
     const savings = Math.max(0, (originalSize - finalBlob.size) / originalSize * 100);
